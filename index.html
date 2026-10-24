@@ -32,6 +32,15 @@
         </span>
       </span>
     </div>
+
+    <div class="music-controls" aria-label="Background music controls">
+      <button class="music-toggle" id="musicToggle" data-action="toggleMusic"
+        aria-pressed="false" title="Play or pause background music">♫ Play music</button>
+      <label for="musicVolume">VOL</label>
+      <input id="musicVolume" type="range" min="0" max="1" step="0.05" value="0.35"
+        aria-label="Music volume">
+      <small id="musicTrack">Exploration theme</small>
+    </div>
   </header>
 
   <section class="banner" id="top">
@@ -52,11 +61,7 @@
       </div>
     </div>
 
-    <img
-      src="assets/hero-mage.svg"
-      class="hero"
-      alt="A magical hero"
-    >
+    <img src="assets/hero-mage.svg" class="hero" alt="A magical hero">
   </section>
 
   <div class="layout">
@@ -76,7 +81,6 @@
           <div class="crystal c1"></div>
           <div class="crystal c2"></div>
           <div class="ground"></div>
-
           <div class="party" id="battleParty"></div>
 
           <div class="enemy hidden" id="enemyVisual">
@@ -106,13 +110,8 @@
         </div>
 
         <div class="actions">
-          <button class="primary" data-action="explore" id="exploreBtn">
-            ⌖ Explore now
-          </button>
-
-          <button data-action="mine" id="mineBtn">
-            ✧ Mine crystals
-          </button>
+          <button class="primary" data-action="explore" id="exploreBtn">⌖ Explore now</button>
+          <button data-action="mine" id="mineBtn">✧ Mine crystals</button>
         </div>
 
         <p class="hint" id="hint">
@@ -143,9 +142,7 @@
             <p class="eyebrow">CRYSTAL KINGDOM INFIRMARY</p>
             <h2 id="hospitalTitle">The party has fallen</h2>
           </div>
-          <span class="pill hospital-pill" id="hospitalStatus">
-            TREATMENT NEEDED
-          </span>
+          <span class="pill hospital-pill" id="hospitalStatus">TREATMENT NEEDED</span>
         </div>
 
         <p class="hospital-copy" id="hospitalCopy">
@@ -159,9 +156,7 @@
             <small id="hospitalTimer">Waiting for payment</small>
           </div>
 
-          <button class="primary" data-action="payHeal" id="payHealBtn">
-            Pay and recover
-          </button>
+          <button class="primary" data-action="payHeal" id="payHealBtn">Pay and recover</button>
         </div>
       </section>
 
@@ -211,9 +206,16 @@
 
         <div class="reward-card" id="nextHeroCard"></div>
 
-        <button class="full primary" data-action="boss" id="bossBtn">
-          Challenge guardian
-        </button>
+        <div class="cave-progress" aria-live="polite">
+          <div class="cave-progress-head">
+            <span>CRYSTAL GATE</span>
+            <b id="caveProgressText">0 / 25 crystals</b>
+          </div>
+          <div class="cave-progress-track"><i id="caveProgressBar"></i></div>
+          <small id="caveProgressHint">Gather crystals to unlock the guardian challenge.</small>
+        </div>
+
+        <button class="full primary" data-action="boss" id="bossBtn">Challenge guardian</button>
       </section>
 
       <section class="panel">
@@ -228,123 +230,77 @@
         <div class="skill-grid">
           <button class="skill" data-skill="slash">
             <span class="skillicon pink">✦</span>
-            <span>
-              <b>Radiant Slash</b>
-              <small>Heavy strike against an enemy</small>
-            </span>
+            <span><b>Radiant Slash</b><small>Heavy strike against an enemy</small></span>
             <strong id="cd-slash">READY</strong>
           </button>
 
           <button class="skill" data-skill="burst">
             <span class="skillicon purple">✺</span>
-            <span>
-              <b>Arcane Burst</b>
-              <small>Powerful magical attack</small>
-            </span>
+            <span><b>Arcane Burst</b><small>Powerful magical attack</small></span>
             <strong id="cd-burst">READY</strong>
           </button>
 
           <button class="skill" data-skill="guard">
             <span class="skillicon blue">⬡</span>
-            <span>
-              <b>Aegis Guard</b>
-              <small>Heal the party and block a hit</small>
-            </span>
+            <span><b>Aegis Guard</b><small>Heal the party and block a hit</small></span>
             <strong id="cd-guard">READY</strong>
           </button>
 
           <button class="skill" data-skill="heal">
             <span class="skillicon green">✚</span>
-            <span>
-              <b>Healing Wave</b>
-              <small>Restore health to living heroes</small>
-            </span>
+            <span><b>Healing Wave</b><small>Restore health to living heroes</small></span>
             <strong id="cd-heal">LOCKED</strong>
           </button>
 
           <button class="skill" data-skill="meteor">
             <span class="skillicon pink">☄</span>
-            <span>
-              <b>Meteor Rain</b>
-              <small>Massive magical damage</small>
-            </span>
+            <span><b>Meteor Rain</b><small>Massive magical damage</small></span>
             <strong id="cd-meteor">READY</strong>
           </button>
 
           <button class="skill" data-skill="frost">
             <span class="skillicon blue">❄</span>
-            <span>
-              <b>Frost Nova</b>
-              <small>Damage and slow the enemy</small>
-            </span>
+            <span><b>Frost Nova</b><small>Damage and slow the enemy</small></span>
             <strong id="cd-frost">READY</strong>
           </button>
 
           <button class="skill" data-skill="phoenix">
             <span class="skillicon gold">✧</span>
-            <span>
-              <b>Phoenix Blessing</b>
-              <small>Revive one fallen hero</small>
-            </span>
+            <span><b>Phoenix Blessing</b><small>Revive one fallen hero</small></span>
             <strong id="cd-phoenix">LOCKED</strong>
           </button>
         </div>
 
-        <p class="hint">
-          Skills consume mana. Mana regenerates automatically.
-        </p>
+        <p class="hint">Skills consume mana. Mana regenerates automatically.</p>
       </section>
 
       <section class="panel">
         <div class="panelhead">
-          <div>
-            <p class="eyebrow">WORKSHOP</p>
-            <h2>Improvements</h2>
-          </div>
+          <div><p class="eyebrow">WORKSHOP</p><h2>Improvements</h2></div>
         </div>
 
         <div class="upgrade">
           <span class="upicon">⚒</span>
-          <div>
-            <b>Crystal pickaxe</b>
-            <small id="pickaxeLevel">Level 1 / 10</small>
-          </div>
-          <button data-action="upgrade" data-value="pickaxe" id="pickaxeUpgrade">
-            Upgrade <small id="pickaxeCost">35 C</small>
-          </button>
+          <div><b>Crystal pickaxe</b><small id="pickaxeLevel">Level 1 / 10</small></div>
+          <button data-action="upgrade" data-value="pickaxe" id="pickaxeUpgrade">Upgrade <small id="pickaxeCost">35 C</small></button>
         </div>
 
         <div class="upgrade">
           <span class="upicon blue">➤</span>
-          <div>
-            <b>Party tempo</b>
-            <small id="speedLevel">Level 0 / 5</small>
-          </div>
-          <button data-action="upgrade" data-value="speed" id="speedUpgrade">
-            Upgrade <small id="speedCost">40 C</small>
-          </button>
+          <div><b>Party tempo</b><small id="speedLevel">Level 0 / 5</small></div>
+          <button data-action="upgrade" data-value="speed" id="speedUpgrade">Upgrade <small id="speedCost">40 C</small></button>
         </div>
 
         <div class="upgrade">
           <span class="upicon green">⚔</span>
-          <div>
-            <b>Party damage</b>
-            <small id="damageLevel">Level 0 / 10</small>
-          </div>
-          <button data-action="upgrade" data-value="damage" id="damageUpgrade">
-            Upgrade <small id="damageCost">60 G</small>
-          </button>
+          <div><b>Party damage</b><small id="damageLevel">Level 0 / 10</small></div>
+          <button data-action="upgrade" data-value="damage" id="damageUpgrade">Upgrade <small id="damageCost">60 G</small></button>
         </div>
 
         <div class="upgrade">
           <span class="upicon gold">✹</span>
-          <div>
-            <b>Critical strikes</b>
-            <small id="critLevel">Level 0 / 8</small>
-          </div>
-          <button data-action="upgrade" data-value="crit" id="critUpgrade">
-            Upgrade <small id="critCost">50 C</small>
-          </button>
+          <div><b>Critical strikes</b><small id="critLevel">Level 0 / 8</small></div>
+          <button data-action="upgrade" data-value="crit" id="critUpgrade">Upgrade <small id="critCost">50 C</small></button>
         </div>
       </section>
 
@@ -357,10 +313,7 @@
           <span class="muted" id="recruitCount">0 hired</span>
         </div>
 
-        <p class="hint recruit-intro">
-          Recruit helpers to improve your expedition.
-        </p>
-
+        <p class="hint recruit-intro">Recruit helpers to improve your expedition.</p>
         <div class="recruit-grid" id="recruitGrid"></div>
       </section>
 
@@ -386,24 +339,15 @@
   </footer>
 </main>
 
-<!-- Great Sage is fixed to the browser viewport -->
 <div class="sage-dock" id="sageDock">
-  <button
-    class="sage-orb"
-    id="sageOrb"
-    data-action="sageToggle"
-    aria-label="Mute or activate Great Sage voice"
-    title="Mute or activate Great Sage"
-  >
+  <button class="sage-orb" id="sageOrb" data-action="sageToggle"
+    aria-label="Mute or activate Great Sage voice" title="Mute or activate Great Sage">
     <span class="sage-symbol">◈</span>
   </button>
 
   <section class="sage-panel" id="sagePanel" hidden>
     <div class="sage-panel-head">
-      <div>
-        <b>GREAT SAGE</b>
-        <small id="sageStatus">VOICE ON</small>
-      </div>
+      <div><b>GREAT SAGE</b><small id="sageStatus">VOICE ON</small></div>
       <span class="sage-indicator">AI</span>
     </div>
 
@@ -413,5 +357,7 @@
 </div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<audio id="backgroundMusic" loop preload="auto"></audio>
 </body>
 </html>

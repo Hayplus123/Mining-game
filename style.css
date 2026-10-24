@@ -1187,10 +1187,7 @@ footer {
   100% { opacity: 0; transform: translateY(-42px) scale(1.15); }
 }
 
-/* ==========================================
-   FLOATING GREAT SAGE ASSISTANT
-   ========================================== */
-
+/* Floating Great Sage assistant */
 .sage-dock {
   position: fixed;
   top: 14px;
@@ -1382,10 +1379,7 @@ footer {
   }
 }
 
-/* ==========================================
-   RESPONSIVE LAYOUT
-   ========================================== */
-
+/* Responsive layout */
 @media (max-width: 1120px) {
   .layout {
     grid-template-columns: minmax(0, 1.3fr) minmax(270px, 1fr);
@@ -1588,5 +1582,107 @@ footer {
   .enemy img,
   .stars {
     animation: none;
+  }
+}
+
+/* Background music controls */
+.music-controls {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  flex-wrap: wrap;
+  padding: 8px 10px;
+  border: 1px solid #b58aff30;
+  border-radius: 10px;
+  background: #100d1c88;
+  color: var(--muted);
+  font-size: 9px;
+  letter-spacing: .08em;
+}
+
+.music-toggle {
+  padding: 8px 10px;
+  color: #e5d2ff;
+  background: #b58aff17;
+  border-color: #b58aff55;
+  white-space: nowrap;
+}
+
+.music-controls label {
+  font-size: 8px;
+  font-weight: 700;
+}
+
+.music-controls input[type="range"] {
+  width: 76px;
+  accent-color: var(--purple);
+  cursor: pointer;
+}
+
+.music-controls small {
+  min-width: 90px;
+  color: #c5b4e7;
+  letter-spacing: .02em;
+}
+
+/* Crystal-gate progression */
+.cave-progress {
+  margin: 12px 0;
+  padding: 12px;
+  border: 1px solid #8ce7ef26;
+  border-radius: 10px;
+  background: linear-gradient(110deg, #8ce7ef08, #b58aff08);
+}
+
+.cave-progress-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+  color: var(--muted);
+  font-size: 8px;
+  letter-spacing: .12em;
+}
+
+.cave-progress-head b {
+  color: #b6f1f4;
+  font-size: 10px;
+  letter-spacing: .02em;
+  text-align: right;
+}
+
+.cave-progress-track {
+  height: 7px;
+  overflow: hidden;
+  border-radius: 99px;
+  background: #080a16;
+  border: 1px solid #ffffff10;
+}
+
+.cave-progress-track i {
+  display: block;
+  width: 0;
+  height: 100%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #69d9e5, #b58aff, #f5d48d);
+  transition: width .25s ease;
+}
+
+.cave-progress > small {
+  display: block;
+  margin-top: 8px;
+  color: var(--muted);
+  line-height: 1.5;
+}
+
+@media (max-width: 720px) {
+  .music-controls {
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+  .music-controls small {
+    margin-left: auto;
   }
 }

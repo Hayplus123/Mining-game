@@ -1,0 +1,71 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 240 300" role="img" aria-labelledby="title desc">
+  <title id="title">Elowen, spirit reviver</title>
+  <desc id="desc">A fantasy healer wearing a deep forest-green hood, with glowing teal eyes and a crystal pendant.</desc>
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#183d3a"/>
+      <stop offset="1" stop-color="#17152d"/>
+    </linearGradient>
+    <linearGradient id="cloak" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#2c7660"/>
+      <stop offset="1" stop-color="#173a3d"/>
+    </linearGradient>
+    <linearGradient id="crystal" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#d8fff3"/>
+      <stop offset="0.5" stop-color="#76f2dc"/>
+      <stop offset="1" stop-color="#8b9aff"/>
+    </linearGradient>
+    <radialGradient id="glow">
+      <stop offset="0" stop-color="#7fffe2" stop-opacity=".45"/>
+      <stop offset="1" stop-color="#7fffe2" stop-opacity="0"/>
+    </radialGradient>
+  </defs>
+
+  <rect width="240" height="300" rx="18" fill="url(#bg)"/>
+  <circle cx="120" cy="145" r="112" fill="url(#glow)"/>
+
+  <path d="M33 300 Q35 225 71 204 L88 188 L151 188 L174 205 Q208 225 210 300Z"
+    fill="url(#cloak)" stroke="#75d9ba" stroke-opacity=".5" stroke-width="2"/>
+
+  <path d="M61 114 Q37 39 121 19 Q201 28 181 118 L169 196 L70 196Z"
+    fill="#153332" stroke="#6ec5a8" stroke-width="2"/>
+
+  <path d="M66 105 Q78 53 120 43 Q159 51 175 105 L158 169 Q143 190 120 191 Q91 187 78 165Z"
+    fill="#dcae91" stroke="#8c6b69" stroke-width="2"/>
+
+  <path d="M64 116 Q56 55 115 29 Q171 33 184 97 L170 130 L159 86 Q126 103 82 86 L75 133Z"
+    fill="#214b43" stroke="#75d9ba" stroke-width="2"/>
+
+  <path d="M86 126 Q96 117 106 125" fill="none" stroke="#3d3b45" stroke-width="4" stroke-linecap="round"/>
+  <path d="M135 125 Q145 117 155 125" fill="none" stroke="#3d3b45" stroke-width="4" stroke-linecap="round"/>
+
+  <ellipse cx="98" cy="132" rx="6" ry="4" fill="#75ffe2"/>
+  <ellipse cx="145" cy="132" rx="6" ry="4" fill="#75ffe2"/>
+
+  <path d="M115 137 L109 151 L121 153" fill="none" stroke="#ad7f74" stroke-width="2" stroke-linecap="round"/>
+  <path d="M105 164 Q120 171 136 163" fill="none" stroke="#825b61" stroke-width="2.5" stroke-linecap="round"/>
+
+  <path d="M79 193 Q120 222 161 193 L175 222 Q146 245 120 245 Q94 245 65 222Z"
+    fill="#2b6555" stroke="#7ce3c4" stroke-opacity=".65" stroke-width="2"/>
+
+  <path d="M120 207 L139 229 L120 259 L101 229Z"
+    fill="url(#crystal)" stroke="#d8fff3" stroke-width="2"/>
+
+  <path d="M120 207 L120 259 M101 229 L139 229"
+    stroke="#effffb" stroke-opacity=".8" stroke-width="1.4"/>
+
+  <path d="M47 189 Q26 164 43 138 Q53 155 58 167 Q63 149 77 142 Q77 177 60 190Z"
+    fill="#499975" stroke="#86e5b8" stroke-width="1.5"/>
+
+  <path d="M193 189 Q216 163 197 136 Q188 155 182 168 Q177 150 164 143 Q164 177 181 190Z"
+    fill="#499975" stroke="#86e5b8" stroke-width="1.5"/>
+
+  <circle cx="47" cy="85" r="4" fill="#9cffe3"/>
+  <circle cx="194" cy="77" r="3" fill="#9cffe3"/>
+
+  <path d="M36 232 l5 9 10 2 -8 7 2 10 -9 -5 -9 5 2 -10 -8 -7 10 -2Z"
+    fill="#9cffe3" opacity=".85"/>
+
+  <path d="M198 215 l4 7 8 1 -6 6 1 8 -7 -4 -7 4 1 -8 -6 -6 8 -1Z"
+    fill="#b8b9ff" opacity=".9"/>
+</svg>

@@ -65,6 +65,14 @@
       maxHp: 118,
       damage: 13,
       tagline: "The forest answers the call."
+    },
+    elowen: {
+      name: "Elowen",
+      role: "Reviver · Spirit Support",
+      portrait: "assets/elowen.svg",
+      maxHp: 116,
+      damage: 12,
+      tagline: "While she stands, Elowen can revive one fallen ally once every 60 seconds."
     }
   };
 
@@ -132,6 +140,21 @@
       bossDamage: 46,
       desc: "A star-born titan stirs beyond the final seal.",
       rewardHero: "sage"
+    },
+    {
+      name: "The Verdant Deep",
+      enemy: "Thornbound Wraith",
+      type: "ANCIENT SPIRIT",
+      hp: 520,
+      damage: 26,
+      gold: 92,
+      crystals: 34,
+      sprite: "assets/wisp.svg",
+      boss: "The Hollowheart Guardian",
+      bossHp: 6500,
+      bossDamage: 58,
+      desc: "A forgotten guardian protects the last living crystal heart.",
+      rewardHero: "elowen"
     }
   ];
 
@@ -279,8 +302,8 @@
       id: "revive",
       name: "Revive Snack",
       icon: "🔔",
-      cost: 250,
-      desc: "Revive one fallen hero at 40% HP. Requires at least one living hero.",
+      cost: 1000,
+      desc: "A rare, costly snack that revives one fallen hero at 40% HP. Requires at least one living hero.",
       effect: "revive"
     }
   ];
@@ -332,6 +355,8 @@
     region: 0,
     defeated: 0,
     bossDefeated: [],
+    caveCrystalProgress: 0,
+    elowenNextReviveAt: 0,
 
     enemy: null,
     bossMode: false,
@@ -441,6 +466,27 @@
       Math.min(regions.length - 1, Number(state.region) || 0)
     );
 
+    state.caveCrystalProgress = Math.max(
+      0,
+      Number(state.caveCrystalProgress) || 0
+    );
+    state.elowenNextReviveAt = Math.max(
+      0,
+      Number(state.elowenNextReviveAt) || 0
+    );
+
+    // Keep old progress, but make the infirmary cost more than a Revive Snack.
+    if (state.needsHospital) {
+      const minimumHospitalFee =
+        1500 + state.region * 1200 +
+        Math.floor((Number(state.defeated) || 0) / 5) * 500;
+
+      state.hospitalFee = Math.max(
+        Number(state.hospitalFee) || 0,
+        minimumHospitalFee
+      );
+    }
+
     const savedMaxMana =
       100 + (state.recruits.includes("iris") ? 25 : 0);
 
@@ -492,6 +538,20 @@
   let importantAudioContext = null;
   let lastImportantSound = 0;
 
+  const MUSIC_TRACKS = {
+    exploring: { src: "assets/exploring.mp3", label: "Exploration theme" },
+    fighting: { src: "assets/fighting.mp3", label: "Battle theme" },
+    intense: { src: "assets/intense.mp3", label: "Boss theme" }
+  };
+  let currentMusicKey = null;
+  let musicEnabled = (() => {
+    try {
+      return localStorage.getItem("gemMinerMusicEnabled") !== "false";
+    } catch (error) {
+      return true;
+    }
+  })();
+
   // ==========================================
   // GENERAL HELPERS
   // ==========================================
@@ -504,6 +564,23 @@
 
   const bossDone = () =>
     s.bossDefeated.includes(s.region);
+
+  // Crystal gates get harder with each cave and every three monsters defeated.
+  const crystalGoal = () =>
+    25 + s.region * 20 + Math.floor(s.defeated / 3) * 8;
+
+  const crystalGateOpen = () =>
+    s.caveCrystalProgress >= crystalGoal();
+
+  function addCaveCrystalProgress(amount) {
+    const gained = Math.max(0, Number(amount) || 0);
+    s.caveCrystalProgress += gained;
+  }
+
+  const skillUnlockRegion = (key) => ({ heal: 1, phoenix: 2 }[key] ?? 0);
+
+  const isSkillUnlocked = (key) =>
+    s.region >= skillUnlockRegion(key);
 
   const livingHeroes = () =>
     s.heroes.filter((id) => (s.heroHp[id] || 0) > 0);
@@ -551,6 +628,92 @@
 
   const critCost = () =>
     Math.floor(50 * Math.pow(1.85, s.critLevel));
+
+  function updateMusicControl() {
+    const audio = $("backgroundMusic");
+    const button = $("musicToggle");
+    const volume = $("musicVolume");
+    const trackLabel = $("musicTrack");
+
+    if (audio && volume) {
+      audio.volume = Math.max(0, Math.min(1, Number(volume.value) || 0));
+    }
+
+    if (button) {
+      const playing = !!audio && !audio.paused;
+      button.textContent = !musicEnabled
+        ? "♫ Music off"
+        : playing
+          ? "Ⅱ Pause music"
+          : "▶ Play music";
+      button.setAttribute("aria-pressed", String(playing));
+    }
+
+    if (trackLabel && currentMusicKey && MUSIC_TRACKS[currentMusicKey]) {
+      trackLabel.textContent = MUSIC_TRACKS[currentMusicKey].label;
+    }
+  }
+
+  function startBackgroundMusic() {
+    const audio = $("backgroundMusic");
+    if (!audio || !musicEnabled || !audio.src) {
+      updateMusicControl();
+      return;
+    }
+
+    const volume = $("musicVolume");
+    if (volume) audio.volume = Number(volume.value);
+
+    const playAttempt = audio.play();
+    if (playAttempt && typeof playAttempt.then === "function") {
+      playAttempt.then(updateMusicControl).catch(() => {
+        // Browsers may block autoplay until the player clicks Play music.
+        updateMusicControl();
+      });
+    } else {
+      updateMusicControl();
+    }
+  }
+
+  function updateMusicScene() {
+    const audio = $("backgroundMusic");
+    if (!audio) return;
+
+    const key = !s.enemy
+      ? "exploring"
+      : s.enemy.boss
+        ? "intense"
+        : "fighting";
+    const track = MUSIC_TRACKS[key];
+
+    if (currentMusicKey !== key) {
+      currentMusicKey = key;
+      audio.src = track.src;
+      audio.load();
+      if (musicEnabled) startBackgroundMusic();
+    }
+
+    updateMusicControl();
+  }
+
+  function toggleMusic() {
+    const audio = $("backgroundMusic");
+    if (!audio) return;
+        if (musicEnabled && !audio.paused) {
+      musicEnabled = false;
+      audio.pause();
+      try { localStorage.setItem("gemMinerMusicEnabled", "false"); } catch (error) {}
+      updateMusicControl();
+      toast("Background music paused.");
+      return;
+    }
+
+    musicEnabled = true;
+    try { localStorage.setItem("gemMinerMusicEnabled", "true"); } catch (error) {}
+    if (!currentMusicKey) updateMusicScene();
+    startBackgroundMusic();
+    toast("Background music enabled.");
+  }
 
   const totalPartyDamage = () =>
     livingHeroes().reduce(
@@ -604,8 +767,6 @@
     );
   }
 
-  // Prompt priorities ensure important alerts take precedence:
-  // hospital > Phoenix > low-health warning.
   const promptPriority = {
     lowHealth: 1,
     phoenix: 2,
@@ -649,8 +810,11 @@
 
     if (!english.length) return null;
 
-    // Prefer some commonly available English voices when installed.
-    // Voice names and availability vary by browser and operating system.
+    const naturalVoice = english.find((voice) =>
+      /natural|neural|online/i.test(voice.name)
+    );
+    if (naturalVoice) return naturalVoice;
+
     const preferredPatterns = [
       /microsoft aria/i,
       /microsoft jenny/i,
@@ -696,7 +860,6 @@
     const message = speechQueue.shift();
 
     speechBusy = true;
-
     const generation = speechGeneration;
 
     updateSageMessage(message);
@@ -705,8 +868,6 @@
 
     const utterance = new SpeechSynthesisUtterance(message);
 
-    // More conversational than the original stiff setting.
-    // The available browser voice still determines the actual sound.
     utterance.lang = "en-US";
     utterance.rate = 0.94;
     utterance.pitch = 1.05;
@@ -740,7 +901,6 @@
       updateSageStatus(sageEnabled ? "VOICE ON" : "VOICE MUTED");
       refreshSagePanel();
 
-      // Read announcements one at a time.
       window.setTimeout(processSpeechQueue, 180);
     }
 
@@ -758,8 +918,6 @@
       return;
     }
 
-    // Discard the oldest waiting announcement if the queue is full.
-    // The sentence currently being spoken is never interrupted.
     if (speechQueue.length >= MAX_SPEECH_QUEUE) {
       speechQueue.shift();
     }
@@ -810,6 +968,7 @@
 
   function canUseSkill(key) {
     if (!(key in SKILL_MANA_COST)) return false;
+    if (!isSkillUnlocked(key)) return false;
     if (battleLocked()) return false;
     if (!livingHeroes().length) return false;
     if (s.mana < SKILL_MANA_COST[key]) return false;
@@ -846,14 +1005,11 @@
 
     if (!currentPrompt) {
       box.hidden = true;
-
       if (box.innerHTML) box.innerHTML = "";
-
       return;
     }
 
     box.hidden = false;
-
     let html = "";
 
     if (currentPrompt.type === "phoenix") {
@@ -880,8 +1036,9 @@
         >Not now</button>
 
         <small>
-          Phoenix Blessing costs 45 mana.
-          ${ready ? "It is ready to use." : "It is currently unavailable."}
+          ${s.region < 2
+            ? "Phoenix Blessing unlocks in Cave 3."
+            : `Phoenix Blessing costs 45 mana. ${ready ? "It is ready to use." : "It is currently unavailable."}`}
         </small>
       `;
     } else if (currentPrompt.type === "lowHealth") {
@@ -975,7 +1132,9 @@
 
     if (accepted) {
       updateSageMessage(
-        `${HEROES[heroId].name} is down. Would you like to use Phoenix Blessing?`
+        s.region >= 2
+          ? `${HEROES[heroId].name} is down. Would you like to use Phoenix Blessing?`
+          : `${HEROES[heroId].name} is down. Phoenix Blessing unlocks in Cave 3. Use a Revive Snack if you have one.`
       );
     }
 
@@ -1033,7 +1192,6 @@
       updateSageStatus("VOICE MUTED");
       refreshSagePanel();
       toast("Great Sage voice muted.");
-
       return;
     }
 
@@ -1041,7 +1199,6 @@
     refreshSagePanel();
 
     toast("Great Sage voice activated.");
-
     announce("Great Sage online. Voice notifications restored.");
   }
 
@@ -1088,7 +1245,6 @@
   function playImportantSound() {
     const now = Date.now();
 
-    // Stop duplicate alerts from overlapping.
     if (now - lastImportantSound < 450) return;
     lastImportantSound = now;
 
@@ -1108,10 +1264,9 @@
 
       const startAt = context.currentTime + 0.025;
 
-      // A short, bright two-tone navigation-style chime.
       const notes = [
-        { frequency: 880, delay: 0, duration: 0.10 },
-        { frequency: 1175, delay: 0.13, duration: 0.16 }
+        { frequency: 587, delay: 0, duration: 0.11 },
+        { frequency: 784, delay: 0.14, duration: 0.15 }
       ];
 
       notes.forEach(({ frequency, delay, duration }) => {
@@ -1132,7 +1287,6 @@
         oscillator.stop(start + duration + 0.01);
       });
     } catch (error) {
-      // Audio is optional and must never interrupt the game.
       console.debug("Important-event sound unavailable.", error);
     }
   }
@@ -1187,7 +1341,6 @@
           ? "Pay the hospital fee before battles can resume."
           : "The party is recovering; battles are paused."
       );
-
       return false;
     }
 
@@ -1222,7 +1375,12 @@
   function spawn(boss = false) {
     if (!canStartBattle() || s.enemy) return;
 
-    const r = region();
+    if (boss && !crystalGateOpen()) {
+      return toast(
+        `Crystal gate closed. Gather ${fmt(crystalGoal() - s.caveCrystalProgress)} more crystals first.`
+      );
+    }
+        const r = region();
     const scale = Math.pow(1.65, s.region);
 
     s.bossMode = boss;
@@ -1265,11 +1423,9 @@
     if (boss) {
       playImportantSound();
       announce(`Warning: Guardian approaching. ${s.enemy.name} has appeared.`);
-    } else {
-      announce(
-        `Notice: Hostile detected. ${s.enemy.name} is approaching your party.`
-      );
     }
+
+    // Ordinary enemy spawns do not generate an incoming-attack announcement.
 
     log(`${s.enemy.name} appears in the cavern!`);
 
@@ -1297,11 +1453,11 @@
         (s.recruits.includes("juno") ? 1 : 0);
 
       s.crystals += crystals;
+      addCaveCrystalProgress(crystals);
       s.ore += ore;
       s.gold += Math.floor(crystals * 0.7);
 
       log(`Exploration found ${crystals} crystals and ${ore} ore.`);
-
       toast(`Found ${crystals} crystals and ${ore} ore.`);
 
       render();
@@ -1328,6 +1484,7 @@
       (s.recruits.includes("juno") ? 1 : 0);
 
     s.crystals += amount;
+    addCaveCrystalProgress(amount);
     s.ore += oreAmount;
     s.gold += Math.max(1, Math.floor(amount / 2));
 
@@ -1414,7 +1571,8 @@
       "seraphine",
       "liria",
       "celeste",
-      "sage"
+      "sage",
+      "elowen"
     ];
 
     const targetId = targetOrder.find(
@@ -1460,7 +1618,9 @@
 
       if (livingHeroes().length > 0) {
         announce(
-          `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`
+          s.region >= 2
+            ? `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`
+            : `Notice: ${target.name} is down. Phoenix Blessing unlocks in Cave 3. Use a Revive Snack if you have one.`
         );
         showPhoenixPrompt(targetId);
       }
@@ -1494,7 +1654,7 @@
     s.healingUntil = 0;
 
     s.hospitalFee = Math.floor(
-      400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
+      1500 + s.region * 1200 + Math.floor(s.defeated / 5) * 500
     );
 
     playImportantSound();
@@ -1527,6 +1687,7 @@
 
     s.gold += e.gold;
     s.crystals += e.crystals;
+    addCaveCrystalProgress(e.crystals);
     s.ore += e.boss ? 8 : 1 + Math.floor(Math.random() * 3);
     s.defeated += 1;
 
@@ -1556,11 +1717,6 @@
           `Notice: ${newHero.name} has joined your team.`
         );
 
-        if (rewardId === "celeste") {
-          announce("New skill unlocked: Healing Wave.");
-          announce("New skill unlocked: Phoenix Blessing.");
-        }
-
         toast(`NEW HERO JOINED: ${newHero.name}!`);
       } else {
         toast("Guardian defeated! Cave cleared.");
@@ -1568,8 +1724,15 @@
 
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
+        s.caveCrystalProgress = 0;
 
         log(`Unlocked cave ${s.region + 1}: ${region().name}.`);
+
+        if (s.region === 1) {
+          announce("New skill unlocked: Healing Wave.");
+        } else if (s.region === 2) {
+          announce("New skill unlocked: Phoenix Blessing.");
+        }
       } else {
         log("All cave guardians have fallen. The kingdom is saved!");
       }
@@ -1605,6 +1768,13 @@
 
   function skill(key) {
     if (!(key in SKILL_MANA_COST)) return;
+
+    if (!isSkillUnlocked(key)) {
+      const caveNumber = skillUnlockRegion(key) + 1;
+      return toast(
+        `${key === "heal" ? "Healing Wave" : "Phoenix Blessing"} unlocks in Cave ${caveNumber}.`
+      );
+    }
 
     if (battleLocked()) {
       return toast(
@@ -1914,66 +2084,60 @@
       }
     } else if (snack.effect === "buff") {
       s.partyBuffUntil = Date.now() + 20000;
+
       log("Moonberries boosted party damage for 20 seconds.");
+      toast("Party damage boosted!");
     } else if (snack.effect === "ore") {
       s.ore += 4;
-      log("Miner's Tea refreshed the crew. +4 ore.");
-    } else if (snack.effect === "healAll") {
-      const amount = Math.floor(
-        24 * (s.recruits.includes("mira_cook") ? 1.25 : 1)
-      );
 
-      livingHeroes().forEach((id) => {
-        s.heroHp[id] = Math.min(
-          HEROES[id].maxHp,
-          s.heroHp[id] + amount
+      log("Miner's Tea provided 4 ore.");
+      toast("+4 ore!");
+    } else if (snack.effect === "healAll") {
+      livingHeroes().forEach((heroId) => {
+        s.heroHp[heroId] = Math.min(
+          HEROES[heroId].maxHp,
+          s.heroHp[heroId] + 24
         );
       });
 
-      showDamage("TEAM +" + amount, "party", true);
-      log(`Crystal Cake healed the party by up to ${amount} HP.`);
-    } else if (snack.effect === "mana") {
-      const before = s.mana;
+      showDamage("PARTY +24", "party", true);
 
+      log("Crystal Cake healed every living hero by 24 HP.");
+      toast("The whole party feels better!");
+    } else if (snack.effect === "mana") {
       s.mana = Math.min(maxMana(), s.mana + 35);
 
-      const gained = Math.floor(s.mana - before);
-
-      if (s.mana / maxMana() > 0.3) {
-        s.manaWarning = false;
-      }
-
-      showDamage("MANA +" + gained, "party", true);
-      log(`Etherberries restored ${gained} mana.`);
-      toast(`Restored ${gained} mana.`);
+      log("Etherberries restored 35 mana.");
+      toast("+35 mana!");
     } else if (snack.effect === "manaBuff") {
       s.manaBuffUntil = Date.now() + 30000;
 
       log("Astral Tea tripled mana regeneration for 30 seconds.");
-      toast("Mana regeneration boosted for 30 seconds!");
+      toast("Mana regeneration tripled!");
     } else if (snack.effect === "revive") {
       const fallen = s.heroes.find(
         (heroId) => (s.heroHp[heroId] || 0) <= 0
       );
 
-      // Safety check: never consume the snack if the target disappeared.
       if (!fallen) {
         s.snacks[id] += 1;
         return toast("No hero needs reviving right now.");
       }
 
       s.heroHp[fallen] = Math.ceil(HEROES[fallen].maxHp * 0.4);
+
       showDamage("REVIVE", "party", true);
-      announce(`Notice: ${HEROES[fallen].name} has been revived by a Revive Snack.`);
-      log(`${HEROES[fallen].name} was revived with a Revive Snack at 40% HP.`);
-      toast(`${HEROES[fallen].name} has been revived!`);
+
+      announce(`Notice: ${HEROES[fallen].name} has been revived.`);
+      log(`${HEROES[fallen].name} was revived using a Revive Snack.`);
+      toast(`${HEROES[fallen].name} is back!`);
     }
 
+    dismissPrompt();
     render();
     save();
   }
-
-  function buySnack(id) {
+    function buySnack(id) {
     const snack = SNACKS.find(
       (entry) => entry.id === id
     );
@@ -2345,14 +2509,30 @@
         ? "ENGAGED"
         : "DORMANT";
 
+    const requiredCrystals = crystalGoal();
+    const currentCrystalProgress = Math.floor(s.caveCrystalProgress);
+    const gateReady = crystalGateOpen();
+
+    $("caveProgressText").textContent =
+      `${fmt(currentCrystalProgress)} / ${fmt(requiredCrystals)} crystals`;
+    $("caveProgressBar").style.width =
+      `${Math.min(100, currentCrystalProgress / requiredCrystals * 100)}%`;
+    $("caveProgressHint").textContent = bossDone()
+      ? "This guardian has been defeated. Your path is clear."
+      : gateReady
+        ? "Crystal gate open. You can challenge this cave's guardian."
+        : `Mine or discover ${fmt(requiredCrystals - currentCrystalProgress)} more crystals. The requirement rises with each cave and every three monsters defeated.`;
+
     $("bossBtn").textContent = bossDone()
       ? "Guardian defeated"
       : s.bossMode
         ? "Guardian engaged"
-        : "Challenge guardian";
+        : !gateReady
+          ? `Mine ${fmt(requiredCrystals - currentCrystalProgress)} more crystals`
+          : "Challenge guardian";
 
     $("bossBtn").disabled =
-      bossDone() || !!s.enemy || battleLocked() || !livingHeroes().length;
+      bossDone() || !gateReady || !!s.enemy || battleLocked() || !livingHeroes().length;
 
     $("exploreBtn").disabled =
       !!s.enemy || battleLocked() || !livingHeroes().length;
@@ -2424,6 +2604,7 @@
       const label = $("cd-" + key);
       const cost = SKILL_MANA_COST[key];
 
+      const skillLocked = !isSkillUnlocked(key);
       const healerRequired =
         ["heal", "phoenix"].includes(key) &&
         !s.heroes.includes("celeste") &&
@@ -2433,7 +2614,7 @@
         ["slash", "burst", "meteor", "frost"].includes(key);
 
       if (label) {
-        if (healerRequired) {
+        if (skillLocked || healerRequired) {
           label.textContent = "LOCKED";
         } else if (s.cooldowns[key] > 0) {
           label.textContent = `${Math.ceil(s.cooldowns[key])}s`;
@@ -2453,6 +2634,7 @@
         button.disabled =
           battleLocked() ||
           !livingHeroes().length ||
+          skillLocked ||
           healerRequired ||
           (targetRequired && !s.enemy) ||
           s.cooldowns[key] > 0 ||
@@ -2477,6 +2659,7 @@
     renderHospital();
     renderLog();
     refreshSagePanel();
+    updateMusicScene();
   }
 
   // ==========================================
@@ -2531,6 +2714,28 @@
   // BUTTON HANDLERS
   // ==========================================
 
+  const musicVolumeControl = $("musicVolume");
+  const musicAudioElement = $("backgroundMusic");
+
+  if (musicVolumeControl && musicAudioElement) {
+    musicAudioElement.volume = Number(musicVolumeControl.value);
+
+    musicVolumeControl.addEventListener("input", () => {
+      musicAudioElement.volume = Number(musicVolumeControl.value);
+      updateMusicControl();
+    });
+
+    musicAudioElement.addEventListener("playing", updateMusicControl);
+    musicAudioElement.addEventListener("pause", updateMusicControl);
+
+    musicAudioElement.addEventListener("error", () => {
+      updateMusicControl();
+      console.warn(
+        "Background music could not be loaded. Check the MP3 file names and assets folder."
+      );
+    });
+  }
+
   document.addEventListener("click", (event) => {
     const sageButton = event.target.closest("[data-sage-action]");
 
@@ -2557,6 +2762,11 @@
 
     if (action === "sageToggle") {
       toggleSage();
+      return;
+    }
+
+    if (action === "toggleMusic") {
+      toggleMusic();
       return;
     }
 
@@ -2617,7 +2827,6 @@
     }
   });
 
-  // Keyboard shortcuts for skills.
   document.addEventListener("keydown", (event) => {
     if (
       event.repeat ||
@@ -2662,7 +2871,33 @@
       finishHealing();
     }
 
-    // Recruit passive income.
+    // Elowen's passive revival works every 60 seconds while she is alive.
+    if (
+      s.heroes.includes("elowen") &&
+      livingHeroes().includes("elowen") &&
+      livingHeroes().length > 0 &&
+      s.heroes.some((id) => (s.heroHp[id] || 0) <= 0) &&
+      now >= (s.elowenNextReviveAt || 0) &&
+      !battleLocked()
+    ) {
+      const fallenId = s.heroes.find((id) => (s.heroHp[id] || 0) <= 0);
+
+      if (fallenId) {
+        s.heroHp[fallenId] = Math.ceil(HEROES[fallenId].maxHp * 0.3);
+        s.elowenNextReviveAt = now + 60000;
+
+        showDamage("REVIVED", "party", true);
+        announce(`Notice: Elowen revived ${HEROES[fallenId].name} with spirit magic.`);
+        log(
+          `Elowen revived ${HEROES[fallenId].name} at 30% HP. ` +
+          "Her next revival is ready in 60 seconds."
+        );
+
+        render();
+        save();
+      }
+    }
+
     const goldRate =
       (s.recruits.includes("tessa") ? 0.8 : 0) +
       (s.recruits.includes("borin") ? 1.3 : 0);
@@ -2673,7 +2908,6 @@
     s.gold += goldRate * dt;
     s.crystals += crystalRate * dt;
 
-    // Mana regenerates even outside combat.
     s.mana = Math.min(
       maxMana(),
       s.mana + manaRate() * dt
@@ -2683,7 +2917,6 @@
 
     if (manaRatio < 0.2 && !s.manaWarning) {
       s.manaWarning = true;
-
       announce("Notice: Your mana is running low.");
       log("Great Sage warns that mana is running low.");
     } else if (manaRatio > 0.3) {
@@ -2697,7 +2930,6 @@
         s.cooldowns[key] = Math.max(0, s.cooldowns[key] - dt);
       });
 
-      // Combat timers run only while an enemy exists.
       if (s.enemy) {
         partyClock += dt;
         enemyClock += dt;
@@ -2717,8 +2949,6 @@
         }
       }
 
-      // Celeste's passive healing also works when
-      // no enemy is present.
       const celesteAlive =
         s.heroes.includes("celeste") &&
         livingHeroes().includes("celeste");
@@ -2753,7 +2983,9 @@
           }
 
           if (healedAnyone) {
-            log(`Celeste's healing aura restores up to ${amount} HP to every living hero.`);
+            log(
+              `Celeste's healing aura restores up to ${amount} HP to every living hero.`
+            );
           }
         }
       } else {
@@ -2776,7 +3008,6 @@
     }
   }
 
-  // Repair older saves with an enemy missing max HP.
   if (s.enemy && !s.enemy.maxHp) {
     s.enemy.maxHp = s.enemy.hp;
   }
@@ -2787,15 +3018,14 @@
 
   render();
   save();
+  updateMusicScene();
 
   if (!s.enemy && !battleLocked()) {
     scheduleExplore();
   }
 
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {
-      // Available voices are selected when the next sentence begins.
-    };
+    window.speechSynthesis.onvoiceschanged = () => {};
   }
 
   window.gemMinerReady = true;
