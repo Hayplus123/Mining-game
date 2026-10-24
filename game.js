@@ -278,9 +278,9 @@
     {
       id: "revive",
       name: "Revive Snack",
-      icon: "🔥",
+      icon: "🔔",
       cost: 250,
-      desc: "Revive one fallen hero at 40% HP. Cannot be used after the whole party falls.",
+      desc: "Revive one fallen hero at 40% HP. Requires at least one living hero.",
       effect: "revive"
     }
   ];
@@ -489,8 +489,6 @@
 
   let currentPrompt = null;
   let lowHealthWarning = false;
-
-  // A tiny Web Audio cue for major events. It is created only when needed.
   let importantAudioContext = null;
   let lastImportantSound = 0;
 
@@ -651,8 +649,8 @@
 
     if (!english.length) return null;
 
-    // Prefer installed natural-sounding English voices when the browser provides them.
-    // JavaScript cannot install voices; the available choices depend on the device/browser.
+    // Prefer some commonly available English voices when installed.
+    // Voice names and availability vary by browser and operating system.
     const preferredPatterns = [
       /microsoft aria/i,
       /microsoft jenny/i,
@@ -669,7 +667,6 @@
       /female/i
     ];
 
-    // Prefer voices marked Natural when two voices match the same name preference.
     for (const pattern of preferredPatterns) {
       const matches = english.filter((voice) => pattern.test(voice.name));
       if (matches.length) {
@@ -678,7 +675,6 @@
       }
     }
 
-    // US English is the most suitable fallback for the Great Sage's wording.
     return english.find((voice) => /^en[-_]US$/i.test(voice.lang)) || english[0];
   }
 
@@ -762,8 +758,8 @@
       return;
     }
 
-    // The message already being spoken is kept separate from this queue.
-    // If too many announcements pile up, drop the oldest queued item first.
+    // Discard the oldest waiting announcement if the queue is full.
+    // The sentence currently being spoken is never interrupted.
     if (speechQueue.length >= MAX_SPEECH_QUEUE) {
       speechQueue.shift();
     }
@@ -870,10 +866,11 @@
           ${ready ? "" : "disabled"}
         >Use Phoenix Blessing</button>
 
-        ${((s.snacks.revive || 0) > 0 && !battleLocked()) ? `
+        ${(s.snacks.revive || 0) > 0 ? `
           <button
             data-sage-action="snack"
             data-value="revive"
+            ${battleLocked() || !livingHeroes().length ? "disabled" : ""}
           >Use Revive Snack</button>
         ` : ""}
 
@@ -1088,67 +1085,57 @@
     }, 2300);
   }
 
-  
-function playImportantSound() {
-  const now = Date.now();
+  function playImportantSound() {
+    const now = Date.now();
 
-  // Prevent overlapping alerts from sounding messy.
-  if (now - lastImportantSound < 450) return;
-  lastImportantSound = now;
+    // Stop duplicate alerts from overlapping.
+    if (now - lastImportantSound < 450) return;
+    lastImportantSound = now;
 
-  try {
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext;
+    try {
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
 
-    if (!AudioContextClass) return;
+      if (!importantAudioContext) {
+        importantAudioContext = new AudioContextClass();
+      }
 
-    if (!importantAudioContext) {
-      importantAudioContext = new AudioContextClass();
+      const context = importantAudioContext;
+      if (context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+
+      const startAt = context.currentTime + 0.025;
+
+      // A short, bright two-tone navigation-style chime.
+      const notes = [
+        { frequency: 880, delay: 0, duration: 0.10 },
+        { frequency: 1175, delay: 0.13, duration: 0.16 }
+      ];
+
+      notes.forEach(({ frequency, delay, duration }) => {
+        const start = startAt + delay;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + duration);
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+
+        oscillator.start(start);
+        oscillator.stop(start + duration + 0.01);
+      });
+    } catch (error) {
+      // Audio is optional and must never interrupt the game.
+      console.debug("Important-event sound unavailable.", error);
     }
-
-    const context = importantAudioContext;
-
-    if (context.state === "suspended") {
-      context.resume().catch(() => {});
-    }
-
-    const startAt = context.currentTime + 0.025;
-
-    // A bright, short, two-tone navigation-style alert.
-    // This is an original sound inspired by navigation alerts,
-    // rather than a recording of Google Maps audio.
-    const notes = [
-      { frequency: 880, delay: 0, duration: 0.10 },
-      { frequency: 1175, delay: 0.13, duration: 0.16 }
-    ];
-
-    notes.forEach(({ frequency, delay, duration }) => {
-      const start = startAt + delay;
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, start);
-
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        start + duration
-      );
-
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-
-      oscillator.start(start);
-      oscillator.stop(start + duration + 0.01);
-    });
-  } catch (error) {
-    // Audio failures must never stop the game.
-    console.debug("Important-event sound unavailable.", error);
   }
-}
-
 
   function showDamage(message, side = "enemy", healing = false) {
     const scene = $("scene");
@@ -1279,7 +1266,9 @@ function playImportantSound() {
       playImportantSound();
       announce(`Warning: Guardian approaching. ${s.enemy.name} has appeared.`);
     } else {
-      announce(`Notice: Hostile detected. ${s.enemy.name} is approaching your party.`);
+      announce(
+        `Notice: Hostile detected. ${s.enemy.name} is approaching your party.`
+      );
     }
 
     log(`${s.enemy.name} appears in the cavern!`);
@@ -1439,7 +1428,7 @@ function playImportantSound() {
 
     const target = HEROES[targetId];
 
-    // Routine enemy attacks stay quiet; the Sage speaks for meaningful events.
+    // Routine enemy attacks are silent; major events trigger the alert chime.
 
     let amount = Math.max(
       1,
@@ -1470,12 +1459,10 @@ function playImportantSound() {
       toast(`${target.name} has fallen!`);
 
       if (livingHeroes().length > 0) {
-        const message =
-          `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`;
-        announce(message);
+        announce(
+          `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`
+        );
         showPhoenixPrompt(targetId);
-      } else {
-        announce(`Notice: ${target.name} is down. The entire party has fallen.`);
       }
     }
 
@@ -1507,70 +1494,28 @@ function playImportantSound() {
     s.healingUntil = 0;
 
     s.hospitalFee = Math.floor(
-    400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
-  );
+      400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
+    );
 
-    
-function playImportantSound() {
-  const now = Date.now();
+    playImportantSound();
+    clearTimeout(exploreTimer);
 
-  // Prevent overlapping alerts from sounding messy.
-  if (now - lastImportantSound < 450) return;
-  lastImportantSound = now;
+    log(
+      `Every hero has fallen against ${fallenEnemy}. ` +
+      `The hospital requires ${s.hospitalFee} gold.`
+    );
 
-  try {
-    const AudioContextClass =
-      window.AudioContext || window.webkitAudioContext;
+    announce(
+      "Notice: All party members are down. Pay the hospital fee to begin recovery."
+    );
 
-    if (!AudioContextClass) return;
+    showHospitalPrompt();
 
-    if (!importantAudioContext) {
-      importantAudioContext = new AudioContextClass();
-    }
+    toast("Party wiped! Pay the hospital fee to recover.");
 
-    const context = importantAudioContext;
-
-    if (context.state === "suspended") {
-      context.resume().catch(() => {});
-    }
-
-    const startAt = context.currentTime + 0.025;
-
-    // A bright, short, two-tone navigation-style alert.
-    // This is an original sound inspired by navigation alerts,
-    // rather than a recording of Google Maps audio.
-    const notes = [
-      { frequency: 880, delay: 0, duration: 0.10 },
-      { frequency: 1175, delay: 0.13, duration: 0.16 }
-    ];
-
-    notes.forEach(({ frequency, delay, duration }) => {
-      const start = startAt + delay;
-      const oscillator = context.createOscillator();
-      const gain = context.createGain();
-
-      oscillator.type = "sine";
-      oscillator.frequency.setValueAtTime(frequency, start);
-
-      gain.gain.setValueAtTime(0.0001, start);
-      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
-      gain.gain.exponentialRampToValueAtTime(
-        0.0001,
-        start + duration
-      );
-
-      oscillator.connect(gain);
-      gain.connect(context.destination);
-
-      oscillator.start(start);
-      oscillator.stop(start + duration + 0.01);
-    });
-  } catch (error) {
-    // Audio failures must never stop the game.
-    console.debug("Important-event sound unavailable.", error);
+    render();
+    save();
   }
-}
-
 
   // ==========================================
   // VICTORY AND NEW HEROES
@@ -2011,7 +1956,7 @@ function playImportantSound() {
         (heroId) => (s.heroHp[heroId] || 0) <= 0
       );
 
-      // A failed revive should never consume a snack.
+      // Safety check: never consume the snack if the target disappeared.
       if (!fallen) {
         s.snacks[id] += 1;
         return toast("No hero needs reviving right now.");
@@ -2540,7 +2485,7 @@ function playImportantSound() {
 
   function resetGame() {
     const confirmed = window.confirm(
-      "Reset the Crystal Kingdom game? This erases your saved progress on this browser."
+      "Reset the Crystal Kingdom game? This erases saved progress in this browser."
     );
 
     if (!confirmed) return;
