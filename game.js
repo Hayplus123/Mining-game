@@ -1,899 +1,1447 @@
 
 "use strict";
 
-const SAVE_KEY = "gemMinerCrystalKingdom_v5";
-
-const regions = [
-  { name: "Shattered Cavern", level: 1, hp: 100, damage: 7, ore: 5, coins: 8, sprite: "assets/slime.svg", enemy: "Crystal Slime" },
-  { name: "Moonlit Grotto", level: 2, hp: 230, damage: 13, ore: 12, coins: 18, sprite: "assets/wisp.svg", enemy: "Moon Wisp" },
-  { name: "Ember Reliquary", level: 3, hp: 480, damage: 22, ore: 24, coins: 35, sprite: "assets/stalker.svg", enemy: "Ember Stalker" },
-  { name: "Skyglass Sanctum", level: 4, hp: 900, damage: 36, ore: 45, coins: 70, sprite: "assets/boss.svg", enemy: "Skyglass Guardian" }
-];
-
-const heroes = [
-  { id: "knight", name: "Alden the Knight", role: "Defender", icon: "🛡️", sprite: "assets/knight.svg", cost: 60, damage: 10, hp: 120, desc: "A sturdy frontline fighter." },
-  { id: "mage", name: "Mira the Mage", role: "Mage", icon: "🔮", sprite: "assets/mage.svg", cost: 100, damage: 19, hp: 75, desc: "Deals powerful magic damage." },
-  { id: "archer", name: "Lyn the Archer", role: "Ranger", icon: "🏹", sprite: "assets/archer.svg", cost: 140, damage: 16, hp: 85, desc: "Fast, accurate ranged attacks." },
-  { id: "healer", name: "Seren the Healer", role: "Healer", icon: "💚", sprite: "assets/hero-mage.svg", cost: 180, damage: 8, hp: 100, desc: "Improves the party's survival." }
-];
-
-const skillData = [
-  { id: "slash", name: "Radiant Slash", icon: "⚔️", key: "Q", cost: 0, cooldown: 8, desc: "Deal 2.5× team damage.", unlock: 1 },
-  { id: "burst", name: "Arcane Burst", icon: "💥", key: "W", cost: 100, cooldown: 15, desc: "Deal 5× team damage.", unlock: 1 },
-  { id: "aegis", name: "Aegis Guard", icon: "🛡️", key: "E", cost: 150, cooldown: 20, desc: "Heal the party and reduce incoming damage.", unlock: 1 },
-  { id: "meteor", name: "Meteor Rain", icon: "☄️", key: "R", cost: 300, cooldown: 30, desc: "Deal 8× team damage.", unlock: 2 },
-  { id: "frost", name: "Frost Nova", icon: "❄️", key: "T", cost: 450, cooldown: 25, desc: "Deal 3× damage and weaken the enemy.", unlock: 3 },
-  { id: "phoenix", name: "Phoenix Blessing", icon: "🔥", key: "Y", cost: 650, cooldown: 45, desc: "Heal the party and unleash a powerful strike.", unlock: 4 }
-];
-
-const snackData = [
-  { id: "ration", name: "Trail Rations", icon: "🍪", desc: "Restore 30% team health.", cost: 15 },
-  { id: "berry", name: "Moonberries", icon: "🫐", desc: "Boost team damage by 50% for 30 seconds.", cost: 35 },
-  { id: "tea", name: "Miner's Tea", icon: "🍵", desc: "Double mining rewards for 30 seconds.", cost: 30 },
-  { id: "cake", name: "Crystal Cake", icon: "🍰", desc: "Restore 60% team health.", cost: 65 }
-];
-
-const upgradeData = [
-  { id: "pickaxe", name: "Pickaxe", icon: "⛏️", desc: "More ore from each manual mine.", max: 10, base: 25 },
-  { id: "damage", name: "Combat Training", icon: "⚔️", desc: "Increase all party damage.", max: 20, base: 40 },
-  { id: "health", name: "Vitality Training", icon: "❤️", desc: "Increase maximum party health.", max: 15, base: 35 },
-  { id: "speed", name: "Attack Speed", icon: "⚡", desc: "Party attacks more frequently.", max: 5, base: 80 },
-  { id: "critical", name: "Critical Strikes", icon: "💥", desc: "Increase chance of bonus damage.", max: 10, base: 60 }
-];
-
-const minerBaseCost = 25;
-const cartBaseCost = 100;
-
-function freshGame() {
-  return {
-    coins: 100,
-    gems: 0,
-    ore: 0,
-    region: 0,
-    enemyHP: 100,
-    enemyMaxHP: 100,
-    enemyName: "Crystal Slime",
-    enemySprite: "assets/slime.svg",
-    boss: false,
-    bossesDefeated: 0,
-    enemiesDefeated: 0,
-    totalMined: 0,
-    miners: 0,
-    carts: 0,
-    miningLevel: 0,
-    upgrades: { pickaxe: 1, damage: 0, health: 0, speed: 0, critical: 0 },
-    party: ["player"],
-    recruited: [],
-    heroHP: { player: 100 },
-    snacks: { ration: 2, berry: 0, tea: 0, cake: 0 },
-    unlockedSkills: ["slash", "burst", "aegis"],
-    cooldowns: {},
-    activeBuffs: {},
-    questsClaimed: [],
-    skillsUnlockedByCost: [],
-    lastTick: Date.now(),
-    lastLog: [],
-    nextExplore: Date.now() + randomExploreDelay(),
-    nextAttack: Date.now() + 6000,
-    nextEnemyAttack: Date.now() + 5000,
-    nextMinerTick: Date.now() + 1000,
-    shieldUntil: 0,
-    enemyWeakenedUntil: 0
-  };
-}
-
-let game = freshGame();
-let logs = [];
-let toastTimer = null;
-let saveTimer = null;
+/* GEM MINER: RISE OF THE CRYSTAL KINGDOM
+   All game logic lives in this file.
+   Buttons use delegated event handling so they keep working
+   after the interface is refreshed.
+*/
 
 const $ = id => document.getElementById(id);
-const now = () => Date.now();
-const random = (min, max) => Math.floor(Math.random() * (max - min + 1)) + min;
-const randomExploreDelay = () => random(10000, 20000);
+const SAVE_KEY = "gemMinerCrystalKingdomCode_v5";
+const OLD_SAVE_KEY = "gemMinerCrystalKingdom_v3";
 
-function formatNumber(value) {
-  return Math.floor(value).toLocaleString();
+const HEROES = {
+  aiden: {
+    name:"Aiden", role:"Knight", emoji:"🛡️",
+    sprite:"assets/knight.svg", hp:145, damage:12,
+    tagline:"Loyal and sturdy. Always at the front."
+  },
+  seraphine: {
+    name:"Seraphine", role:"Mage", emoji:"🧙‍♀️",
+    sprite:"assets/mage.svg", hp:92, damage:17,
+    tagline:"Crystal magic becomes firepower."
+  },
+  liria: {
+    name:"Liria", role:"Archer", emoji:"🏹",
+    sprite:"assets/archer.svg", hp:104, damage:15,
+    tagline:"Quick shots from a distance."
+  },
+  celeste: {
+    name:"Celeste", role:"Healer", emoji:"✨",
+    sprite:"assets/hero-mage.svg", hp:112, damage:8,
+    tagline:"Keeps the team in the fight."
+  },
+  ragnar: {
+    name:"Ragnar", role:"Berserker", emoji:"🔥",
+    sprite:"assets/knight.svg", hp:128, damage:24,
+    tagline:"Big hits. Bigger smiles."
+  },
+  kael: {
+    name:"Kael", role:"Rogue", emoji:"🗡️",
+    sprite:"assets/hero-mage.svg", hp:98, damage:19,
+    tagline:"Fast feet and precise strikes."
+  },
+  sage: {
+    name:"Sage", role:"Druid", emoji:"🌿",
+    sprite:"assets/archer.svg", hp:118, damage:13,
+    tagline:"The forest answers the call."
+  }
+};
+
+const REGIONS = [
+  {
+    name:"The Shattered Cavern",
+    enemy:"Glimmer Slime", emoji:"🟣",
+    type:"CRYSTAL CREATURE",
+    hp:90, damage:8, gold:12, crystals:5,
+    boss:"The Prism Warden", bossHp:490, bossDamage:16,
+    desc:"An ancient sentinel sealed inside the cavern.",
+    reward:"celeste"
+  },
+  {
+    name:"Moonlit Grotto",
+    enemy:"Grotto Stalker", emoji:"🐺",
+    type:"ABYSSAL BEAST",
+    hp:155, damage:12, gold:23, crystals:8,
+    boss:"The Moonfang", bossHp:880, bossDamage:23,
+    desc:"A moon-cursed hunter prowls the luminous pools.",
+    reward:"ragnar"
+  },
+  {
+    name:"The Ember Reliquary",
+    enemy:"Cinder Wisp", emoji:"👻",
+    type:"EMBER SPIRIT",
+    hp:270, damage:17, gold:37, crystals:13,
+    boss:"The Ashen Sovereign", bossHp:1550, bossDamage:33,
+    desc:"A sovereign of flame guards the buried reliquary.",
+    reward:"kael"
+  },
+  {
+    name:"Skyglass Sanctum",
+    enemy:"Skyglass Sentinel", emoji:"💠",
+    type:"ANCIENT CONSTRUCT",
+    hp:450, damage:24, gold:58, crystals:21,
+    boss:"The Star-Eater", bossHp:2700, bossDamage:46,
+    desc:"A star-born titan guards the final seal.",
+    reward:"sage"
+  }
+];
+
+const RECRUITS = [
+  {id:"tessa", name:"Tessa", role:"Miner", emoji:"⛏️", cost:55, desc:"+0.8 gold per second"},
+  {id:"borin", name:"Borin", role:"Miner", emoji:"🧔", cost:80, desc:"+1.3 gold per second"},
+  {id:"luna", name:"Luna", role:"Gatherer", emoji:"🌱", cost:95, desc:"+20% mining crystals"},
+  {id:"silas", name:"Silas", role:"Scholar", emoji:"📚", cost:125, desc:"+15% skill damage"},
+  {id:"mira", name:"Mira", role:"Cook", emoji:"🍲", cost:115, desc:"+25% snack healing"},
+  {id:"juno", name:"Juno", role:"Alchemist", emoji:"🧪", cost:150, desc:"+1 ore when mining"},
+  {id:"darius", name:"Darius", role:"Crossbowman", emoji:"🏹", cost:190, desc:"+6 party attack damage"},
+  {id:"elise", name:"Elise", role:"Spirit Guide", emoji:"🔮", cost:225, desc:"+20% healing power"},
+  {id:"kellan", name:"Kellan", role:"Engineer", emoji:"⚙️", cost:270, desc:"+0.3 crystals per second"}
+];
+
+const SNACKS = [
+  {id:"rations", name:"Trail Rations", icon:"🥖", cost:24, desc:"Heal your most injured living hero by 35 HP."},
+  {id:"moonberries", name:"Moonberries", icon:"🫐", cost:40, desc:"Increase party damage by 25% for 20 seconds."},
+  {id:"tea", name:"Miner's Tea", icon:"🍵", cost:32, desc:"Gain 4 ore."},
+  {id:"cake", name:"Crystal Cake", icon:"🍰", cost:75, desc:"Heal living heroes by 24 HP."}
+];
+
+const INITIAL_HEROES = ["aiden","seraphine","liria"];
+const INITIAL_HP = {
+  aiden:145,
+  seraphine:92,
+  liria:104
+};
+
+const DEFAULTS = {
+  gold:75,
+  crystals:35,
+  ore:0,
+  pickaxe:1,
+  speed:0,
+  damageLevel:0,
+  crit:0,
+  region:0,
+  defeated:0,
+  bosses:[],
+  heroes:INITIAL_HEROES.slice(),
+  heroHp:{...INITIAL_HP},
+  recruits:[],
+  snacks:{rations:2,moonberries:1,tea:1,cake:0},
+  cooldowns:{
+    slash:0,burst:0,guard:0,heal:0,
+    meteor:0,frost:0,phoenix:0
+  },
+  buffUntil:0,
+  frostUntil:0,
+  guardCharges:0,
+  enemy:null,
+  needsHospital:false,
+  hospitalFee:0,
+  healingUntil:0,
+  healClock:0
+};
+
+const clone = value => JSON.parse(JSON.stringify(value));
+const fmt = n => Math.max(0,Math.floor(Number(n)||0)).toLocaleString();
+const region = () => REGIONS[state.region];
+const alive = () => state.heroes.filter(id => (state.heroHp[id]||0)>0);
+const isBossDone = () => state.bosses.includes(state.region);
+const recovering = () => state.healingUntil > Date.now();
+const locked = () => state.needsHospital || recovering();
+
+function loadGame() {
+  let saved = {};
+
+  try {
+    saved = JSON.parse(
+      localStorage.getItem(SAVE_KEY) ||
+      localStorage.getItem(OLD_SAVE_KEY) ||
+      "{}"
+    ) || {};
+  } catch (error) {
+    console.warn("Could not load old save:",error);
+  }
+
+  const result = {...clone(DEFAULTS),...saved};
+
+  result.region = Math.max(
+    0,
+    Math.min(REGIONS.length-1,Number(result.region)||0)
+  );
+
+  result.heroHp = {...INITIAL_HP,...(saved.heroHp||{})};
+  result.snacks = {...DEFAULTS.snacks,...(saved.snacks||{})};
+  result.cooldowns = {...DEFAULTS.cooldowns,...(saved.cooldowns||{})};
+
+  result.heroes = Array.isArray(saved.heroes)
+    ? saved.heroes.filter(id => HEROES[id])
+    : INITIAL_HEROES.slice();
+
+  if (!result.heroes.length) {
+    result.heroes = INITIAL_HEROES.slice();
+  }
+
+  result.recruits = Array.isArray(saved.recruits)
+    ? saved.recruits.filter(id => RECRUITS.some(r=>r.id===id))
+    : [];
+
+  result.bosses = Array.isArray(saved.bosses)
+    ? saved.bosses
+    : [];
+
+  // Ensure that saved boss victories grant their corresponding heroes.
+  result.bosses.forEach(index => {
+    const heroId = REGIONS[index]?.reward;
+    if (heroId && !result.heroes.includes(heroId)) {
+      result.heroes.push(heroId);
+      result.heroHp[heroId] = HEROES[heroId].hp;
+    }
+  });
+
+  result.heroes.forEach(id => {
+    if (!Number.isFinite(Number(result.heroHp[id]))) {
+      result.heroHp[id] = HEROES[id].hp;
+    }
+
+    result.heroHp[id] = Math.max(
+      0,
+      Math.min(HEROES[id].hp,Number(result.heroHp[id]))
+    );
+  });
+
+  return result;
+}
+
+let state = loadGame();
+let logs = [];
+let partyClock = 0;
+let enemyClock = 0;
+let lastTick = performance.now();
+let explorationTimer = null;
+let toastTimer = null;
+let lastSave = Date.now();
+
+const pickaxeCost = () => Math.floor(35*Math.pow(1.8,state.pickaxe-1));
+const speedCost = () => Math.floor(40*Math.pow(1.9,state.speed));
+const damageCost = () => Math.floor(60*Math.pow(1.8,state.damageLevel));
+const critCost = () => Math.floor(50*Math.pow(1.85,state.crit));
+const attackInterval = () => Math.max(3.5,6-state.speed*.5);
+
+function saveGame() {
+  try {
+    localStorage.setItem(SAVE_KEY,JSON.stringify(state));
+    lastSave = Date.now();
+  } catch (error) {
+    console.warn("Saving failed:",error);
+    toast("Could not save. Check browser storage settings.");
+  }
+}
+
+function toast(message) {
+  const element = $("toast");
+  element.textContent = message;
+  element.classList.add("show");
+
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(
+    () => element.classList.remove("show"),
+    2400
+  );
 }
 
 function addLog(message) {
-  const time = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", second: "2-digit" });
-  logs.unshift({ time, message });
-  logs = logs.slice(0, 60);
-  game.lastLog = logs;
+  logs.unshift({
+    time:new Date().toLocaleTimeString([],{
+      hour:"2-digit",
+      minute:"2-digit"
+    }),
+    message
+  });
+
+  logs = logs.slice(0,15);
   renderLog();
 }
 
-function showToast(message) {
-  const toast = $("toast");
-  toast.textContent = message;
-  toast.classList.add("show");
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => toast.classList.remove("show"), 2200);
+function renderLog() {
+  $("logList").innerHTML = logs.map(item =>
+    `<p><small>${item.time}</small> ${item.message}</p>`
+  ).join("");
 }
 
-function saveGame(showMessage = false) {
-  try {
-    game.lastTick = now();
-    game.lastLog = logs.slice(0, 60);
-    localStorage.setItem(SAVE_KEY, JSON.stringify(game));
-    if (showMessage) showToast("Game saved successfully!");
-  } catch (error) {
-    showToast("Could not save. Check your browser storage settings.");
+function showEffect(message,healing=false) {
+  const element = document.createElement("span");
+  element.className = "damage";
+  element.textContent = message;
+  element.style.left = (30+Math.random()*35)+"%";
+  element.style.top = "42%";
+
+  if (healing) element.style.color = "#9de8bb";
+
+  $("scene").appendChild(element);
+  setTimeout(() => element.remove(),900);
+}
+
+function canBattle() {
+  if (state.needsHospital) {
+    toast("Pay the hospital fee before battles resume.");
+    return false;
+  }
+
+  if (recovering()) {
+    toast("Your heroes are in treatment. Battles are paused.");
+    return false;
+  }
+
+  if (alive().length===0) {
+    partyWiped();
+    return false;
+  }
+
+  return true;
+}
+
+/* ---------- EXPLORATION ---------- */
+
+function scheduleExploration() {
+  clearTimeout(explorationTimer);
+
+  if (state.enemy || locked() || !alive().length) return;
+
+  // A hidden random delay between 10 and 20 seconds.
+  const delay = 10000 + Math.random()*10000;
+
+  explorationTimer = setTimeout(() => {
+    if (!state.enemy && !locked() && alive().length) {
+      explore();
+    } else {
+      scheduleExploration();
+    }
+  },delay);
+}
+
+function explore() {
+  if (state.enemy) {
+    toast("Defeat the current enemy first.");
+    return;
+  }
+
+  if (!canBattle()) return;
+
+  clearTimeout(explorationTimer);
+
+  // Sometimes the party finds resources instead of a monster.
+  if (Math.random()<.68) {
+    spawnEnemy(false);
+  } else {
+    const multiplier = state.recruits.includes("luna") ? 1.2 : 1;
+    const crystals = Math.floor(
+      (3+Math.random()*7+state.region*2)*multiplier
+    );
+    const ore = 1+Math.floor(Math.random()*3)
+      +(state.recruits.includes("juno")?1:0);
+
+    state.crystals += crystals;
+    state.ore += ore;
+    state.gold += Math.floor(crystals*.7);
+
+    addLog(`Exploration found ${crystals} crystals and ${ore} ore.`);
+    toast(`Found ${crystals} crystals and ${ore} ore!`);
+
+    render();
+    saveGame();
+    scheduleExploration();
   }
 }
 
-function loadGame() {
-  try {
-    const saved = localStorage.getItem(SAVE_KEY);
-    if (!saved) return;
-    const parsed = JSON.parse(saved);
-    const defaults = freshGame();
-    game = { ...defaults, ...parsed };
-    game.upgrades = { ...defaults.upgrades, ...(parsed.upgrades || {}) };
-    game.snacks = { ...defaults.snacks, ...(parsed.snacks || {}) };
-    game.heroHP = { ...defaults.heroHP, ...(parsed.heroHP || {}) };
-    game.cooldowns = { ...(parsed.cooldowns || {}) };
-    game.activeBuffs = { ...(parsed.activeBuffs || {}) };
-    logs = Array.isArray(parsed.lastLog) ? parsed.lastLog : [];
-    if (!Array.isArray(game.party) || !game.party.includes("player")) game.party = ["player"];
-    if (!Array.isArray(game.recruited)) game.recruited = [];
-    if (!Array.isArray(game.unlockedSkills)) game.unlockedSkills = ["slash"];
-    if (game.region < 0 || game.region >= regions.length) game.region = 0;
-    if (!Number.isFinite(game.enemyHP) || game.enemyHP <= 0) spawnEnemy(false);
-  } catch (error) {
-    game = freshGame();
-    logs = [];
+/* ---------- MINING ---------- */
+
+function mineCrystals() {
+  const multiplier = state.recruits.includes("luna") ? 1.2 : 1;
+  const amount = Math.max(
+    1,
+    Math.floor((state.pickaxe*3+Math.random()*state.pickaxe)*multiplier)
+  );
+
+  const ore = 1+Math.floor(state.pickaxe/3)
+    +(state.recruits.includes("juno")?1:0);
+
+  state.crystals += amount;
+  state.ore += ore;
+  state.gold += Math.max(1,Math.floor(amount/2));
+
+  addLog(`Mining yielded ${amount} crystals and ${ore} ore.`);
+  showEffect("+"+amount,true);
+  toast(`Mined ${amount} crystals.`);
+
+  render();
+  saveGame();
+}
+
+/* ---------- ENEMIES AND COMBAT ---------- */
+
+function spawnEnemy(boss=false) {
+  if (state.enemy || !canBattle()) return;
+
+  const r = region();
+  const scale = Math.pow(1.65,state.region);
+
+  if (boss) {
+    state.enemy = {
+      name:r.boss,
+      type:"REGION GUARDIAN",
+      emoji:"👹",
+      hp:r.bossHp,
+      maxHp:r.bossHp,
+      damage:r.bossDamage,
+      gold:90+state.region*45,
+      crystals:35+state.region*20,
+      boss:true
+    };
+
+    addLog(`${r.boss} emerges from the ancient seal.`);
+    toast(`${r.boss} challenges your party!`);
+  } else {
+    const hp = Math.floor(r.hp*scale*(.85+Math.random()*.3));
+
+    state.enemy = {
+      name:r.enemy,
+      type:r.type,
+      emoji:r.emoji,
+      hp,
+      maxHp:hp,
+      damage:Math.floor(r.damage*(1+state.region*.25)),
+      gold:Math.floor(r.gold*(1+state.region*.35)),
+      crystals:Math.floor(r.crystals*(1+state.region*.35)),
+      boss:false
+    };
+
+    addLog(`${r.enemy} appears in the cavern!`);
+    toast("An enemy blocks the path!");
+  }
+
+  partyClock = 0;
+  enemyClock = 0;
+
+  render();
+  saveGame();
+}
+
+function partyAttack() {
+  if (!state.enemy || locked()) return;
+
+  const activeHeroes = alive();
+
+  if (!activeHeroes.length) {
+    partyWiped();
+    return;
+  }
+
+  for (const id of activeHeroes) {
+    if (!state.enemy) break;
+
+    const hero = HEROES[id];
+    let damage = hero.damage
+      +(state.pickaxe-1)*2
+      +state.damageLevel*4;
+
+    if (state.recruits.includes("darius")) damage += 6;
+    if (state.buffUntil>Date.now()) damage *= 1.25;
+    if (state.recruits.includes("silas")) damage *= 1.15;
+
+    const criticalChance = Math.min(
+      .5,
+      state.crit*.05+(id==="kael"?.15:0)
+    );
+
+    const critical = Math.random()<criticalChance;
+
+    damage = Math.max(
+      1,
+      Math.floor(damage*(critical?1.8:1)*(.88+Math.random()*.24))
+    );
+
+    state.enemy.hp -= damage;
+    showEffect((critical?"CRIT ":"-")+damage);
+
+    if (state.enemy.hp<=0) {
+      defeatEnemy();
+      return;
+    }
   }
 }
 
-function partyMembers() {
-  return game.party.map(id => {
-    if (id === "player") return { id, name: "Crystal Adventurer", damage: 12, hp: 100, sprite: "assets/hero-mage.svg", role: "Adventurer" };
-    return heroes.find(hero => hero.id === id);
-  }).filter(Boolean);
+function enemyAttack() {
+  if (!state.enemy || locked()) return;
+
+  // The front line takes damage first.
+  // If a front-line hero falls, the remaining party continues.
+  const order = [
+    "aiden","ragnar","kael",
+    "seraphine","liria","celeste","sage"
+  ];
+
+  const targetId = order.find(id =>
+    state.heroes.includes(id) && (state.heroHp[id]||0)>0
+  );
+
+  if (!targetId) {
+    partyWiped();
+    return;
+  }
+
+  let damage = Math.max(
+    1,
+    Math.floor(state.enemy.damage*(.82+Math.random()*.36))
+  );
+
+  if (state.guardCharges>0) {
+    damage = Math.ceil(damage*.45);
+    state.guardCharges--;
+  }
+
+  state.heroHp[targetId] = Math.max(
+    0,
+    state.heroHp[targetId]-damage
+  );
+
+  showEffect("-"+damage);
+  addLog(
+    `${state.enemy.name} hits ${HEROES[targetId].name} for ${damage} damage`+
+    (state.heroHp[targetId]===0?" — hero down!":".")
+  );
+
+  if (state.heroHp[targetId]===0) {
+    toast(`${HEROES[targetId].name} has fallen. The others keep fighting!`);
+  }
+
+  if (!alive().length) {
+    partyWiped();
+  }
+
+  render();
+  saveGame();
 }
 
-function baseMaxHP() {
-  return partyMembers().reduce((sum, hero) => sum + hero.hp, 0) * (1 + game.upgrades.health * 0.15);
-}
+function defeatEnemy() {
+  if (!state.enemy) return;
 
-function currentMaxHP() {
-  return Math.floor(baseMaxHP());
-}
+  const enemy = state.enemy;
 
-function ensureHeroHP() {
-  partyMembers().forEach(hero => {
-    if (typeof game.heroHP[hero.id] !== "number") game.heroHP[hero.id] = hero.hp;
-    game.heroHP[hero.id] = Math.min(game.heroHP[hero.id], Math.floor(hero.hp * (1 + game.upgrades.health * 0.15)));
+  state.gold += enemy.gold;
+  state.crystals += enemy.crystals;
+  state.ore += enemy.boss ? 8 : 1+Math.floor(Math.random()*3);
+  state.defeated++;
+
+  if (enemy.boss) {
+    const clearedRegion = state.region;
+
+    if (!state.bosses.includes(clearedRegion)) {
+      state.bosses.push(clearedRegion);
+    }
+
+    const heroId = REGIONS[clearedRegion].reward;
+
+    // The first victory in this cave grants its new hero.
+    if (heroId && !state.heroes.includes(heroId)) {
+      state.heroes.push(heroId);
+      state.heroHp[heroId] = HEROES[heroId].hp;
+
+      addLog(`${HEROES[heroId].name} joins the party after the cave clear!`);
+      toast(`NEW HERO JOINED: ${HEROES[heroId].name}!`);
+    } else {
+      toast("Guardian defeated! Cave cleared.");
+    }
+
+    if (clearedRegion<REGIONS.length-1) {
+      state.region = clearedRegion+1;
+      addLog(`Unlocked cave ${state.region+1}: ${region().name}.`);
+    } else {
+      addLog("All cave guardians defeated! The Crystal Kingdom is yours.");
+      toast("The final guardian has fallen!");
+    }
+
+    addLog(
+      `Guardian defeated! +${enemy.gold} gold, `+
+      `+${enemy.crystals} crystals, +8 ore.`
+    );
+  } else {
+    addLog(
+      `${enemy.name} defeated. +${enemy.gold} gold and `+
+      `+${enemy.crystals} crystals.`
+    );
+    toast(`Victory! +${enemy.gold} gold.`);
+  }
+
+  state.enemy = null;
+  partyClock = 0;
+  enemyClock = 0;
+
+  // Small recovery after a victory, not a retreat.
+  alive().forEach(id => {
+    state.heroHp[id] = Math.min(
+      HEROES[id].hp,
+      state.heroHp[id]+7
+    );
   });
-}
 
-function currentTeamHP() {
-  ensureHeroHP();
-  return partyMembers().reduce((sum, hero) => sum + Math.max(0, game.heroHP[hero.id]), 0);
-}
-
-function teamDamage() {
-  let total = partyMembers().reduce((sum, hero) => sum + hero.damage, 0);
-  total *= 1 + game.upgrades.damage * 0.15;
-  if (game.activeBuffs.damageUntil > now()) total *= 1.5;
-  return Math.floor(total);
-}
-
-function attackInterval() {
-  return Math.max(3500, 6000 - game.upgrades.speed * 500);
-}
-
-function upgradeCost(upgrade) {
-  const level = game.upgrades[upgrade.id];
-  return Math.floor(upgrade.base * Math.pow(1.55, level));
-}
-
-function minerCost() {
-  return Math.floor(minerBaseCost * Math.pow(1.5, game.miners));
-}
-
-function cartCost() {
-  return Math.floor(cartBaseCost * Math.pow(1.7, game.carts));
-}
-
-function miningUpgradeCost() {
-  return Math.floor(50 * Math.pow(1.65, game.miningLevel));
-}
-
-function minerRate() {
-  return game.miners * (1 + game.carts * 0.5) * (1 + game.miningLevel * 0.25);
-}
-
-function manualMineAmount() {
-  return Math.floor(5 + game.upgrades.pickaxe * 4 + game.miningLevel * 2);
-}
-
-function spawnEnemy(isBoss = false) {
-  const region = regions[game.region];
-  game.boss = isBoss;
-  game.enemyName = isBoss ? region.name + " Boss" : region.enemy;
-  game.enemySprite = isBoss ? "assets/boss.svg" : region.sprite;
-  game.enemyMaxHP = isBoss ? Math.floor(region.hp * 6) : region.hp;
-  game.enemyHP = game.enemyMaxHP;
-  game.nextAttack = now() + attackInterval();
-  game.nextEnemyAttack = now() + enemyAttackInterval();
-  game.enemyWeakenedUntil = 0;
   render();
+  saveGame();
+  scheduleExploration();
 }
 
-function enemyAttackInterval() {
-  const region = regions[game.region];
-  return Math.max(1800, 5000 - (region.level - 1) * 650 - (game.boss ? 700 : 0));
+/* ---------- HOSPITAL ---------- */
+
+function partyWiped() {
+  if (state.needsHospital || recovering()) return;
+
+  const enemyName = state.enemy?.name || "the enemy";
+
+  // Combat ends only when every hero is down.
+  state.enemy = null;
+  state.needsHospital = true;
+
+  state.hospitalFee = Math.floor(
+    50+state.region*80+Math.floor(state.defeated/10)*20
+  );
+
+  state.healingUntil = 0;
+  partyClock = 0;
+  enemyClock = 0;
+
+  clearTimeout(explorationTimer);
+
+  addLog(
+    `Every hero has fallen against ${enemyName}. `+
+    `Hospital bill: ${state.hospitalFee} gold.`
+  );
+
+  toast("Party wiped! Time for the hospital.");
+  render();
+  saveGame();
 }
 
-function mine() {
-  const amount = manualMineAmount();
-  const multiplier = game.activeBuffs.miningUntil > now() ? 2 : 1;
-  const actual = amount * multiplier;
-  game.ore += actual;
-  game.totalMined += actual;
-  if (Math.random() < 0.18) {
-    const bonus = random(1, 3);
-    game.gems += bonus;
-    addLog(`A rare crystal vein yielded ${bonus} gems!`);
+function payHospitalFee() {
+  if (!state.needsHospital || recovering()) return;
+
+  if (state.gold<state.hospitalFee) {
+    toast(`You need ${state.hospitalFee-state.gold} more gold.`);
+    return;
   }
-  addLog(`You mined ${actual} ore.`);
+
+  state.gold -= state.hospitalFee;
+  state.needsHospital = false;
+  state.healingUntil = Date.now()+60000;
+
+  addLog(
+    `Paid ${state.hospitalFee} gold. `+
+    "Hospital treatment begins for one minute."
+  );
+
+  toast("Bill paid! Your heroes are resting.");
   render();
   saveGame();
 }
 
-function hireMiner() {
-  const cost = minerCost();
-  if (game.coins < cost) return showToast("Not enough coins to hire a miner.");
-  game.coins -= cost;
-  game.miners++;
-  addLog("A new miner joined your mining crew.");
+function finishHealing() {
+  state.heroes.forEach(id => {
+    state.heroHp[id] = HEROES[id].hp;
+  });
+
+  state.healingUntil = 0;
+  state.needsHospital = false;
+  state.hospitalFee = 0;
+  state.guardCharges = 0;
+
+  addLog("Treatment complete. The whole party is back to full HP.");
+  toast("Your party is ready to fight again!");
+
+  render();
+  saveGame();
+  scheduleExploration();
+}
+
+function renderHospital() {
+  const panel = $("hospitalPanel");
+  const inTreatment = recovering();
+  const visible = state.needsHospital || inTreatment;
+
+  panel.classList.toggle("hidden",!visible);
+  if (!visible) return;
+
+  $("hospitalTitle").textContent = inTreatment
+    ? "Your heroes are recovering"
+    : "The whole party has fallen";
+
+  $("hospitalStatus").textContent = inTreatment
+    ? "TREATMENT IN PROGRESS"
+    : "TREATMENT NEEDED";
+
+  $("hospitalCopy").textContent = inTreatment
+    ? "Battles are paused while the healers treat your team. You can still mine and hire recruits."
+    : "No retreat. Your party fought until everyone fell. Pay the bill to begin a full one-minute recovery.";
+
+  $("hospitalFee").textContent = fmt(state.hospitalFee)+" gold";
+
+  if (inTreatment) {
+    const seconds = Math.max(
+      0,
+      Math.ceil((state.healingUntil-Date.now())/1000)
+    );
+
+    const minutes = Math.floor(seconds/60);
+    const remainder = seconds%60;
+
+    $("hospitalTimer").textContent =
+      `Time remaining: ${String(minutes).padStart(2,"0")}:`+
+      String(remainder).padStart(2,"0");
+
+    $("payHealBtn").textContent = "Healing in progress…";
+    $("payHealBtn").disabled = true;
+  } else {
+    $("hospitalTimer").textContent = state.gold<state.hospitalFee
+      ? `You need ${fmt(state.hospitalFee-state.gold)} more gold.`
+      : "Ready when you are";
+
+    $("payHealBtn").textContent =
+      `Pay ${fmt(state.hospitalFee)} G & begin healing`;
+
+    $("payHealBtn").disabled = state.gold<state.hospitalFee;
+  }
+}
+
+/* ---------- SKILLS ---------- */
+
+function castSkill(key) {
+  if (locked()) {
+    toast(state.needsHospital
+      ? "Pay the hospital fee first."
+      : "Battles are paused during treatment.");
+    return;
+  }
+
+  if (!alive().length) {
+    toast("Your party has fallen.");
+    return;
+  }
+
+  if (state.cooldowns[key]>0) {
+    toast(`Skill recharging: ${Math.ceil(state.cooldowns[key])} seconds.`);
+    return;
+  }
+
+  const attacks = ["slash","burst","meteor","frost"];
+
+  if (attacks.includes(key) && !state.enemy) {
+    toast("There is no enemy to target.");
+    return;
+  }
+
+  if (
+    ["heal","phoenix"].includes(key) &&
+    !state.heroes.includes("celeste")
+  ) {
+    toast("Defeat the first cave guardian to unlock Celeste.");
+    return;
+  }
+
+  const bonus = state.recruits.includes("silas") ? 1.15 : 1;
+
+  if (key==="slash") {
+    const damage = Math.floor((45+state.pickaxe*5+state.region*12)*bonus);
+    state.enemy.hp -= damage;
+    state.cooldowns.slash = 8;
+    showEffect("SLASH -"+damage);
+    addLog(`Radiant Slash deals ${damage} damage.`);
+  }
+
+  if (key==="burst") {
+    const damage = Math.floor((72+state.region*20)*bonus);
+    state.enemy.hp -= damage;
+    state.cooldowns.burst = 14;
+    showEffect("ARCANE -"+damage);
+    addLog(`Arcane Burst deals ${damage} damage.`);
+  }
+
+  if (key==="guard") {
+    alive().forEach(id => {
+      state.heroHp[id] = Math.min(
+        HEROES[id].hp,
+        state.heroHp[id]+12
+      );
+    });
+
+    state.guardCharges = 1;
+    state.cooldowns.guard = 18;
+    showEffect("AEGIS +12",true);
+    addLog("Aegis Guard healed the party and will soften the next hit.");
+  }
+
+  if (key==="heal") {
+    const amount = Math.floor(28*(state.recruits.includes("elise")?1.2:1));
+
+    alive().forEach(id => {
+      state.heroHp[id] = Math.min(
+        HEROES[id].hp,
+        state.heroHp[id]+amount
+      );
+    });
+
+    state.cooldowns.heal = 14;
+    showEffect("HEAL +"+amount,true);
+    addLog(`Healing Wave restores up to ${amount} HP to living heroes.`);
+  }
+
+  if (key==="meteor") {
+    const damage = Math.floor((105+state.region*28)*bonus);
+    state.enemy.hp -= damage;
+    state.cooldowns.meteor = 22;
+    showEffect("METEOR -"+damage);
+    addLog(`Meteor Rain deals ${damage} damage.`);
+  }
+
+  if (key==="frost") {
+    const damage = Math.floor((22+state.region*6)*bonus);
+    state.enemy.hp -= damage;
+    state.frostUntil = Date.now()+8000;
+    state.cooldowns.frost = 17;
+    showEffect("FROST -"+damage);
+    addLog(`Frost Nova deals ${damage} damage and slows the enemy.`);
+  }
+
+  if (key==="phoenix") {
+    const fallen = state.heroes.find(id => (state.heroHp[id]||0)<=0);
+
+    if (!fallen) {
+      toast("No fallen hero needs reviving.");
+      return;
+    }
+
+    state.heroHp[fallen] = Math.ceil(HEROES[fallen].hp*.4);
+    state.cooldowns.phoenix = 45;
+    showEffect("REVIVED",true);
+    addLog(`${HEROES[fallen].name} returns with 40% HP!`);
+  }
+
+  if (state.enemy && state.enemy.hp<=0) {
+    defeatEnemy();
+  }
+
   render();
   saveGame();
 }
 
-function buyCart() {
-  const cost = cartCost();
-  if (game.coins < cost) return showToast("Not enough coins for a mine cart.");
-  game.coins -= cost;
-  game.carts++;
-  addLog("Your mine cart increased mining productivity.");
+/* ---------- UPGRADES ---------- */
+
+function upgrade(kind) {
+  if (kind==="pickaxe") {
+    const cost = pickaxeCost();
+
+    if (state.pickaxe>=10 || state.crystals<cost) {
+      return toast("Not enough crystals for that upgrade.");
+    }
+
+    state.crystals -= cost;
+    state.pickaxe++;
+
+    addLog(`Pickaxe upgraded to level ${state.pickaxe}.`);
+  }
+
+  if (kind==="speed") {
+    const cost = speedCost();
+
+    if (state.speed>=5 || state.crystals<cost) {
+      return toast("Not enough crystals for that upgrade.");
+    }
+
+    state.crystals -= cost;
+    state.speed++;
+    partyClock = 0;
+
+    addLog(`Party attack interval is now ${attackInterval().toFixed(1)} seconds.`);
+  }
+
+  if (kind==="damage") {
+    const cost = damageCost();
+
+    if (state.damageLevel>=10 || state.gold<cost) {
+      return toast("Not enough gold for that upgrade.");
+    }
+
+    state.gold -= cost;
+    state.damageLevel++;
+
+    addLog(`Party damage upgraded to level ${state.damageLevel}.`);
+  }
+
+  if (kind==="crit") {
+    const cost = critCost();
+
+    if (state.crit>=8 || state.crystals<cost) {
+      return toast("Not enough crystals for that upgrade.");
+    }
+
+    state.crystals -= cost;
+    state.crit++;
+
+    addLog(`Critical strike chance increased to ${state.crit*5}%.`);
+  }
+
+  toast("Upgrade purchased!");
   render();
   saveGame();
 }
 
-function upgradeMining() {
-  const cost = miningUpgradeCost();
-  if (game.coins < cost) return showToast("Not enough coins to improve the mine.");
-  game.coins -= cost;
-  game.miningLevel++;
-  addLog(`Mining facility upgraded to level ${game.miningLevel}.`);
+/* ---------- RECRUITS ---------- */
+
+function hireRecruit(id) {
+  const recruit = RECRUITS.find(item => item.id===id);
+  if (!recruit || state.recruits.includes(id)) return;
+
+  if (state.gold<recruit.cost) {
+    toast(`You need ${recruit.cost} gold for ${recruit.name}.`);
+    return;
+  }
+
+  state.gold -= recruit.cost;
+  state.recruits.push(id);
+
+  addLog(`${recruit.name} joined the kingdom as a ${recruit.role}.`);
+  toast(`${recruit.name} joined your kingdom!`);
+
   render();
   saveGame();
 }
 
-function buyUpgrade(id) {
-  const upgrade = upgradeData.find(item => item.id === id);
-  if (!upgrade) return;
-  const level = game.upgrades[id];
-  if (level >= upgrade.max) return showToast("This upgrade has reached its maximum level.");
-  const cost = upgradeCost(upgrade);
-  if (game.coins < cost) return showToast("Not enough coins for this upgrade.");
-  game.coins -= cost;
-  game.upgrades[id]++;
-  addLog(`${upgrade.name} upgraded to level ${game.upgrades[id]}.`);
-  render();
-  saveGame();
-}
+/* ---------- SNACKS ---------- */
 
-function recruit(id) {
-  const hero = heroes.find(item => item.id === id);
-  if (!hero || game.recruited.includes(id)) return;
-  if (game.coins < hero.cost) return showToast("Not enough coins to recruit this hero.");
-  game.coins -= hero.cost;
-  game.recruited.push(id);
-  game.party.push(id);
-  game.heroHP[id] = hero.hp;
-  addLog(`${hero.name} joined your party!`);
+function useSnack(id) {
+  if (locked()) {
+    toast("Snacks are unavailable during hospital treatment.");
+    return;
+  }
+
+  if (!alive().length) {
+    toast("Your party needs hospital treatment.");
+    return;
+  }
+
+  if (!(state.snacks[id]>0)) {
+    toast("You are out of that snack. Buy another one.");
+    return;
+  }
+
+  state.snacks[id]--;
+
+  if (id==="rations") {
+    const injured = alive().sort(
+      (a,b) =>
+        state.heroHp[a]/HEROES[a].hp -
+        state.heroHp[b]/HEROES[b].hp
+    )[0];
+
+    if (injured) {
+      const healing = Math.floor(
+        35*(state.recruits.includes("mira")?1.25:1)
+      );
+
+      state.heroHp[injured] = Math.min(
+        HEROES[injured].hp,
+        state.heroHp[injured]+healing
+      );
+
+      addLog(`${HEROES[injured].name} recovers ${healing} HP from Trail Rations.`);
+    }
+  }
+
+  if (id==="moonberries") {
+    state.buffUntil = Date.now()+20000;
+    addLog("Moonberries boost party damage by 25% for 20 seconds.");
+  }
+
+  if (id==="tea") {
+    state.ore += 4;
+    addLog("Miner's Tea gives you 4 ore.");
+  }
+
+  if (id==="cake") {
+    const healing = Math.floor(
+      24*(state.recruits.includes("mira")?1.25:1)
+    );
+
+    alive().forEach(hero => {
+      state.heroHp[hero] = Math.min(
+        HEROES[hero].hp,
+        state.heroHp[hero]+healing
+      );
+    });
+
+    addLog(`Crystal Cake heals living heroes by up to ${healing} HP.`);
+  }
+
+  toast("Snack used!");
   render();
   saveGame();
 }
 
 function buySnack(id) {
-  const snack = snackData.find(item => item.id === id);
+  const snack = SNACKS.find(item => item.id===id);
   if (!snack) return;
-  if (game.coins < snack.cost) return showToast("Not enough coins for that snack.");
-  game.coins -= snack.cost;
-  game.snacks[id] = (game.snacks[id] || 0) + 1;
-  addLog(`Bought ${snack.name}.`);
-  render();
-  saveGame();
-}
 
-function useSnack(id) {
-  if (!game.snacks[id]) return showToast("You don't have that snack.");
-  game.snacks[id]--;
-  const max = currentMaxHP();
-
-  if (id === "ration" || id === "cake") {
-    const ratio = id === "ration" ? 0.3 : 0.6;
-    let heal = Math.floor(max * ratio);
-    partyMembers().forEach(hero => {
-      const cap = Math.floor(hero.hp * (1 + game.upgrades.health * 0.15));
-      const missing = cap - game.heroHP[hero.id];
-      const part = Math.min(missing, Math.ceil(heal * hero.hp / max));
-      game.heroHP[hero.id] += part;
-    });
-    showToast(`${snackData.find(item => item.id === id).name} restored party health.`);
-  } else if (id === "berry") {
-    game.activeBuffs.damageUntil = now() + 30000;
-    showToast("Moonberry boost: +50% damage for 30 seconds!");
-  } else if (id === "tea") {
-    game.activeBuffs.miningUntil = now() + 30000;
-    showToast("Miner's Tea: double mining rewards for 30 seconds!");
-  }
-
-  addLog(`Used ${snackData.find(item => item.id === id).name}.`);
-  render();
-  saveGame();
-}
-
-function unlockSkill(id) {
-  const skill = skillData.find(item => item.id === id);
-  if (!skill || game.unlockedSkills.includes(id)) return;
-  if (game.region + 1 < skill.unlock) return showToast("Advance further to unlock this skill.");
-  if (game.coins < skill.cost) return showToast("Not enough coins to unlock this skill.");
-  game.coins -= skill.cost;
-  game.unlockedSkills.push(id);
-  addLog(`Unlocked skill: ${skill.name}.`);
-  render();
-  saveGame();
-}
-
-function skillRemaining(id) {
-  return Math.max(0, Math.ceil(((game.cooldowns[id] || 0) - now()) / 1000));
-}
-
-function useSkill(id) {
-  const skill = skillData.find(item => item.id === id);
-  if (!skill || !game.unlockedSkills.includes(id)) return;
-  if (skillRemaining(id) > 0) return showToast(`${skill.name} is on cooldown.`);
-  game.cooldowns[id] = now() + skill.cooldown * 1000;
-
-  const damage = teamDamage();
-  if (id === "slash") damageEnemy(Math.floor(damage * 2.5), skill.name);
-  if (id === "burst") damageEnemy(Math.floor(damage * 5), skill.name);
-  if (id === "meteor") damageEnemy(Math.floor(damage * 8), skill.name);
-  if (id === "frost") {
-    damageEnemy(Math.floor(damage * 3), skill.name);
-    game.enemyWeakenedUntil = now() + 10000;
-    addLog("Frost Nova weakened the enemy's attacks for 10 seconds.");
-  }
-  if (id === "aegis") {
-    healParty(0.3);
-    game.shieldUntil = now() + 10000;
-    addLog("Aegis Guard restored health and reduced incoming damage for 10 seconds.");
-  }
-  if (id === "phoenix") {
-    healParty(0.5);
-    damageEnemy(Math.floor(damage * 6), skill.name);
-  }
-  render();
-  saveGame();
-}
-
-function healParty(ratio) {
-  partyMembers().forEach(hero => {
-    const cap = Math.floor(hero.hp * (1 + game.upgrades.health * 0.15));
-    game.heroHP[hero.id] = Math.min(cap, game.heroHP[hero.id] + Math.ceil(cap * ratio));
-  });
-}
-
-function damageEnemy(amount, source = "Your party") {
-  if (game.enemyHP <= 0) return;
-  const criticalChance = game.upgrades.critical * 0.04;
-  let damage = amount;
-  if (Math.random() < criticalChance) {
-    damage *= 2;
-    addLog("Critical hit! Double damage!");
-  }
-  game.enemyHP = Math.max(0, game.enemyHP - damage);
-  addLog(`${source} dealt ${formatNumber(damage)} damage.`);
-  if (game.enemyHP <= 0) defeatEnemy();
-}
-
-function partyAttack() {
-  if (game.enemyHP <= 0) return;
-  damageEnemy(teamDamage(), "Your party");
-  render();
-}
-
-function enemyAttack() {
-  if (game.enemyHP <= 0) return;
-  const region = regions[game.region];
-  let damage = region.damage * (game.boss ? 2 : 1);
-  if (game.enemyWeakenedUntil > now()) damage = Math.floor(damage * 0.5);
-  if (game.shieldUntil > now()) damage = Math.floor(damage * 0.5);
-
-  const members = partyMembers();
-  let remainingDamage = damage;
-  for (let i = 0; i < members.length && remainingDamage > 0; i++) {
-    const hero = members[i];
-    const hp = game.heroHP[hero.id] || 0;
-    const taken = Math.min(hp, remainingDamage);
-    game.heroHP[hero.id] = hp - taken;
-    remainingDamage -= taken;
-  }
-
-  addLog(`${game.enemyName} attacked your party for ${damage} damage.`);
-  if (currentTeamHP() <= 0) {
-    addLog("Your party has been overwhelmed. Retreat, recover, and return!");
-    healParty(0.25);
-    game.enemyHP = game.enemyMaxHP;
-  }
-  render();
-}
-
-function defeatEnemy() {
-  const region = regions[game.region];
-  const coins = region.coins * (game.boss ? 8 : 1);
-  const ore = region.ore * (game.boss ? 5 : 1);
-  const gems = game.boss ? random(5, 12) : (Math.random() < 0.15 ? 1 : 0);
-
-  game.coins += coins;
-  game.ore += ore;
-  game.gems += gems;
-  game.enemiesDefeated++;
-
-  if (game.boss) {
-    game.bossesDefeated++;
-    addLog(`BOSS DEFEATED! Earned ${coins} coins, ${ore} ore, and ${gems} gems.`);
-    if (game.region < regions.length - 1) {
-      game.region++;
-      addLog(`New region unlocked: ${regions[game.region].name}!`);
-    } else {
-      addLog("The Crystal Kingdom's final guardian has fallen!");
-    }
-  } else {
-    addLog(`${game.enemyName} defeated! +${coins} coins and +${ore} ore.`);
-  }
-
-  healParty(0.1);
-  spawnEnemy(false);
-  render();
-  saveGame();
-}
-
-function challengeBoss() {
-  if (game.boss) return showToast("A boss is already in battle!");
-  spawnEnemy(true);
-  addLog(`Boss encounter started: ${game.enemyName}!`);
-  showToast("Boss battle started!");
-}
-
-function retreat() {
-  if (game.boss) {
-    showToast("You retreated from the boss battle.");
-    addLog("You retreated from the boss battle.");
-  } else {
-    showToast("You left the current encounter.");
-    addLog("You retreated to regroup.");
-  }
-  spawnEnemy(false);
-}
-
-function travelToRegion(index) {
-  if (index < 0 || index >= regions.length) return;
-  if (index > game.region) return showToast("Defeat the current region's boss first.");
-  game.region = index;
-  addLog(`Travelled to ${regions[index].name}.`);
-  spawnEnemy(false);
-  render();
-  saveGame();
-}
-
-function explore() {
-  const region = regions[game.region];
-  const roll = Math.random();
-  if (roll < 0.4) {
-    const coins = random(10, 30) * region.level;
-    game.coins += coins;
-    addLog(`Exploration found a hidden pouch containing ${coins} coins!`);
-  } else if (roll < 0.72) {
-    const gems = random(1, 3);
-    game.gems += gems;
-    addLog(`Exploration discovered ${gems} rare gems!`);
-  } else if (roll < 0.9) {
-    const ore = random(10, 25) * region.level;
-    game.ore += ore;
-    game.totalMined += ore;
-    addLog(`Your party discovered a rich vein worth ${ore} ore.`);
-  } else {
-    const snack = snackData[random(0, snackData.length - 1)];
-    game.snacks[snack.id] = (game.snacks[snack.id] || 0) + 1;
-    addLog(`Exploration found a snack: ${snack.name}!`);
-  }
-  showToast("Your party returned from exploration with supplies!");
-  game.nextExplore = now() + randomExploreDelay();
-  render();
-  saveGame();
-}
-
-function tick() {
-  const time = now();
-
-  if (time >= game.nextAttack) {
-    game.nextAttack = time + attackInterval();
-    partyAttack();
-  }
-  if (time >= game.nextEnemyAttack) {
-    game.nextEnemyAttack = time + enemyAttackInterval();
-    enemyAttack();
-  }
-  if (time >= game.nextMinerTick) {
-    const elapsedSeconds = Math.max(1, Math.floor((time - game.nextMinerTick) / 1000) + 1);
-    const earned = minerRate() * elapsedSeconds / 60;
-    if (earned > 0) {
-      game.ore += earned;
-      game.totalMined += earned;
-    }
-    game.nextMinerTick = time + 1000;
-  }
-  if (time >= game.nextExplore) explore();
-
-  render();
-  if (time - game.lastTick > 5000) saveGame();
-}
-
-function questProgress(id) {
-  switch (id) {
-    case "mine": return game.totalMined;
-    case "enemy": return game.enemiesDefeated;
-    case "miner": return game.miners;
-    case "recruit": return game.recruited.length;
-    case "boss": return game.bossesDefeated;
-    default: return 0;
-  }
-}
-
-const quests = [
-  { id: "mine", title: "A Miner’s Beginning", desc: "Mine 50 ore.", goal: 50, reward: 40, type: "ore" },
-  { id: "enemy", title: "First Victory", desc: "Defeat 5 enemies.", goal: 5, reward: 50, type: "enemy" },
-  { id: "miner", title: "Build the Crew", desc: "Hire 3 miners.", goal: 3, reward: 80, type: "miner" },
-  { id: "recruit", title: "A Growing Fellowship", desc: "Recruit 2 companions.", goal: 2, reward: 100, type: "recruit" },
-  { id: "boss", title: "Guardian Slayer", desc: "Defeat 1 boss.", goal: 1, reward: 150, type: "boss" }
-];
-
-function claimQuest(id) {
-  const quest = quests.find(item => item.id === id);
-  if (!quest || game.questsClaimed.includes(id)) return;
-  if (questProgress(quest.type) < quest.goal) return showToast("Quest objective not completed yet.");
-  game.questsClaimed.push(id);
-  game.coins += quest.reward;
-  addLog(`Quest completed: ${quest.title}. +${quest.reward} coins.`);
-  render();
-  saveGame();
-}
-
-function renderLog() {
-  const log = $("log");
-  if (!log) return;
-  log.innerHTML = "";
-  if (!logs.length) {
-    log.innerHTML = '<div class="log-entry">Your adventure begins here...</div>';
+  if (state.gold<snack.cost) {
+    toast(`You need ${snack.cost} gold to buy ${snack.name}.`);
     return;
   }
-  logs.slice(0, 35).forEach(entry => {
-    const div = document.createElement("div");
-    div.className = "log-entry";
-    const time = document.createElement("time");
-    time.textContent = entry.time || "";
-    const span = document.createElement("span");
-    span.textContent = entry.message || "";
-    div.append(time, span);
-    log.appendChild(div);
-  });
+
+  state.gold -= snack.cost;
+  state.snacks[id] = (state.snacks[id]||0)+1;
+
+  addLog(`Bought one ${snack.name}.`);
+  toast(`${snack.name} added to your bag.`);
+
+  render();
+  saveGame();
+}
+
+/* ---------- RENDERING ---------- */
+
+function avatar(id) {
+  const hero = HEROES[id];
+
+  // If your SVG portrait is missing, the emoji remains visible.
+  return `<div class="avatar">
+    <img src="${hero.sprite}" alt="" onerror="this.style.display='none'">
+    <span class="fallback">${hero.emoji}</span>
+  </div>`;
 }
 
 function renderParty() {
-  const container = $("partyList");
-  container.innerHTML = "";
-  partyMembers().forEach(hero => {
-    const hp = Math.max(0, game.heroHP[hero.id] || 0);
-    const max = Math.floor(hero.hp * (1 + game.upgrades.health * 0.15));
-    const card = document.createElement("div");
-    card.className = "party-card";
-    const img = document.createElement("img");
-    img.src = hero.sprite;
-    img.alt = hero.name;
-    const copy = document.createElement("div");
-    const name = document.createElement("strong");
-    name.textContent = hero.name;
-    const role = document.createElement("p");
-    role.textContent = hero.role;
-    const track = document.createElement("div");
-    track.className = "health-track";
-    track.style.marginTop = "6px";
-    track.style.height = "6px";
-    const fill = document.createElement("div");
-    fill.className = "health-fill party-fill";
-    fill.style.width = `${max ? hp / max * 100 : 0}%`;
-    track.appendChild(fill);
-    copy.append(name, role, track);
-    const stat = document.createElement("span");
-    stat.className = "mini-stat";
-    stat.textContent = `${hp}/${max} HP`;
-    card.append(img, copy, stat);
-    container.appendChild(card);
-  });
+  $("battleParty").innerHTML = state.heroes.map(id => {
+    const fallen = (state.heroHp[id]||0)<=0;
+
+    return `<div class="hero-token ${fallen?"fallen":""}" title="${HEROES[id].name}">
+      ${HEROES[id].emoji}
+    </div>`;
+  }).join("");
+
+  $("companions").innerHTML = state.heroes.map(id => {
+    const hero = HEROES[id];
+    const hp = state.heroHp[id]||0;
+    const percent = Math.max(0,hp/hero.hp*100);
+    const fallen = hp<=0;
+
+    return `<article class="companion ${fallen?"fallen":""}">
+      ${avatar(id)}
+      <div style="min-width:0;flex:1">
+        <b>${hero.name}</b>
+        <small>${hero.role}</small>
+        <div class="minihealth"><i style="width:${percent}%"></i></div>
+        <small>${fallen?"DOWN":`HP ${Math.floor(hp)} / ${hero.hp}`}</small>
+      </div>
+    </article>`;
+  }).join("");
+
+  const power = alive().reduce(
+    (total,id)=>total+HEROES[id].damage,
+    0
+  )+state.damageLevel*4;
+
+  $("partyPower").textContent = "PARTY POWER · "+fmt(power);
 }
 
-function renderSkills() {
-  const battle = $("battleSkills");
-  const library = $("skillLibrary");
-  battle.innerHTML = "";
-  library.innerHTML = "";
+function renderRewards() {
+  const r = region();
 
-  skillData.forEach(skill => {
-    const unlocked = game.unlockedSkills.includes(skill.id);
-    const remaining = skillRemaining(skill.id);
-    const card = document.createElement("div");
-    card.className = "skill-card";
-    const icon = document.createElement("div");
-    icon.className = "skill-icon";
-    icon.textContent = skill.icon;
-    const title = document.createElement("strong");
-    title.textContent = `${skill.name} [${skill.key}]`;
-    const desc = document.createElement("p");
-    desc.textContent = skill.desc;
-    const cooldown = document.createElement("div");
-    cooldown.className = "cooldown";
-    cooldown.textContent = unlocked ? (remaining ? `Ready in ${remaining}s` : "Ready to use") : `Unlock · ${skill.cost} coins`;
+  if (isBossDone()) {
+    $("nextHeroCard").innerHTML = `
+      <div class="reward-title">CAVE CLEARED</div>
+      <b>Guardian defeated!</b>
+      <small>${state.region===REGIONS.length-1
+        ?"Every guardian has fallen."
+        :"Your route to the next cave is open."}</small>`;
+    return;
+  }
 
-    const button = document.createElement("button");
-    button.className = "button " + (unlocked ? "primary" : "secondary");
-    button.textContent = unlocked ? (remaining ? `${remaining}s` : "Use Skill") : "Unlock";
-    button.disabled = unlocked ? remaining > 0 : (game.coins < skill.cost || game.region + 1 < skill.unlock);
-    button.addEventListener("click", () => unlocked ? useSkill(skill.id) : unlockSkill(skill.id));
+  const hero = HEROES[r.reward];
 
-    card.append(icon, title, desc, cooldown, button);
-    library.appendChild(card);
-
-    if (unlocked && ["slash", "burst", "aegis", "meteor"].includes(skill.id)) {
-      const battleCard = document.createElement("div");
-      battleCard.className = "skill-card";
-      const bIcon = document.createElement("div");
-      bIcon.className = "skill-icon";
-      bIcon.textContent = skill.icon;
-      const bTitle = document.createElement("strong");
-      bTitle.textContent = `${skill.name} [${skill.key}]`;
-      const bCooldown = document.createElement("div");
-      bCooldown.className = "cooldown";
-      bCooldown.textContent = remaining ? `Cooldown: ${remaining}s` : "Ready!";
-      const bButton = document.createElement("button");
-      bButton.className = "button primary";
-      bButton.textContent = remaining ? `${remaining}s` : "Cast";
-      bButton.disabled = remaining > 0;
-      bButton.addEventListener("click", () => useSkill(skill.id));
-      battleCard.append(bIcon, bTitle, bCooldown, bButton);
-      battle.appendChild(battleCard);
-    }
-  });
+  $("nextHeroCard").innerHTML = `
+    <div class="reward-title">BOSS REWARD · NEW HERO</div>
+    <b>${hero.emoji} ${hero.name} · ${hero.role}</b>
+    <small>${hero.tagline}</small>
+    <small>Defeat this cave's guardian to recruit ${hero.name} automatically.</small>`;
 }
 
 function renderSnacks() {
-  const container = $("snackList");
-  container.innerHTML = "";
-  snackData.forEach(snack => {
-    const count = game.snacks[snack.id] || 0;
-    const row = document.createElement("div");
-    row.className = "item-card";
-    const icon = document.createElement("div");
-    icon.className = "item-icon";
-    icon.textContent = snack.icon;
-    const copy = document.createElement("div");
-    copy.className = "item-copy";
-    const name = document.createElement("strong");
-    name.textContent = `${snack.name} × ${count}`;
-    const desc = document.createElement("p");
-    desc.textContent = snack.desc;
-    copy.append(name, desc);
-    const button = document.createElement("button");
-    button.className = "button small " + (count ? "primary" : "secondary");
-    button.textContent = "Use";
-    button.disabled = count === 0;
-    button.addEventListener("click", () => useSnack(snack.id));
-    row.append(icon, copy, button);
-    container.appendChild(row);
-  });
-}
+  $("snackGrid").innerHTML = SNACKS.map(snack => {
+    const count = state.snacks[snack.id]||0;
 
-function renderUpgrades() {
-  const container = $("upgradeList");
-  container.innerHTML = "";
-  upgradeData.forEach(upgrade => {
-    const level = game.upgrades[upgrade.id];
-    const maxed = level >= upgrade.max;
-    const cost = upgradeCost(upgrade);
-    const row = document.createElement("div");
-    row.className = "item-card";
-    const icon = document.createElement("div");
-    icon.className = "item-icon";
-    icon.textContent = upgrade.icon;
-    const copy = document.createElement("div");
-    copy.className = "item-copy";
-    const name = document.createElement("strong");
-    name.textContent = upgrade.name;
-    const desc = document.createElement("p");
-    desc.textContent = upgrade.desc;
-    const costText = document.createElement("div");
-    costText.className = "cost";
-    costText.textContent = maxed ? `MAX LEVEL · ${level}/${upgrade.max}` : `Level ${level}/${upgrade.max} · ${cost} coins`;
-    copy.append(name, desc, costText);
-    const button = document.createElement("button");
-    button.className = "button small primary";
-    button.textContent = maxed ? "MAX" : "Upgrade";
-    button.disabled = maxed || game.coins < cost;
-    button.addEventListener("click", () => buyUpgrade(upgrade.id));
-    row.append(icon, copy, button);
-    container.appendChild(row);
-  });
+    return `<article class="snack">
+      <div class="snackicon">${snack.icon}</div>
+      <b>${snack.name}</b>
+      <small>In bag: ${count} · Cost: ${snack.cost} gold</small>
+      <p>${snack.desc}</p>
+      <div class="actions">
+        <button data-action="useSnack" data-value="${snack.id}"
+          ${!count||locked()?"disabled":""}>Use</button>
+        <button data-action="buySnack" data-value="${snack.id}"
+          ${state.gold<snack.cost?"disabled":""}>Buy</button>
+      </div>
+    </article>`;
+  }).join("");
 }
 
 function renderRecruits() {
-  const container = $("recruitList");
-  container.innerHTML = "";
-  heroes.forEach(hero => {
-    const owned = game.recruited.includes(hero.id);
-    const card = document.createElement("div");
-    card.className = "recruit-card";
-    const img = document.createElement("img");
-    img.src = hero.sprite;
-    img.alt = hero.name;
-    const title = document.createElement("strong");
-    title.textContent = hero.name;
-    const desc = document.createElement("p");
-    desc.textContent = `${hero.role} · ${hero.damage} damage · ${hero.hp} HP. ${hero.desc}`;
-    const button = document.createElement("button");
-    button.className = "button " + (owned ? "secondary" : "primary");
-    button.textContent = owned ? "Recruited ✓" : `Recruit · ${hero.cost} 🪙`;
-    button.disabled = owned || game.coins < hero.cost;
-    button.addEventListener("click", () => recruit(hero.id));
-    card.append(img, title, desc, button);
-    container.appendChild(card);
-  });
+  $("recruitCount").textContent = state.recruits.length+" hired";
+
+  $("recruitGrid").innerHTML = RECRUITS.map(recruit => {
+    const hired = state.recruits.includes(recruit.id);
+
+    return `<article class="recruitcard">
+      <div class="recruit-emoji">${recruit.emoji}</div>
+      <b>${recruit.name}</b>
+      <small>${recruit.role} · ${recruit.desc}</small>
+      <button data-action="hire" data-value="${recruit.id}"
+        ${hired||state.gold<recruit.cost?"disabled":""}>
+        ${hired?"Hired":"Hire · "+recruit.cost+" G"}
+      </button>
+    </article>`;
+  }).join("");
 }
 
-function renderRegions() {
-  const container = $("regionList");
-  container.innerHTML = "";
-  regions.forEach((region, index) => {
-    const card = document.createElement("div");
-    card.className = "region-card" + (index === game.region ? " active" : "");
-    const copy = document.createElement("div");
-    const name = document.createElement("strong");
-    name.textContent = region.name;
-    const desc = document.createElement("small");
-    desc.textContent = `Region ${region.level} · Enemy HP ${region.hp}`;
-    copy.append(name, desc);
-    const button = document.createElement("button");
-    button.className = "button small secondary";
-    button.textContent = index === game.region ? "Here" : index < game.region ? "Travel" : "Locked";
-    button.disabled = index === game.region || index > game.region;
-    button.addEventListener("click", () => travelToRegion(index));
-    card.append(copy, button);
-    container.appendChild(card);
-  });
-}
+function renderSkills() {
+  for (const key of Object.keys(state.cooldowns)) {
+    const button = document.querySelector(`[data-skill="${key}"]`);
+    const label = $("cd-"+key);
 
-function renderQuests() {
-  const container = $("questList");
-  container.innerHTML = "";
-  quests.forEach(quest => {
-    const claimed = game.questsClaimed.includes(quest.id);
-    const progress = Math.min(quest.goal, questProgress(quest.type));
-    const complete = progress >= quest.goal;
-    const card = document.createElement("div");
-    card.className = "quest-card";
-    const title = document.createElement("strong");
-    title.textContent = `${claimed ? "✅ " : complete ? "🌟 " : "📜 "}${quest.title}`;
-    const desc = document.createElement("p");
-    desc.textContent = `${quest.desc} Progress: ${progress}/${quest.goal}. Reward: ${quest.reward} coins.`;
-    card.append(title, desc);
-    if (!claimed) {
-      const button = document.createElement("button");
-      button.className = "button small " + (complete ? "primary" : "secondary");
-      button.textContent = complete ? "Claim Reward" : "In Progress";
-      button.disabled = !complete;
-      button.style.marginTop = "10px";
-      button.addEventListener("click", () => claimQuest(quest.id));
-      card.appendChild(button);
-    }
-    container.appendChild(card);
-  });
+    const lockedHealer = ["heal","phoenix"].includes(key)
+      && !state.heroes.includes("celeste");
+
+    const needsEnemy = ["slash","burst","meteor","frost"].includes(key);
+
+    button.disabled =
+      locked() ||
+      !alive().length ||
+      lockedHealer ||
+      (needsEnemy&&!state.enemy) ||
+      state.cooldowns[key]>0;
+
+    label.textContent = lockedHealer
+      ? "LOCKED"
+      : state.cooldowns[key]>0
+        ? Math.ceil(state.cooldowns[key])+"s"
+        : "READY";
+  }
 }
 
 function render() {
-  $("coins").textContent = formatNumber(game.coins);
-  $("gems").textContent = formatNumber(game.gems);
-  $("ore").textContent = formatNumber(game.ore);
+  $("gold").textContent = fmt(state.gold);
+  $("crystals").textContent = fmt(state.crystals);
+  $("ore").textContent = fmt(state.ore);
 
-  $("regionName").textContent = regions[game.region].name;
-  $("regionNumber").textContent = `REGION ${game.region + 1}`;
-  $("enemySprite").src = game.enemySprite;
-  $("enemyName").textContent = game.enemyName;
-  $("enemyTitle").textContent = game.enemyName;
-  $("enemyHPText").textContent = `${formatNumber(game.enemyHP)} / ${formatNumber(game.enemyMaxHP)} HP`;
-  $("enemyHPBar").style.width = `${Math.max(0, game.enemyHP / game.enemyMaxHP * 100)}%`;
-  $("enemyType").textContent = game.boss ? "BOSS ENCOUNTER" : "Common enemy";
-  $("enemyStatus").textContent = game.enemyHP <= 0 ? "Defeated" : "In combat";
+  $("regionName").textContent = region().name;
+  $("regionNumber").textContent =
+    "CAVE "+String(state.region+1).padStart(2,"0");
 
-  $("teamDamage").textContent = formatNumber(teamDamage());
-  $("teamHP").textContent = `${formatNumber(currentTeamHP())} / ${formatNumber(currentMaxHP())}`;
-  $("attackSpeed").textContent = `${(attackInterval() / 1000).toFixed(1)}s`;
+  $("defeated").textContent = fmt(state.defeated);
+  $("threat").textContent = ["Low","Moderate","High","Extreme"][state.region];
+  $("guardianName").textContent = region().boss;
+  $("guardianDesc").textContent = region().desc;
+  $("bossPhase").textContent = isBossDone()?"DEFEATED":"DORMANT";
 
-  $("minerCount").textContent = game.miners;
-  $("oreRate").textContent = minerRate().toFixed(1);
-  $("minerCost").textContent = formatNumber(minerCost());
-  $("cartCost").textContent = formatNumber(cartCost());
-  $("mineUpgradeCost").textContent = formatNumber(miningUpgradeCost());
+  $("bossBtn").textContent = isBossDone()
+    ? "Guardian defeated"
+    : "Challenge Guardian";
 
-  $("hireMinerBtn").disabled = game.coins < minerCost();
-  $("hireCartBtn").disabled = game.coins < cartCost();
-  $("mineUpgradeBtn").disabled = game.coins < miningUpgradeCost();
-  $("buySnackBtn").disabled = game.coins < snackData[0].cost;
+  const disabled = locked() || !alive().length;
+
+  document.querySelector('[data-action="explore"]').disabled =
+    !!state.enemy || disabled;
+
+  $("bossBtn").disabled =
+    isBossDone() || !!state.enemy || disabled;
+
+  if (state.enemy) {
+    $("battleTitle").textContent = state.enemy.name;
+    $("enemyName").textContent = state.enemy.name;
+    $("enemyType").textContent = state.enemy.type;
+    $("enemyHealthText").textContent =
+      fmt(state.enemy.hp)+" / "+fmt(state.enemy.maxHp);
+
+    $("enemyHealthBar").style.width =
+      Math.max(0,state.enemy.hp/state.enemy.maxHp*100)+"%";
+
+    $("enemyVisual").textContent = state.enemy.emoji;
+    $("enemyVisual").classList.remove("hidden");
+    $("caption").textContent = state.enemy.boss
+      ? "An ancient guardian's power surges…"
+      : "The party fights together!";
+
+    $("status").textContent = "IN COMBAT";
+  } else {
+    $("battleTitle").textContent = "The Crystal Road";
+    $("enemyName").textContent = "No enemy nearby";
+    $("enemyType").textContent = "Awaiting discovery";
+    $("enemyHealthText").textContent = "—";
+    $("enemyHealthBar").style.width = "0%";
+    $("enemyVisual").classList.add("hidden");
+
+    $("caption").textContent = locked()
+      ? "The party is in the infirmary…"
+      : "Your party is searching the tunnels…";
+
+    $("status").textContent = locked()?"RECOVERING":"EXPLORING";
+  }
+
+  $("hint").textContent = locked()
+    ? "Battles are paused during treatment. Mine resources to earn the healing fee."
+    : "Exploration runs every 10–20 seconds. No retreat until every hero has fallen.";
+
+  $("pickaxeLevel").textContent = `Level ${state.pickaxe} / 10`;
+  $("pickaxeCost").textContent = state.pickaxe>=10
+    ? "MAX" : fmt(pickaxeCost())+" C";
+
+  $('[data-value="pickaxe"][data-action="upgrade"]').disabled =
+    state.pickaxe>=10 || state.crystals<pickaxeCost();
+
+  $("speedLevel").textContent =
+    `Level ${state.speed} / 5 · ${attackInterval().toFixed(1)}s`;
+
+  $("speedCost").textContent = state.speed>=5
+    ? "MAX" : fmt(speedCost())+" C";
+
+  $('[data-value="speed"][data-action="upgrade"]').disabled =
+    state.speed>=5 || state.crystals<speedCost();
+
+  $("damageLevel").textContent = `Level ${state.damageLevel} / 10`;
+  $("damageCost").textContent = state.damageLevel>=10
+    ? "MAX" : fmt(damageCost())+" G";
+
+  $('[data-value="damage"][data-action="upgrade"]').disabled =
+    state.damageLevel>=10 || state.gold<damageCost();
+
+  $("critLevel").textContent = `Level ${state.crit} / 8 · ${state.crit*5}%`;
+  $("critCost").textContent = state.crit>=8
+    ? "MAX" : fmt(critCost())+" C";
+
+  $('[data-value="crit"][data-action="upgrade"]').disabled =
+    state.crit>=8 || state.crystals<critCost();
 
   renderParty();
-  renderSkills();
+  renderRewards();
   renderSnacks();
-  renderUpgrades();
   renderRecruits();
-  renderRegions();
-  renderQuests();
+  renderSkills();
+  renderHospital();
   renderLog();
 }
 
-$("mineBtn").addEventListener("click", mine);
-$("bossBtn").addEventListener("click", challengeBoss);
-$("retreatBtn").addEventListener("click", retreat);
-$("hireMinerBtn").addEventListener("click", hireMiner);
-$("hireCartBtn").addEventListener("click", buyCart);
-$("mineUpgradeBtn").addEventListener("click", upgradeMining);
-$("buySnackBtn").addEventListener("click", () => buySnack("ration"));
-$("saveBtn").addEventListener("click", () => saveGame(true));
-$("clearLogBtn").addEventListener("click", () => {
-  logs = [];
-  game.lastLog = [];
-  renderLog();
-  saveGame();
+/* ---------- BUTTON HANDLERS ---------- */
+
+// IMPORTANT: this is the one listener for the entire game.
+// It also handles buttons that are generated again during rendering.
+
+document.addEventListener("click",event=>{
+  const skillButton = event.target.closest("[data-skill]");
+
+  if (skillButton) {
+    if (!skillButton.disabled) {
+      castSkill(skillButton.dataset.skill);
+    }
+    return;
+  }
+
+  const button = event.target.closest("[data-action]");
+
+  if (!button || button.disabled) return;
+
+  const action = button.dataset.action;
+  const value = button.dataset.value;
+
+  switch (action) {
+    case "explore":
+      explore();
+      break;
+
+    case "mine":
+      mineCrystals();
+      break;
+
+    case "boss":
+      if (isBossDone()) {
+        toast("This guardian has already been defeated.");
+      } else if (state.enemy) {
+        toast("Defeat your current enemy first.");
+      } else {
+        spawnEnemy(true);
+      }
+      break;
+
+    case "payHeal":
+      payHospitalFee();
+      break;
+
+    case "upgrade":
+      upgrade(value);
+      break;
+
+    case "hire":
+      hireRecruit(value);
+      break;
+
+    case "useSnack":
+      useSnack(value);
+      break;
+
+    case "buySnack":
+      buySnack(value);
+      break;
+
+    case "clearLog":
+      logs = [];
+      renderLog();
+      break;
+
+    case "reset":
+      resetGame();
+      break;
+  }
 });
-$("resetBtn").addEventListener("click", () => {
-  if (!confirm("Reset all progress? This cannot be undone.")) return;
+
+// Keyboard shortcuts for skills.
+document.addEventListener("keydown",event=>{
+  if (event.repeat) return;
+
+  if (["INPUT","TEXTAREA","SELECT"].includes(
+    document.activeElement.tagName
+  )) return;
+
+  const shortcuts = {
+    q:"slash",
+    w:"burst",
+    e:"guard",
+    r:"heal",
+    t:"meteor",
+    y:"frost",
+    u:"phoenix"
+  };
+
+  const skill = shortcuts[event.key.toLowerCase()];
+  if (skill) castSkill(skill);
+});
+
+/* ---------- MAIN GAME LOOP ---------- */
+
+function resetGame() {
+  if (!confirm("Reset all Gem Miner progress? This cannot be undone.")) {
+    return;
+  }
+
+  clearTimeout(explorationTimer);
   localStorage.removeItem(SAVE_KEY);
-  game = freshGame();
+  localStorage.removeItem(OLD_SAVE_KEY);
+
+  state = clone(DEFAULTS);
   logs = [];
-  spawnEnemy(false);
-  addLog("A new adventure begins in the Shattered Cavern.");
+  partyClock = 0;
+  enemyClock = 0;
+
+  addLog("A fresh expedition begins. Good luck, miner!");
   render();
   saveGame();
-});
+  scheduleExploration();
+}
 
-document.addEventListener("keydown", event => {
-  if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) return;
-  const key = event.key.toLowerCase();
-  const skill = skillData.find(item => item.key.toLowerCase() === key);
-  if (skill && game.unlockedSkills.includes(skill.id)) useSkill(skill.id);
-});
+function gameTick() {
+  const currentPerformance = performance.now();
+  const dt = Math.min(
+    .5,
+    Math.max(0,(currentPerformance-lastTick)/1000)
+  );
 
-loadGame();
-ensureHeroHP();
-if (!game.enemyName || !game.enemySprite) spawnEnemy(false);
-addLog("Welcome back, adventurer! Your expedition awaits.");
+  lastTick = currentPerformance;
+  const now = Date.now();
+
+  // Hospital time continues even though combat is paused.
+  if (state.healingUntil && now>=state.healingUntil) {
+    finishHealing();
+  }
+
+  // Passive recruit income.
+  if (state.recruits.includes("tessa")) state.gold += .8*dt;
+  if (state.recruits.includes("borin")) state.gold += 1.3*dt;
+  if (state.recruits.includes("kellan")) state.crystals += .3*dt;
+
+  if (!locked()) {
+    // Skills recharge in whole seconds.
+    for (const key of Object.keys(state.cooldowns)) {
+      state.cooldowns[key] = Math.max(0,state.cooldowns[key]-dt);
+    }
+
+    if (state.enemy) {
+      partyClock += dt;
+      enemyClock += dt;
+
+      if (partyClock>=attackInterval()) {
+        partyClock = 0;
+        partyAttack();
+      }
+
+      const bossExtra = state.enemy && state.enemy.boss ? .45 : 0;
+      const frostMultiplier = state.frostUntil>now ? 1.4 : 1;
+      const enemyInterval = Math.max(
+        2.2,
+        5-state.region*.6-bossExtra
+      )*frostMultiplier;
+
+      if (state.enemy && !locked() && enemyClock>=enemyInterval) {
+        enemyClock = 0;
+        enemyAttack();
+      }
+
+      // Celeste's passive healing aura.
+      if (
+        state.heroes.includes("celeste") &&
+        alive().includes("celeste")
+      ) {
+        state.healClock += dt;
+
+        if (state.healClock>=10) {
+          state.healClock = 0;
+
+          const target = alive().sort(
+            (a,b) =>
+              state.heroHp[a]/HEROES[a].hp -
+              state.heroHp[b]/HEROES[b].hp
+          )[0];
+
+          if (target) {
+            const amount = 7+
+              (state.recruits.includes("elise")?4:0);
+
+            state.heroHp[target] = Math.min(
+              HEROES[target].hp,
+              state.heroHp[target]+amount
+            );
+          }
+        }
+      }
+    }
+  }
+
+  // Refresh the interface so timers and resources stay visible.
+  render();
+
+  if (now-lastSave>=5000) saveGame();
+}
+
+// Start the game.
+addLog("The crystal road awaits. Your party is ready.");
 render();
+saveGame();
 
-setInterval(tick, 250);
-saveTimer = setInterval(() => saveGame(), 10000);
+if (!state.enemy && !locked()) {
+  scheduleExploration();
+}
 
-window.addEventListener("beforeunload", () => saveGame());
+window.setInterval(gameTick,200);

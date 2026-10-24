@@ -3,157 +3,176 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Gem Miner: Rise of the Crystal Kingdom</title>
   <link rel="stylesheet" href="style.css">
+  <script src="game.js" defer></script>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div>
-        <div class="eyebrow">CRYSTAL KINGDOM CHRONICLES</div>
-        <h1>Gem Miner <span>✦</span></h1>
-        <p class="subtitle">Rise of the Crystal Kingdom</p>
-      </div>
-      <div class="resources">
-        <div class="resource">💎 <span id="gems">0</span></div>
-        <div class="resource">🪙 <span id="coins">0</span></div>
-        <div class="resource">⛏️ <span id="ore">0</span></div>
-      </div>
-    </header>
+<div class="shell">
 
-    <section class="hero-banner">
-      <div>
-        <span class="tag">ADVENTURE AWAITS</span>
-        <h2>Beyond the Crystal Gate</h2>
-        <p>Mine rare crystals. Recruit heroes. Defeat the darkness.</p>
-      </div>
-      <div class="banner-crystal">💎</div>
-    </section>
+  <header class="topbar">
+    <div class="brand">✦ CRYSTAL KINGDOM</div>
+    <div class="resources">
+      <div class="resource">🪙 GOLD <b id="gold">75</b></div>
+      <div class="resource">💎 CRYSTALS <b id="crystals">35</b></div>
+      <div class="resource">⛏️ ORE <b id="ore">0</b></div>
+    </div>
+  </header>
 
-    <main class="layout">
-      <section class="panel combat-panel">
-        <div class="panel-heading">
+  <section class="banner">
+    <div class="eyebrow">YOUR ADVENTURE BEGINS</div>
+    <h1>Gem Miner: Rise of the <em>Crystal Kingdom</em></h1>
+    <p>Explore forgotten caves, defeat their guardians, and recruit a new hero after every cave clear. No retreat. No surrender. Only victory… or a very expensive hospital bill.</p>
+    <div class="region">
+      <div><small>CURRENT CAVE</small><b id="regionName">The Shattered Cavern</b></div>
+      <b id="regionNumber">CAVE 01</b>
+    </div>
+  </section>
+
+  <div class="layout">
+    <main class="column">
+
+      <section class="panel">
+        <div class="panelhead">
+          <div><div class="eyebrow">ENCOUNTER</div><h2 id="battleTitle">The Crystal Road</h2></div>
+          <span class="pill" id="status">EXPLORING</span>
+        </div>
+
+        <div class="scene" id="scene">
+          <div class="crystal one"></div>
+          <div class="crystal two"></div>
+          <div class="ground"></div>
+          <div class="party" id="battleParty"></div>
+          <div class="enemy hidden" id="enemyVisual">👾</div>
+          <div class="caption" id="caption">Your party is searching the tunnels…</div>
+        </div>
+
+        <div class="enemyinfo">
           <div>
-            <span class="eyebrow">CURRENT EXPEDITION</span>
-            <h2 id="regionName">Shattered Cavern</h2>
+            <b id="enemyName">No enemy nearby</b>
+            <small id="enemyType">Awaiting discovery</small>
           </div>
-          <span class="tag" id="regionNumber">REGION 1</span>
-        </div>
-
-        <div class="battle-scene">
-          <div class="scene-stars">✦ · ˚ ✧ · ✦</div>
-          <div class="combatant hero">
-            <img src="assets/hero-mage.svg" alt="Your adventurer">
-            <span>YOU</span>
-          </div>
-          <div class="battle-symbol">⚔</div>
-          <div class="combatant enemy">
-            <img id="enemySprite" src="assets/slime.svg" alt="Enemy">
-            <span id="enemyName">Crystal Slime</span>
-          </div>
-          <div class="scene-ground"></div>
-        </div>
-
-        <div class="enemy-info">
-          <div class="bar-label">
-            <strong id="enemyTitle">Crystal Slime</strong>
-            <span id="enemyHPText">100 / 100 HP</span>
-          </div>
-          <div class="health-track"><div id="enemyHPBar" class="health-fill enemy-fill"></div></div>
-          <div class="bar-label small-label">
-            <span id="enemyType">Common enemy</span>
-            <span id="enemyStatus">Waiting for battle</span>
+          <div>
+            <div class="healthlabel"><span>ENEMY VITALITY</span><b id="enemyHealthText">—</b></div>
+            <div class="health"><i id="enemyHealthBar"></i></div>
           </div>
         </div>
 
-        <div class="battle-buttons">
-          <button id="mineBtn" class="button primary">⛏️ Mine Crystals</button>
-          <button id="bossBtn" class="button danger">👑 Challenge Boss</button>
-          <button id="retreatBtn" class="button secondary">↩ Retreat</button>
+        <div class="actions">
+          <button class="primary" data-action="explore">⌖ Explore now</button>
+          <button data-action="mine">✧ Mine crystals</button>
         </div>
-
-        <div class="battle-stats">
-          <div><span>⚔️ Team damage</span><strong id="teamDamage">0</strong></div>
-          <div><span>🛡️ Team health</span><strong id="teamHP">0 / 0</strong></div>
-          <div><span>⏱️ Attack speed</span><strong id="attackSpeed">6.0s</strong></div>
-        </div>
-
-        <h3 class="section-title">Your Party</h3>
-        <div id="partyList" class="party-list"></div>
-
-        <h3 class="section-title">Combat Skills</h3>
-        <div id="battleSkills" class="skill-grid"></div>
-      </section>
-
-      <aside class="sidebar">
-        <section class="panel">
-          <div class="panel-heading">
-            <h2>⛏️ Mining Crew</h2>
-            <span class="tag">AUTO</span>
-          </div>
-          <p class="muted">Your miners keep working while you adventure.</p>
-          <div class="big-stat"><span>Workers</span><strong id="minerCount">0</strong></div>
-          <div class="big-stat"><span>Ore per minute</span><strong id="oreRate">0</strong></div>
-          <button id="hireMinerBtn" class="button primary full">Hire Miner · <span id="minerCost">25</span> 🪙</button>
-          <button id="hireCartBtn" class="button secondary full">Buy Mine Cart · <span id="cartCost">100</span> 🪙</button>
-          <button id="mineUpgradeBtn" class="button secondary full">Upgrade Mining · <span id="mineUpgradeCost">50</span> 🪙</button>
-        </section>
-
-        <section class="panel">
-          <div class="panel-heading"><h2>🍪 Snack Bag</h2><span class="tag">SUPPLIES</span></div>
-          <p class="muted">Use snacks during an expedition for useful boosts.</p>
-          <div id="snackList" class="item-list"></div>
-          <div class="shop-item">
-            <div><strong>Buy Trail Rations</strong><small>Restore 30% team health</small></div>
-            <button id="buySnackBtn" class="button small">15 🪙</button>
-          </div>
-        </section>
-
-        <section class="panel">
-          <div class="panel-heading"><h2>⚒️ Forge Upgrades</h2></div>
-          <div id="upgradeList" class="item-list"></div>
-        </section>
-      </aside>
-
-      <section class="panel">
-        <div class="panel-heading"><h2>🧙 Recruitment Hall</h2><span class="tag">HEROES</span></div>
-        <p class="muted">Recruit companions to expand your party and increase your strength.</p>
-        <div id="recruitList" class="recruit-grid"></div>
+        <p class="hint" id="hint">Exploration happens automatically every 10–20 seconds.</p>
       </section>
 
       <section class="panel">
-        <div class="panel-heading"><h2>✨ Skill Library</h2><span class="tag">ABILITIES</span></div>
-        <p class="muted">Skills unlock as you progress. Cooldowns are shown in whole seconds.</p>
-        <div id="skillLibrary" class="skill-grid"></div>
+        <div class="panelhead">
+          <div><div class="eyebrow">YOUR COMPANIONS</div><h2>Adventuring Party</h2></div>
+          <span class="muted" id="partyPower">PARTY POWER</span>
+        </div>
+        <div class="companions" id="companions"></div>
+        <p class="hint">Fallen heroes stay down. The remaining party keeps fighting until everyone is defeated.</p>
+      </section>
+
+      <section class="panel hospital hidden" id="hospitalPanel">
+        <div class="panelhead">
+          <div><div class="eyebrow">CRYSTAL KINGDOM INFIRMARY</div><h2 id="hospitalTitle">The whole party has fallen</h2></div>
+          <span class="pill" id="hospitalStatus">TREATMENT NEEDED</span>
+        </div>
+        <p class="hospital-copy" id="hospitalCopy">Pay the fee to begin a one-minute recovery.</p>
+        <div class="hospital-actions">
+          <div>
+            <small>🏥 HEALING FEE</small>
+            <strong id="hospitalFee">50 gold</strong>
+            <small id="hospitalTimer">Waiting for payment</small>
+          </div>
+          <button class="primary" data-action="payHeal" id="payHealBtn">Pay &amp; begin healing</button>
+        </div>
       </section>
 
       <section class="panel">
-        <div class="panel-heading"><h2>🗺️ Expedition Map</h2></div>
-        <div id="regionList" class="region-list"></div>
+        <div class="panelhead">
+          <div><div class="eyebrow">FIELD SUPPLIES</div><h2>Snacks &amp; Items</h2></div>
+        </div>
+        <div class="snacks" id="snackGrid"></div>
+        <p class="hint">Buy snacks with gold to heal heroes or gain temporary bonuses.</p>
       </section>
 
       <section class="panel">
-        <div class="panel-heading"><h2>📜 Quests & Achievements</h2></div>
-        <div id="questList" class="item-list"></div>
+        <div class="panelhead">
+          <div><div class="eyebrow">ADVENTURE RECORD</div><h2>Battle Log</h2></div>
+          <button data-action="clearLog">Clear</button>
+        </div>
+        <div class="log" id="logList"></div>
       </section>
 
-      <section class="panel log-panel">
-        <div class="panel-heading"><h2>📖 Adventure Log</h2><button id="clearLogBtn" class="button small secondary">Clear</button></div>
-        <div id="log" class="log"></div>
-      </section>
     </main>
 
-    <footer>
-      <span>Gem Miner · Crystal Kingdom Edition</span>
-      <div>
-        <button id="saveBtn" class="button small secondary">Save Game</button>
-        <button id="resetBtn" class="button small danger">Reset Game</button>
-      </div>
-    </footer>
+    <aside class="column">
+
+      <section class="panel">
+        <div class="panelhead">
+          <div><div class="eyebrow">CAVE GUARDIAN</div><h2>Guardian Intel</h2></div>
+          <span>⚔️</span>
+        </div>
+        <div class="bossinfo">
+          <div class="bossavatar">👹</div>
+          <div>
+            <b id="guardianName">The Prism Warden</b>
+            <p id="guardianDesc">An ancient sentinel sealed in the cavern.</p>
+            <span class="pill" id="bossPhase">DORMANT</span>
+          </div>
+        </div>
+        <div class="stat"><span>Threat Level</span><b id="threat">Low</b></div>
+        <div class="stat"><span>Monsters Defeated</span><b id="defeated">0</b></div>
+        <div class="reward" id="nextHeroCard"></div>
+        <button class="primary full" data-action="boss" id="bossBtn">Challenge Guardian</button>
+      </section>
+
+      <section class="panel">
+        <div class="panelhead">
+          <div><div class="eyebrow">TACTICAL ARTS</div><h2>Skills</h2></div>
+          <span class="muted">Q–U shortcuts</span>
+        </div>
+
+        <button class="skill" data-skill="slash"><span class="skillicon">⚔️</span><span class="skilltext"><b>Radiant Slash</b><small>Heavy enemy strike · Q</small></span><strong id="cd-slash" class="cooldown">READY</strong></button>
+        <button class="skill" data-skill="burst"><span class="skillicon">🔮</span><span class="skilltext"><b>Arcane Burst</b><small>Crystal magic · W</small></span><strong id="cd-burst" class="cooldown">READY</strong></button>
+        <button class="skill" data-skill="guard"><span class="skillicon">🛡️</span><span class="skilltext"><b>Aegis Guard</b><small>Heal and block damage · E</small></span><strong id="cd-guard" class="cooldown">READY</strong></button>
+        <button class="skill" data-skill="heal"><span class="skillicon">💚</span><span class="skilltext"><b>Healing Wave</b><small>Celeste heals the party · R</small></span><strong id="cd-heal" class="cooldown">LOCKED</strong></button>
+        <button class="skill" data-skill="meteor"><span class="skillicon">☄️</span><span class="skilltext"><b>Meteor Rain</b><small>Massive magic damage · T</small></span><strong id="cd-meteor" class="cooldown">READY</strong></button>
+        <button class="skill" data-skill="frost"><span class="skillicon">❄️</span><span class="skilltext"><b>Frost Nova</b><small>Damage and slow · Y</small></span><strong id="cd-frost" class="cooldown">READY</strong></button>
+        <button class="skill" data-skill="phoenix"><span class="skillicon">🔥</span><span class="skilltext"><b>Phoenix Blessing</b><small>Revive a fallen hero · U</small></span><strong id="cd-phoenix" class="cooldown">LOCKED</strong></button>
+      </section>
+
+      <section class="panel">
+        <div class="panelhead">
+          <div><div class="eyebrow">THE WORKSHOP</div><h2>Upgrades</h2></div>
+        </div>
+        <div class="upgrade"><span class="upicon">⛏️</span><div class="details"><b>Crystal Pickaxe</b><small id="pickaxeLevel">Level 1 / 10</small></div><button data-action="upgrade" data-value="pickaxe">Upgrade<br><small id="pickaxeCost">25 C</small></button></div>
+        <div class="upgrade"><span class="upicon">⚡</span><div class="details"><b>Party Tempo</b><small id="speedLevel">Level 0 / 5</small></div><button data-action="upgrade" data-value="speed">Upgrade<br><small id="speedCost">40 C</small></button></div>
+        <div class="upgrade"><span class="upicon">⚔️</span><div class="details"><b>Party Damage</b><small id="damageLevel">Level 0 / 10</small></div><button data-action="upgrade" data-value="damage">Upgrade<br><small id="damageCost">60 G</small></button></div>
+        <div class="upgrade"><span class="upicon">🎯</span><div class="details"><b>Critical Strikes</b><small id="critLevel">Level 0 / 8</small></div><button data-action="upgrade" data-value="crit">Upgrade<br><small id="critCost">50 C</small></button></div>
+      </section>
+
+      <section class="panel">
+        <div class="panelhead">
+          <div><div class="eyebrow">KINGDOM SUPPORT</div><h2>Recruits</h2></div>
+          <span class="muted" id="recruitCount">0 hired</span>
+        </div>
+        <p class="hint">Recruits help your kingdom. They are not battle heroes.</p>
+        <div class="recruits" id="recruitGrid"></div>
+      </section>
+
+    </aside>
   </div>
 
-  <div id="toast" class="toast" aria-live="polite"></div>
-  <script src="game.js"></script>
+  <footer>
+    <span>GEM MINER ✦ CRYSTAL KINGDOM</span>
+    <span>Progress saves automatically in this browser.</span>
+    <button data-action="reset">Reset Save</button>
+  </footer>
+</div>
+<div class="toast" id="toast"></div>
 </body>
 </html>
