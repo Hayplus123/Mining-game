@@ -274,6 +274,14 @@
       cost: 65,
       desc: "Triple mana regeneration for 30 seconds.",
       effect: "manaBuff"
+    },
+    {
+      id: "revive",
+      name: "Revive Snack",
+      icon: "🔥",
+      cost: 5000,
+      desc: "Revive one fallen hero at 40% HP. Cannot be used after the whole party falls.",
+      effect: "revive"
     }
   ];
 
@@ -339,7 +347,8 @@
       tea: 1,
       cake: 0,
       etherberry: 2,
-      astralTea: 1
+      astralTea: 1,
+      revive: 0
     },
 
     cooldowns: {
@@ -472,6 +481,7 @@
   let toastTimer = 0;
 
   const speechQueue = [];
+  const MAX_SPEECH_QUEUE = 5;
   let speechBusy = false;
   let sageEnabled = true;
   let currentUtterance = null;
@@ -479,7 +489,10 @@
 
   let currentPrompt = null;
   let lowHealthWarning = false;
-  let lastAttackerNotice = 0;
+
+  // A tiny Web Audio cue for major events. It is created only when needed.
+  let importantAudioContext = null;
+  let lastImportantSound = 0;
 
   // ==========================================
   // GENERAL HELPERS
@@ -606,11 +619,12 @@
       currentPrompt &&
       promptPriority[currentPrompt.type] >= promptPriority[prompt.type]
     ) {
-      return;
+      return false;
     }
 
     currentPrompt = prompt;
     refreshSagePanel();
+    return true;
   }
 
   function dismissPrompt() {
@@ -628,40 +642,45 @@
   }
 
   function getEnglishVoice() {
-  if (!("speechSynthesis" in window)) return null;
+    if (!("speechSynthesis" in window)) return null;
 
-  const voices = window.speechSynthesis.getVoices();
-
-  const english = voices.filter((voice) =>
-    /^en([_-]|$)/i.test(voice.lang)
-  );
-
-  // Prefer commonly available feminine-sounding voices.
-  const femaleVoicePatterns = [
-    /female/i,
-    /aria/i,
-    /jenny/i,
-    /samantha/i,
-    /zira/i,
-    /hazel/i,
-    /sonia/i,
-    /ava/i,
-    /victoria/i,
-    /karen/i,
-    /google us english/i
-  ];
-
-  for (const pattern of femaleVoicePatterns) {
-    const match = english.find((voice) =>
-      pattern.test(voice.name)
+    const voices = window.speechSynthesis.getVoices();
+    const english = voices.filter((voice) =>
+      /^en([_-]|$)/i.test(voice.lang)
     );
 
-    if (match) return match;
-  }
+    if (!english.length) return null;
 
-  // Fall back to another English voice if none match.
-  return english[0] || null;
-}
+    // Prefer installed natural-sounding English voices when the browser provides them.
+    // JavaScript cannot install voices; the available choices depend on the device/browser.
+    const preferredPatterns = [
+      /microsoft aria/i,
+      /microsoft jenny/i,
+      /\baria\b/i,
+      /\bjenny\b/i,
+      /samantha/i,
+      /google us english/i,
+      /\bava\b/i,
+      /sonia/i,
+      /hazel/i,
+      /zira/i,
+      /victoria/i,
+      /karen/i,
+      /female/i
+    ];
+
+    // Prefer voices marked Natural when two voices match the same name preference.
+    for (const pattern of preferredPatterns) {
+      const matches = english.filter((voice) => pattern.test(voice.name));
+      if (matches.length) {
+        const natural = matches.find((voice) => /natural/i.test(voice.name));
+        return natural || matches[0];
+      }
+    }
+
+    // US English is the most suitable fallback for the Great Sage's wording.
+    return english.find((voice) => /^en[-_]US$/i.test(voice.lang)) || english[0];
+  }
 
   function processSpeechQueue() {
     if (!sageEnabled || speechBusy || !speechQueue.length) {
@@ -693,9 +712,10 @@
     // More conversational than the original stiff setting.
     // The available browser voice still determines the actual sound.
     utterance.lang = "en-US";
-    utterance.rate = 0.95;
-    utterance.pitch = 1.14;
+    utterance.rate = 0.94;
+    utterance.pitch = 1.05;
     utterance.volume = 1;
+
     const voice = getEnglishVoice();
     if (voice) utterance.voice = voice;
 
@@ -740,6 +760,12 @@
     if (!sageEnabled) {
       refreshSagePanel();
       return;
+    }
+
+    // The message already being spoken is kept separate from this queue.
+    // If too many announcements pile up, drop the oldest queued item first.
+    if (speechQueue.length >= MAX_SPEECH_QUEUE) {
+      speechQueue.shift();
     }
 
     speechQueue.push(message);
@@ -844,6 +870,13 @@
           ${ready ? "" : "disabled"}
         >Use Phoenix Blessing</button>
 
+        ${((s.snacks.revive || 0) > 0 && !battleLocked()) ? `
+          <button
+            data-sage-action="snack"
+            data-value="revive"
+          >Use Revive Snack</button>
+        ` : ""}
+
         <button
           class="sage-dismiss"
           data-sage-action="dismiss"
@@ -938,14 +971,16 @@
   function showPhoenixPrompt(heroId) {
     if (!livingHeroes().length) return;
 
-    showPrompt({
+    const accepted = showPrompt({
       type: "phoenix",
       heroId
     });
 
-    updateSageMessage(
-      `${HEROES[heroId].name} is down. Would you like to use Phoenix Blessing?`
-    );
+    if (accepted) {
+      updateSageMessage(
+        `${HEROES[heroId].name} is down. Would you like to use Phoenix Blessing?`
+      );
+    }
 
     refreshSagePanel();
   }
@@ -953,27 +988,30 @@
   function showLowHealthPrompt() {
     if (!livingHeroes().length) return;
 
-    showPrompt({
+    const accepted = showPrompt({
       type: "lowHealth"
     });
 
-    const advice = getHealingAdvice();
-
-    updateSageMessage(
-      `Your party's health is low. Consider using ${advice.join(", ")} to heal your team.`
-    );
+    if (accepted) {
+      const advice = getHealingAdvice();
+      updateSageMessage(
+        `Your party's health is low. Consider using ${advice.join(", ")} to heal your team.`
+      );
+    }
 
     refreshSagePanel();
   }
 
   function showHospitalPrompt() {
-    showPrompt({
+    const accepted = showPrompt({
       type: "hospital"
     });
 
-    updateSageMessage(
-      "Notice: All party members are down. Would you like to pay the hospital fee and begin recovery?"
-    );
+    if (accepted) {
+      updateSageMessage(
+        "Notice: All party members are down. Would you like to pay the hospital fee and begin recovery?"
+      );
+    }
 
     refreshSagePanel();
   }
@@ -1048,6 +1086,52 @@
     toastTimer = setTimeout(() => {
       target.classList.remove("show");
     }, 2300);
+  }
+
+  function playImportantSound() {
+    const now = Date.now();
+
+    // Avoid playing twice for a hero-down + party-wipe event in the same instant.
+    if (now - lastImportantSound < 450) return;
+    lastImportantSound = now;
+
+    try {
+      const AudioContextClass =
+        window.AudioContext || window.webkitAudioContext;
+      if (!AudioContextClass) return;
+
+      if (!importantAudioContext) {
+        importantAudioContext = new AudioContextClass();
+      }
+
+      const context = importantAudioContext;
+      if (context.state === "suspended") {
+        context.resume().catch(() => {});
+      }
+
+      const startAt = context.currentTime + 0.03;
+
+      // Two soft, low notes: a short "bum-bum" cue, not a continuous alarm.
+      [112, 84].forEach((frequency, index) => {
+        const start = startAt + index * 0.19;
+        const oscillator = context.createOscillator();
+        const gain = context.createGain();
+
+        oscillator.type = "sine";
+        oscillator.frequency.setValueAtTime(frequency, start);
+        gain.gain.setValueAtTime(0.0001, start);
+        gain.gain.exponentialRampToValueAtTime(0.055, start + 0.025);
+        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
+
+        oscillator.connect(gain);
+        gain.connect(context.destination);
+        oscillator.start(start);
+        oscillator.stop(start + 0.16);
+      });
+    } catch (error) {
+      // Sound is optional; unsupported audio must never stop the game.
+      console.debug("Important-event sound was unavailable.", error);
+    }
   }
 
   function showDamage(message, side = "enemy", healing = false) {
@@ -1175,9 +1259,12 @@
     partyClock = 0;
     enemyClock = 0;
 
-    announce(
-      `Notice: Hostile detected. ${s.enemy.name} is approaching your party.`
-    );
+    if (boss) {
+      playImportantSound();
+      announce(`Warning: Guardian approaching. ${s.enemy.name} has appeared.`);
+    } else {
+      announce(`Notice: Hostile detected. ${s.enemy.name} is approaching your party.`);
+    }
 
     log(`${s.enemy.name} appears in the cavern!`);
 
@@ -1336,14 +1423,7 @@
 
     const target = HEROES[targetId];
 
-    // Rate-limit attacker speech to keep it useful.
-    if (Date.now() - lastAttackerNotice >= 12000) {
-      lastAttackerNotice = Date.now();
-
-      announce(
-        `Notice: Incoming attack. ${s.enemy.name} is attacking ${target.name}.`
-      );
-    }
+    // Routine enemy attacks stay quiet; the Sage speaks for meaningful events.
 
     let amount = Math.max(
       1,
@@ -1370,15 +1450,16 @@
     );
 
     if (s.heroHp[targetId] === 0) {
-      announce(`Notice: ${target.name} is down.`);
+      playImportantSound();
       toast(`${target.name} has fallen!`);
 
       if (livingHeroes().length > 0) {
-        announce(
-          `Recommendation: ${target.name} is down. Would you like to use Phoenix Blessing?`
-        );
-
+        const message =
+          `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`;
+        announce(message);
         showPhoenixPrompt(targetId);
+      } else {
+        announce(`Notice: ${target.name} is down. The entire party has fallen.`);
       }
     }
 
@@ -1410,8 +1491,10 @@
     s.healingUntil = 0;
 
     s.hospitalFee = Math.floor(
-      50 + s.region * 80 + Math.floor(s.defeated / 10) * 20
+      250 + s.region * 150 + Math.floor(s.defeated / 10) * 50
     );
+
+    playImportantSound();
 
     clearTimeout(exploreTimer);
 
@@ -1787,6 +1870,13 @@
       return toast("Your party needs hospital treatment first.");
     }
 
+    if (
+      snack.effect === "revive" &&
+      !s.heroes.some((heroId) => (s.heroHp[heroId] || 0) <= 0)
+    ) {
+      return toast("No hero needs reviving right now.");
+    }
+
     if ((s.snacks[id] || 0) <= 0) {
       return toast("You are out of that snack. Buy more.");
     }
@@ -1859,6 +1949,22 @@
 
       log("Astral Tea tripled mana regeneration for 30 seconds.");
       toast("Mana regeneration boosted for 30 seconds!");
+    } else if (snack.effect === "revive") {
+      const fallen = s.heroes.find(
+        (heroId) => (s.heroHp[heroId] || 0) <= 0
+      );
+
+      // A failed revive should never consume a snack.
+      if (!fallen) {
+        s.snacks[id] += 1;
+        return toast("No hero needs reviving right now.");
+      }
+
+      s.heroHp[fallen] = Math.ceil(HEROES[fallen].maxHp * 0.4);
+      showDamage("REVIVE", "party", true);
+      announce(`Notice: ${HEROES[fallen].name} has been revived by a Revive Snack.`);
+      log(`${HEROES[fallen].name} was revived with a Revive Snack at 40% HP.`);
+      toast(`${HEROES[fallen].name} has been revived!`);
     }
 
     render();
@@ -2063,6 +2169,9 @@
       const count = s.snacks[snack.id] || 0;
       const noManaNeeded =
         snack.effect === "mana" && s.mana >= maxMana();
+      const noReviveNeeded =
+        snack.effect === "revive" &&
+        !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0);
 
       return `
         <article class="snack-card">
@@ -2076,7 +2185,7 @@
             <button
               data-action="useSnack"
               data-value="${snack.id}"
-              ${count <= 0 || battleLocked() || noManaNeeded ? "disabled" : ""}
+              ${count <= 0 || battleLocked() || noManaNeeded || noReviveNeeded ? "disabled" : ""}
             >Use</button>
             <button
               data-action="buySnack"
@@ -2272,7 +2381,7 @@
       $("status").textContent = "● IN COMBAT";
 
       $("hint").textContent =
-        "Your party fights automatically. Great Sage can advise you when an enemy attacks or a hero needs help.";
+        "Your party fights automatically. Great Sage speaks up when a hero needs help or a major event occurs.";
     } else {
       $("battleTitle").textContent = "The Crystal Road";
       $("enemyName").textContent = "No enemy nearby";
@@ -2366,6 +2475,54 @@
     renderHospital();
     renderLog();
     refreshSagePanel();
+  }
+
+  // ==========================================
+  // RESET GAME
+  // ==========================================
+
+  function resetGame() {
+    const confirmed = window.confirm(
+      "Reset the Crystal Kingdom game? This erases your saved progress on this browser."
+    );
+
+    if (!confirmed) return;
+
+    clearTimeout(exploreTimer);
+    clearTimeout(toastTimer);
+
+    speechGeneration++;
+    speechQueue.length = 0;
+    speechBusy = false;
+    currentUtterance = null;
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    try {
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(OLD_SAVE_KEY);
+    } catch (error) {
+      console.warn("Could not clear the previous save.", error);
+    }
+
+    s = clone(defaults);
+    logs = [];
+    currentPrompt = null;
+    lowHealthWarning = false;
+    partyClock = 0;
+    enemyClock = 0;
+    supportClock = 0;
+    renderClock = 0;
+    lastTick = performance.now();
+    lastImportantSound = 0;
+    sageEnabled = true;
+
+    save();
+    render();
+    scheduleExplore();
+    toast("Game reset. Your new adventure begins!");
   }
 
   // ==========================================
