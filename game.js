@@ -279,7 +279,7 @@
       id: "revive",
       name: "Revive Snack",
       icon: "🔥",
-      cost: 5000,
+      cost: 250,
       desc: "Revive one fallen hero at 40% HP. Cannot be used after the whole party falls.",
       effect: "revive"
     }
@@ -1491,8 +1491,8 @@
     s.healingUntil = 0;
 
     s.hospitalFee = Math.floor(
-      250 + s.region * 150 + Math.floor(s.defeated / 10) * 50
-    );
+    400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
+  );
 
     playImportantSound();
 
