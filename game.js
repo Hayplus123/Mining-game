@@ -5,11 +5,13 @@
   const SAVE_KEY = "gemMinerCrystalKingdom_v3";
   const OLD_SAVE_KEY = "gemMinerCrystalKingdom_v2";
 
+  // HEROES
+  // These use the SVG character files already in your assets folder.
   const HEROES = {
     aiden: {
       name: "Aiden",
       role: "Knight · Front line",
-      portrait: "assets/aiden.webp",
+      portrait: "assets/knight.svg",
       maxHp: 145,
       damage: 12,
       tagline: "Loyal, sturdy, and always up front."
@@ -17,7 +19,7 @@
     seraphine: {
       name: "Seraphine",
       role: "Mage · Arcane DPS",
-      portrait: "assets/seraphine.webp",
+      portrait: "assets/mage.svg",
       maxHp: 92,
       damage: 17,
       tagline: "Turns crystal magic into firepower."
@@ -25,7 +27,7 @@
     liria: {
       name: "Liria",
       role: "Archer · Ranged DPS",
-      portrait: "assets/liria.webp",
+      portrait: "assets/archer.svg",
       maxHp: 104,
       damage: 15,
       tagline: "Quick shots from a safe distance."
@@ -33,7 +35,7 @@
     celeste: {
       name: "Celeste",
       role: "Healer · Support",
-      portrait: "assets/celeste.webp",
+      portrait: "assets/hero-mage.svg",
       maxHp: 112,
       damage: 8,
       tagline: "Keeps the team in the fight."
@@ -41,7 +43,7 @@
     ragnar: {
       name: "Ragnar",
       role: "Berserker · Heavy DPS",
-      portrait: "assets/ragnar.webp",
+      portrait: "assets/knight.svg",
       maxHp: 128,
       damage: 24,
       tagline: "Big hits. Bigger smiles."
@@ -49,7 +51,7 @@
     kael_rogue: {
       name: "Kael",
       role: "Rogue · Critical DPS",
-      portrait: "assets/kael_rogue.webp",
+      portrait: "assets/archer.svg",
       maxHp: 98,
       damage: 19,
       tagline: "Fast feet and precise strikes."
@@ -57,13 +59,14 @@
     sage: {
       name: "Sage",
       role: "Druid · Nature Support",
-      portrait: "assets/sage.webp",
+      portrait: "assets/hero-mage.svg",
       maxHp: 118,
       damage: 13,
       tagline: "The forest answers the call."
     }
   };
 
+  // CAVES AND ENEMIES
   const regions = [
     {
       name: "The Shattered Cavern",
@@ -127,12 +130,13 @@
     }
   ];
 
+  // RECRUITABLE SUPPORT CHARACTERS
   const RECRUITS = [
     {
       id: "tessa",
       name: "Tessa",
       role: "Miner",
-      portrait: "assets/tessa.webp",
+      portrait: "assets/knight.svg",
       cost: 55,
       desc: "+0.8 gold per second",
       effect: "gold"
@@ -141,7 +145,7 @@
       id: "borin",
       name: "Borin",
       role: "Miner",
-      portrait: "assets/borin.webp",
+      portrait: "assets/knight.svg",
       cost: 80,
       desc: "+1.3 gold per second",
       effect: "gold"
@@ -150,7 +154,7 @@
       id: "luna",
       name: "Luna",
       role: "Gatherer",
-      portrait: "assets/luna.webp",
+      portrait: "assets/archer.svg",
       cost: 95,
       desc: "+20% crystals from mining",
       effect: "mine"
@@ -159,7 +163,7 @@
       id: "silas",
       name: "Silas",
       role: "Scholar",
-      portrait: "assets/silas.webp",
+      portrait: "assets/mage.svg",
       cost: 125,
       desc: "+15% skill damage",
       effect: "skill"
@@ -168,7 +172,7 @@
       id: "mira_cook",
       name: "Mira",
       role: "Cook",
-      portrait: "assets/mira_cook.webp",
+      portrait: "assets/hero-mage.svg",
       cost: 115,
       desc: "+25% snack healing",
       effect: "snack"
@@ -177,7 +181,7 @@
       id: "juno",
       name: "Juno",
       role: "Alchemist",
-      portrait: "assets/juno.webp",
+      portrait: "assets/mage.svg",
       cost: 150,
       desc: "+1 ore when mining",
       effect: "ore"
@@ -186,7 +190,7 @@
       id: "darius",
       name: "Darius",
       role: "Crossbowman",
-      portrait: "assets/darius.webp",
+      portrait: "assets/archer.svg",
       cost: 190,
       desc: "+6 party attack damage",
       effect: "damage"
@@ -195,7 +199,7 @@
       id: "elise",
       name: "Elise",
       role: "Spirit Guide",
-      portrait: "assets/elise.webp",
+      portrait: "assets/hero-mage.svg",
       cost: 225,
       desc: "+20% healing power",
       effect: "heal"
@@ -204,13 +208,14 @@
       id: "kellan",
       name: "Kellan",
       role: "Engineer",
-      portrait: "assets/kellan.webp",
+      portrait: "assets/knight.svg",
       cost: 270,
       desc: "+0.3 crystals per second",
       effect: "crystals"
     }
   ];
 
+  // CONSUMABLE ITEMS
   const SNACKS = [
     {
       id: "rations",
@@ -230,7 +235,7 @@
     },
     {
       id: "tea",
-      name: "Miner’s Tea",
+      name: "Miner's Tea",
       icon: "🍵",
       cost: 32,
       desc: "Gain 4 ore for crafting and upgrades.",
@@ -247,34 +252,43 @@
   ];
 
   const clone = (value) => JSON.parse(JSON.stringify(value));
+
   const initialHeroes = ["aiden", "seraphine", "liria"];
 
   const baseHeroHp = Object.fromEntries(
     initialHeroes.map((id) => [id, HEROES[id].maxHp])
   );
 
+  // DEFAULT SAVE DATA
   const defaults = {
     gold: 75,
     crystals: 35,
     ore: 0,
+
     pickaxe: 1,
     speedLevel: 0,
     damageLevel: 0,
     critLevel: 0,
+
     region: 0,
     defeated: 0,
     bossDefeated: [],
+
     enemy: null,
     bossMode: false,
+
     heroes: initialHeroes.slice(),
     heroHp: baseHeroHp,
+
     recruits: [],
+
     snacks: {
       rations: 2,
       moonberries: 1,
       tea: 1,
       cake: 0
     },
+
     cooldowns: {
       slash: 0,
       burst: 0,
@@ -284,15 +298,19 @@
       frost: 0,
       phoenix: 0
     },
+
     partyBuffUntil: 0,
     frostUntil: 0,
     guardCharges: 0,
+
     needsHospital: false,
     hospitalFee: 0,
     healingUntil: 0,
+
     lastLog: []
   };
 
+  // LOAD SAVED GAME
   function loadGame() {
     let stored = {};
 
@@ -303,10 +321,7 @@
         "{}"
       ) || {};
     } catch (error) {
-      console.warn(
-        "Could not read the saved game; starting a clean save.",
-        error
-      );
+      console.warn("Could not read saved game.", error);
     }
 
     const state = {
@@ -331,7 +346,7 @@
 
     state.recruits = Array.isArray(stored.recruits)
       ? stored.recruits.filter((id) =>
-          RECRUITS.some((r) => r.id === id)
+          RECRUITS.some((recruit) => recruit.id === id)
         )
       : [];
 
@@ -344,10 +359,12 @@
       ...(stored.heroHp || {})
     };
 
+    // Migrate an older healer-unlock save.
     if (stored.healer && !state.heroes.includes("celeste")) {
       state.heroes.push("celeste");
     }
 
+    // Restore heroes already earned from bosses.
     state.bossDefeated.forEach((index) => {
       const reward = regions[index] && regions[index].rewardHero;
 
@@ -380,14 +397,20 @@
   let s = loadGame();
   let logs = Array.isArray(s.lastLog) ? s.lastLog : [];
 
+  // TIMERS
   let partyClock = 0;
   let enemyClock = 0;
+
+  // Celeste's passive-healing timer.
+  // This timer is no longer limited to battles.
   let supportClock = 0;
+
   let lastTick = performance.now();
   let renderClock = 0;
   let exploreTimer = 0;
   let toastTimer = 0;
 
+  // HELPER FUNCTIONS
   const fmt = (n) =>
     Math.max(0, Math.floor(Number(n) || 0)).toLocaleString();
 
@@ -457,6 +480,7 @@
     );
   }
 
+  // LOG AND MESSAGE DISPLAY
   function log(message) {
     logs.unshift({
       time: new Date().toLocaleTimeString([], {
@@ -511,7 +535,9 @@
         ? 35 + Math.random() * 12
         : 45 + Math.random() * 10) + "%";
 
-    if (healing) span.style.color = "#a4edc0";
+    if (healing) {
+      span.style.color = "#a4edc0";
+    }
 
     scene.appendChild(span);
     setTimeout(() => span.remove(), 950);
@@ -552,6 +578,7 @@
     return true;
   }
 
+  // AUTOMATIC EXPLORATION
   function scheduleExplore(delay = 10000 + Math.random() * 10000) {
     clearTimeout(exploreTimer);
 
@@ -562,17 +589,19 @@
     exploreTimer = setTimeout(() => {
       if (!s.enemy && !battleLocked() && livingHeroes().length) {
         explore();
-      } else {
+      } else if (!battleLocked() && livingHeroes().length) {
         scheduleExplore();
       }
     }, delay);
   }
 
+  // SPAWN AN ENEMY OR BOSS
   function spawn(boss = false) {
     if (!canStartBattle() || s.enemy) return;
 
     const r = region();
     const scale = Math.pow(1.65, s.region);
+
     s.bossMode = boss;
 
     if (boss) {
@@ -615,7 +644,6 @@
 
     partyClock = 0;
     enemyClock = 0;
-    supportClock = 0;
 
     render();
     save();
@@ -653,6 +681,7 @@
     }
   }
 
+  // MANUAL MINING
   function mine() {
     const bonus = s.recruits.includes("luna") ? 1.2 : 1;
 
@@ -678,6 +707,7 @@
     save();
   }
 
+  // PARTY ATTACKS
   function partyAttack() {
     if (!s.enemy || battleLocked()) return;
 
@@ -699,8 +729,13 @@
         s.damageLevel * 4 +
         (s.recruits.includes("darius") ? 6 : 0);
 
-      if (s.partyBuffUntil > Date.now()) amount *= 1.25;
-      if (s.recruits.includes("silas")) amount *= 1.15;
+      if (s.partyBuffUntil > Date.now()) {
+        amount *= 1.25;
+      }
+
+      if (s.recruits.includes("silas")) {
+        amount *= 1.15;
+      }
 
       const chance = Math.min(
         0.5,
@@ -737,6 +772,7 @@
     save();
   }
 
+  // ENEMY ATTACKS
   function enemyAttack() {
     if (!s.enemy || battleLocked()) return;
 
@@ -798,6 +834,7 @@
     save();
   }
 
+  // PARTY DEFEAT AND HOSPITAL
   function partyWiped() {
     if (s.needsHospital || isRecovering()) return;
 
@@ -830,6 +867,7 @@
     save();
   }
 
+  // VICTORY
   function defeatEnemy() {
     const e = s.enemy;
     if (!e) return;
@@ -857,7 +895,10 @@
         s.heroes.push(rewardId);
         s.heroHp[rewardId] = HEROES[rewardId].maxHp;
 
-        log(`${HEROES[rewardId].name} joined the party after the cave clear!`);
+        log(
+          `${HEROES[rewardId].name} joined the party after the cave clear!`
+        );
+
         toast(`NEW HERO JOINED: ${HEROES[rewardId].name}!`);
       } else {
         toast("Guardian defeated! Cave cleared.");
@@ -872,7 +913,10 @@
         );
       }
     } else {
-      log(`${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`);
+      log(
+        `${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`
+      );
+
       toast(`Victory! +${e.gold} gold · +${e.crystals} crystals`);
     }
 
@@ -881,10 +925,12 @@
 
     partyClock = 0;
     enemyClock = 0;
-    supportClock = 0;
 
     livingHeroes().forEach((id) => {
-      s.heroHp[id] = Math.min(HEROES[id].maxHp, s.heroHp[id] + 7);
+      s.heroHp[id] = Math.min(
+        HEROES[id].maxHp,
+        s.heroHp[id] + 7
+      );
     });
 
     render();
@@ -892,6 +938,7 @@
     scheduleExplore();
   }
 
+  // SKILLS
   function skill(key) {
     if (battleLocked()) {
       return toast(
@@ -936,41 +983,56 @@
 
       showDamage("RADIANT -" + amount, "enemy");
       enemyHitEffect();
+
       log(`Radiant Slash deals ${amount} damage.`);
     } else if (key === "burst") {
-      const amount = Math.floor((72 + s.region * 20) * skillBonus);
+      const amount = Math.floor(
+        (72 + s.region * 20) * skillBonus
+      );
 
       s.enemy.hp -= amount;
       s.cooldowns.burst = 14;
 
       showDamage("ARCANE -" + amount, "enemy");
       enemyHitEffect();
+
       log(`Arcane Burst deals ${amount} damage.`);
     } else if (key === "guard") {
       const living = livingHeroes();
 
       living.forEach((id) => {
-        s.heroHp[id] = Math.min(HEROES[id].maxHp, s.heroHp[id] + 12);
+        s.heroHp[id] = Math.min(
+          HEROES[id].maxHp,
+          s.heroHp[id] + 12
+        );
       });
 
       s.guardCharges = 1;
       s.cooldowns.guard = 18;
 
       showDamage("Aegis +12", "party", true);
-      log("Aegis Guard healed the living party and will soften the next hit.");
+
+      log(
+        "Aegis Guard healed the living party and will soften the next hit."
+      );
     } else if (key === "heal") {
       const living = livingHeroes();
+
       const amount = Math.floor(
         28 * (s.recruits.includes("elise") ? 1.2 : 1)
       );
 
       living.forEach((id) => {
-        s.heroHp[id] = Math.min(HEROES[id].maxHp, s.heroHp[id] + amount);
+        s.heroHp[id] = Math.min(
+          HEROES[id].maxHp,
+          s.heroHp[id] + amount
+        );
       });
 
       s.cooldowns.heal = 14;
 
       showDamage("HEAL +" + amount, "party", true);
+
       log(
         `Celeste's Healing Wave restores up to ${amount} HP to each living ally.`
       );
@@ -984,6 +1046,7 @@
 
       showDamage("METEOR -" + amount, "enemy");
       enemyHitEffect();
+
       log(`Meteor Rain crashes down for ${amount} damage.`);
     } else if (key === "frost") {
       const amount = Math.floor(
@@ -996,7 +1059,10 @@
 
       showDamage("FROST -" + amount, "enemy");
       enemyHitEffect();
-      log(`Frost Nova deals ${amount} damage and slows the enemy for 8 seconds.`);
+
+      log(
+        `Frost Nova deals ${amount} damage and slows the enemy for 8 seconds.`
+      );
     } else if (key === "phoenix") {
       const fallen = s.heroes.find(
         (id) => (s.heroHp[id] || 0) <= 0
@@ -1010,6 +1076,7 @@
       s.cooldowns.phoenix = 45;
 
       showDamage("REVIVE", "party", true);
+
       log(`${HEROES[fallen].name} returns with 40% HP!`);
     }
 
@@ -1021,6 +1088,7 @@
     save();
   }
 
+  // UPGRADES
   function upgrade(kind) {
     if (kind === "pickaxe") {
       const cost = pickCost();
@@ -1045,7 +1113,10 @@
       s.speedLevel += 1;
       partyClock = 0;
 
-      log(`Party attack interval is now ${pInterval().toFixed(1)} seconds.`);
+      log(
+        `Party attack interval is now ${pInterval().toFixed(1)} seconds.`
+      );
+
       toast("Party tempo improved!");
     } else if (kind === "damage") {
       const cost = damageCost();
@@ -1077,31 +1148,41 @@
     save();
   }
 
+  // RECRUIT CHARACTERS
   function hireRecruit(id) {
     const recruit = RECRUITS.find((entry) => entry.id === id);
 
     if (!recruit || s.recruits.includes(id)) return;
 
     if (s.gold < recruit.cost) {
-      return toast(`You need ${recruit.cost} gold to recruit ${recruit.name}.`);
+      return toast(
+        `You need ${recruit.cost} gold to recruit ${recruit.name}.`
+      );
     }
 
     s.gold -= recruit.cost;
     s.recruits.push(id);
 
-    log(`${recruit.name} joined your kingdom as a ${recruit.role.toLowerCase()}.`);
+    log(
+      `${recruit.name} joined your kingdom as a ${recruit.role.toLowerCase()}.`
+    );
+
     toast(`${recruit.name} joined the kingdom!`);
 
     render();
     save();
   }
 
+  // USE SNACKS
   function useSnack(id) {
     const snack = SNACKS.find((entry) => entry.id === id);
+
     if (!snack) return;
 
     if (battleLocked()) {
-      return toast("Snacks can be used once the party has finished recovering.");
+      return toast(
+        "Snacks can be used once the party has finished recovering."
+      );
     }
 
     if (!livingHeroes().length) {
@@ -1109,7 +1190,9 @@
     }
 
     if ((s.snacks[id] || 0) <= 0) {
-      return toast("You are out of that snack. Buy more in the supply stall.");
+      return toast(
+        "You are out of that snack. Buy more in the supply stall."
+      );
     }
 
     s.snacks[id] -= 1;
@@ -1123,6 +1206,7 @@
 
       if (living.length) {
         const idToHeal = living[0];
+
         const amount = Math.floor(
           35 * (s.recruits.includes("mira_cook") ? 1.25 : 1)
         );
@@ -1133,14 +1217,19 @@
         );
 
         showDamage("+" + amount, "party", true);
-        log(`Trail Rations restored ${amount} HP to ${HEROES[idToHeal].name}.`);
+
+        log(
+          `Trail Rations restored ${amount} HP to ${HEROES[idToHeal].name}.`
+        );
       }
     } else if (snack.effect === "buff") {
       s.partyBuffUntil = Date.now() + 20000;
+
       log("Moonberries boosted party damage for 20 seconds.");
     } else if (snack.effect === "ore") {
       s.ore += 4;
-      log("Miner’s Tea refreshed the crew. +4 ore.");
+
+      log("Miner's Tea refreshed the crew. +4 ore.");
     } else if (snack.effect === "healAll") {
       const amount = Math.floor(
         24 * (s.recruits.includes("mira_cook") ? 1.25 : 1)
@@ -1154,7 +1243,10 @@
       });
 
       showDamage("TEAM +" + amount, "party", true);
-      log(`Crystal Cake restored up to ${amount} HP to each living hero.`);
+
+      log(
+        `Crystal Cake restored up to ${amount} HP to each living hero.`
+      );
     }
 
     toast(`${snack.name} used.`);
@@ -1164,10 +1256,13 @@
 
   function buySnack(id) {
     const snack = SNACKS.find((entry) => entry.id === id);
+
     if (!snack) return;
 
     if (s.gold < snack.cost) {
-      return toast(`You need ${snack.cost} gold to buy ${snack.name}.`);
+      return toast(
+        `You need ${snack.cost} gold to buy ${snack.name}.`
+      );
     }
 
     s.gold -= snack.cost;
@@ -1180,18 +1275,21 @@
     save();
   }
 
+  // HOSPITAL PAYMENT
   function payHeal() {
     if (!s.needsHospital || isRecovering()) return;
 
     if (s.gold < s.hospitalFee) {
       return toast(
-        `You need ${s.hospitalFee} gold to pay the healing fee. Mine crystals for a little more gold.`
+        `You need ${s.hospitalFee} gold to pay the healing fee.`
       );
     }
 
     s.gold -= s.hospitalFee;
     s.needsHospital = false;
     s.healingUntil = Date.now() + 60000;
+
+    supportClock = 0;
 
     log(
       `Paid ${s.hospitalFee} gold. Treatment has started; battles are paused for one minute.`
@@ -1213,7 +1311,12 @@
     s.hospitalFee = 0;
     s.guardCharges = 0;
 
-    log("Treatment complete. The entire party has recovered to full HP.");
+    supportClock = 0;
+
+    log(
+      "Treatment complete. The entire party has recovered to full HP."
+    );
+
     toast("Your party is back on its feet!");
 
     render();
@@ -1221,17 +1324,24 @@
     scheduleExplore();
   }
 
+  // RESET GAME
   function resetGame() {
-    if (!confirm("Reset all Gem Miner progress on this device? This cannot be undone.")) {
+    if (
+      !confirm(
+        "Reset all Gem Miner progress on this device? This cannot be undone."
+      )
+    ) {
       return;
     }
 
     clearTimeout(exploreTimer);
+
     localStorage.removeItem(SAVE_KEY);
     localStorage.removeItem(OLD_SAVE_KEY);
 
     s = clone(defaults);
     logs = [];
+
     partyClock = 0;
     enemyClock = 0;
     supportClock = 0;
@@ -1243,12 +1353,12 @@
     scheduleExplore();
   }
 
+  // RENDER PARTY CHARACTERS
   function renderParty() {
     const party = $("battleParty");
     const cards = $("companions");
-    const active = s.heroes;
 
-    party.innerHTML = active.map((id) => {
+    party.innerHTML = s.heroes.map((id) => {
       const h = HEROES[id];
       const hp = s.heroHp[id] || 0;
       const down = hp <= 0;
@@ -1263,7 +1373,7 @@
       `;
     }).join("");
 
-    cards.innerHTML = active.map((id) => {
+    cards.innerHTML = s.heroes.map((id) => {
       const h = HEROES[id];
       const hp = s.heroHp[id] || 0;
       const down = hp <= 0;
@@ -1280,17 +1390,22 @@
             <div class="minibar">
               <i style="width:${pct}%"></i>
             </div>
-            <small>${down ? "DOWN" : `HP ${Math.floor(hp)} / ${h.maxHp}`}</small>
+            <small>
+              ${down ? "DOWN" : `HP ${Math.floor(hp)} / ${h.maxHp}`}
+            </small>
           </div>
         </article>
       `;
     }).join("");
 
-    $("partyPower").textContent = `PARTY POWER · ${fmt(totalPartyDamage())}`;
+    $("partyPower").textContent =
+      `PARTY POWER · ${fmt(totalPartyDamage())}`;
+
     $("partyAttackLabel").textContent =
       `Attack interval: ${pInterval().toFixed(1)}s`;
   }
 
+  // DISPLAY BOSS REWARD
   function renderRewards() {
     const next = $("nextHeroCard");
     const rewardId = region().rewardHero;
@@ -1324,11 +1439,12 @@
         </div>
       </div>
       <small class="reward-note">
-        Defeat this cave’s guardian to recruit ${esc(h.name)} automatically.
+        Defeat this cave's guardian to recruit ${esc(h.name)} automatically.
       </small>
     `;
   }
 
+  // DISPLAY SNACKS
   function renderSnacks() {
     $("snackGrid").innerHTML = SNACKS.map((snack) => {
       const count = s.snacks[snack.id] || 0;
@@ -1358,6 +1474,7 @@
     }).join("");
   }
 
+  // DISPLAY RECRUITS
   function renderRecruits() {
     $("recruitCount").textContent = `${s.recruits.length} hired`;
 
@@ -1366,7 +1483,11 @@
 
       return `
         <article class="recruit-card ${hired ? "hired" : ""}">
-          <img src="${recruit.portrait}" alt="${esc(recruit.name)}" loading="lazy">
+          <img
+            src="${recruit.portrait}"
+            alt="${esc(recruit.name)}"
+            loading="lazy"
+          >
           <div class="recruit-copy">
             <b>${esc(recruit.name)}</b>
             <small>${esc(recruit.role)}</small>
@@ -1376,12 +1497,15 @@
             data-action="hire"
             data-value="${recruit.id}"
             ${hired || s.gold < recruit.cost ? "disabled" : ""}
-          >${hired ? "Hired" : `Hire · ${recruit.cost} G`}</button>
+          >
+            ${hired ? "Hired" : `Hire · ${recruit.cost} G`}
+          </button>
         </article>
       `;
     }).join("");
   }
 
+  // DISPLAY HOSPITAL
   function renderHospital() {
     const panel = $("hospitalPanel");
     const timer = isRecovering();
@@ -1429,12 +1553,14 @@
     }
   }
 
+  // UPDATE THE GAME UI
   function render() {
     $("gold").textContent = fmt(s.gold);
     $("crystals").textContent = fmt(s.crystals);
     $("ore").textContent = fmt(s.ore);
 
     $("regionName").textContent = region().name;
+
     $("regionNumber").textContent =
       `CAVE ${String(s.region + 1).padStart(2, "0")}`;
 
@@ -1459,10 +1585,15 @@
         : "Challenge guardian";
 
     $("bossBtn").disabled =
-      bossDone() || !!s.enemy || battleLocked() || !livingHeroes().length;
+      bossDone() ||
+      !!s.enemy ||
+      battleLocked() ||
+      !livingHeroes().length;
 
     $("exploreBtn").disabled =
-      !!s.enemy || battleLocked() || !livingHeroes().length;
+      !!s.enemy ||
+      battleLocked() ||
+      !livingHeroes().length;
 
     $("mineBtn").disabled = false;
 
@@ -1483,9 +1614,10 @@
         `${Math.max(0, s.enemy.hp / s.enemy.maxHp * 100)}%`;
 
       $("enemySprite").src = s.enemy.sprite;
+      $("enemySprite").alt = s.enemy.name;
 
       $("caption").textContent = s.enemy.boss
-        ? "A guardian’s ancient power surges…"
+        ? "A guardian's ancient power surges…"
         : "The party fights together!";
 
       $("status").textContent =
@@ -1513,6 +1645,7 @@
     }
 
     $("pickaxeLevel").textContent = `Level ${s.pickaxe} / 10`;
+
     $("pickaxeCost").textContent =
       s.pickaxe >= 10 ? "MAX" : `${fmt(pickCost())} C`;
 
@@ -1599,6 +1732,7 @@
     renderLog();
   }
 
+  // ALL BUTTONS USE ONE CLICK HANDLER
   document.addEventListener("click", (event) => {
     const skillButton = event.target.closest("[data-skill]");
 
@@ -1673,10 +1807,13 @@
     }
   });
 
+  // KEYBOARD SHORTCUTS FOR SKILLS
   document.addEventListener("keydown", (event) => {
     if (
       event.repeat ||
-      ["INPUT", "TEXTAREA", "SELECT"].includes(document.activeElement.tagName)
+      ["INPUT", "TEXTAREA", "SELECT"].includes(
+        document.activeElement.tagName
+      )
     ) {
       return;
     }
@@ -1693,38 +1830,47 @@
 
     const key = shortcuts[event.key.toLowerCase()];
 
-    if (key) skill(key);
+    if (key) {
+      skill(key);
+    }
   });
 
+  // MAIN GAME LOOP
   function tick() {
     const now = Date.now();
 
+    const currentPerformanceTime = performance.now();
+
     const dt = Math.min(
       0.5,
-      Math.max(0, (performance.now() - lastTick) / 1000)
+      Math.max(0, (currentPerformanceTime - lastTick) / 1000)
     );
 
-    lastTick = performance.now();
+    lastTick = currentPerformanceTime;
 
+    // Complete hospital recovery when the minute has elapsed.
     if (s.healingUntil && now >= s.healingUntil) {
       finishHealing();
     }
 
-    let goldRate =
+    // RECRUIT PASSIVE INCOME
+    const goldRate =
       (s.recruits.includes("tessa") ? 0.8 : 0) +
       (s.recruits.includes("borin") ? 1.3 : 0);
 
-    let crystalRate =
+    const crystalRate =
       s.recruits.includes("kellan") ? 0.3 : 0;
 
     s.gold += goldRate * dt;
     s.crystals += crystalRate * dt;
 
+    // BATTLE TIMERS AND SKILL COOLDOWNS
     if (!battleLocked()) {
       Object.keys(s.cooldowns).forEach((key) => {
         s.cooldowns[key] = Math.max(0, s.cooldowns[key] - dt);
       });
 
+      // Combat timers only run when an enemy exists.
       if (s.enemy) {
         partyClock += dt;
         enemyClock += dt;
@@ -1742,44 +1888,58 @@
           enemyClock = 0;
           enemyAttack();
         }
+      }
 
-        // Celeste's passive healing works both in and out of battle.
-if (
-  s.heroes.includes("celeste") &&
-  livingHeroes().includes("celeste")
-) {
-  supportClock += dt;
+      // ----------------------------------------------------
+      // CELESTE'S PASSIVE HEALING
+      //
+      // IMPORTANT:
+      // This block is OUTSIDE "if (s.enemy)".
+      // Therefore it works both during combat and outside it.
+      // Every 10 seconds, each living hero can recover HP.
+      // ----------------------------------------------------
+      const celesteAlive =
+        s.heroes.includes("celeste") &&
+        livingHeroes().includes("celeste");
 
-  if (supportClock >= 10) {
-    supportClock = 0;
+      if (celesteAlive) {
+        supportClock += dt;
 
-    const healed =
-      7 + (s.recruits.includes("elise") ? 4 : 0);
+        if (supportClock >= 10) {
+          supportClock -= 10;
 
-    const activeParty = livingHeroes();
-    let healedAnyone = false;
+          const healed =
+            7 + (s.recruits.includes("elise") ? 4 : 0);
 
-    for (const id of activeParty) {
-      const oldHp = s.heroHp[id];
-      const maxHp = HEROES[id].maxHp;
-      const newHp = Math.min(maxHp, oldHp + healed);
-      const actualHealing = newHp - oldHp;
+          const activeParty = livingHeroes();
+          let healedAnyone = false;
 
-      if (actualHealing > 0) {
-        s.heroHp[id] = newHp;
-        showDamage("+" + actualHealing, "party", true);
-        healedAnyone = true;
+          for (const id of activeParty) {
+            const oldHp = s.heroHp[id];
+            const maxHp = HEROES[id].maxHp;
+            const newHp = Math.min(maxHp, oldHp + healed);
+            const actualHealing = newHp - oldHp;
+
+            if (actualHealing > 0) {
+              s.heroHp[id] = newHp;
+              showDamage("+" + actualHealing, "party", true);
+              healedAnyone = true;
+            }
+          }
+
+          if (healedAnyone) {
+            log(
+              `Celeste's healing aura restores up to ${healed} HP to every living party member.`
+            );
+          }
+        }
+      } else {
+        // If Celeste falls, restart the countdown.
+        supportClock = 0;
       }
     }
 
-    if (healedAnyone) {
-      log(
-        `Celeste's healing aura restores up to ${healed} HP to every living party member.`
-      );
-    }
-  }
-}
-
+    // REFRESH THE DISPLAY
     renderClock += dt;
 
     if (renderClock >= 0.25) {
@@ -1787,6 +1947,7 @@ if (
       render();
     }
 
+    // SAVE PROGRESS EVERY FEW SECONDS
     if (
       Math.floor(now / 5000) !==
       Math.floor((now - dt * 1000) / 5000)
@@ -1795,10 +1956,12 @@ if (
     }
   }
 
+  // REPAIR A SAVE WITH AN ENEMY THAT HAS NO MAXIMUM HP.
   if (s.enemy && !s.enemy.maxHp) {
     s.enemy.maxHp = s.enemy.hp;
   }
 
+  // START THE GAME
   if (!logs.length) {
     log("The crystal road awaits. Your party is ready.");
   }
@@ -1811,5 +1974,6 @@ if (
   }
 
   window.gemMinerReady = true;
+
   window.setInterval(tick, 200);
 })();
