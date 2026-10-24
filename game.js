@@ -1006,22 +1006,195 @@ function buySnack(id) {
 
 /* ---------- RENDERING ---------- */
 
-function avatar(id) {
-  const hero = HEROES[id];
 
-  // If your SVG portrait is missing, the emoji remains visible.
-  return `<div class="avatar">
-    <img src="${hero.sprite}" alt="" onerror="this.style.display='none'">
-    <span class="fallback">${hero.emoji}</span>
-  </div>`;
+const HERO_ART = {
+  aiden: {
+    skin:"#edbd99", hair:"#49302b", eyes:"#273f62",
+    cloak:"#293c69", armor:"#6483ba", trim:"#f2d28a",
+    bg1:"#514174", bg2:"#192b49", style:"knight"
+  },
+  seraphine: {
+    skin:"#f2c9ad", hair:"#743c91", eyes:"#82e9ff",
+    cloak:"#563e85", armor:"#7568bb", trim:"#c4a8ff",
+    bg1:"#5f397b", bg2:"#182c50", style:"mage"
+  },
+  liria: {
+    skin:"#dca987", hair:"#a95b39", eyes:"#a9f0cb",
+    cloak:"#285d65", armor:"#468b85", trim:"#e7c887",
+    bg1:"#285a66", bg2:"#182a45", style:"archer"
+  },
+  celeste: {
+    skin:"#f3c9b6", hair:"#79bfdc", eyes:"#69e4e1",
+    cloak:"#386b98", armor:"#e1f3fa", trim:"#f6d58d",
+    bg1:"#356f99", bg2:"#202b51", style:"healer"
+  },
+  ragnar: {
+    skin:"#d99d7b", hair:"#e65b36", eyes:"#ffc766",
+    cloak:"#702c38", armor:"#8f3b43", trim:"#ffcb75",
+    bg1:"#8a3d46", bg2:"#2c1b37", style:"berserker"
+  },
+  kael: {
+    skin:"#d6a68d", hair:"#272b4c", eyes:"#c6a5ff",
+    cloak:"#242943", armor:"#49466b", trim:"#c0b4e9",
+    bg1:"#49406d", bg2:"#15182d", style:"rogue"
+  },
+  sage: {
+    skin:"#e6b99a", hair:"#6d9e65", eyes:"#b6f28b",
+    cloak:"#285942", armor:"#478364", trim:"#dfcf83",
+    bg1:"#36785a", bg2:"#172c36", style:"druid"
+  }
+};
+
+function heroPortraitSVG(id) {
+  const p = HERO_ART[id];
+  if (!p) return `<span>🧙</span>`;
+
+  const uid = "portrait-" + id;
+
+  const fringes = {
+    aiden:`<path d="M29 39 Q25 21 39 20 L45 29 L51 20 L60 29 L69 23 Q78 31 70 43 L61 36 L51 41 L41 34 Z" fill="${p.hair}"/>`,
+    seraphine:`<path d="M28 42 Q24 19 40 21 L47 30 L55 21 Q75 21 72 42 L61 37 L54 43 L43 35 L35 43 Z" fill="${p.hair}"/>`,
+    liria:`<path d="M26 40 Q26 19 43 21 L50 29 L59 21 Q76 24 72 43 L60 35 L49 42 L39 34 Z" fill="${p.hair}"/>`,
+    celeste:`<path d="M28 39 Q26 17 43 20 L49 29 L57 21 Q75 21 72 42 L62 36 L55 41 L43 34 L35 42 Z" fill="${p.hair}"/>`,
+    ragnar:`<path d="M27 42 L22 24 L37 29 L37 12 L49 24 L58 10 L63 27 L78 18 L72 42 L62 34 L51 42 L39 35 Z" fill="${p.hair}"/>`,
+    kael:`<path d="M26 43 Q20 19 42 19 L48 29 L59 19 Q77 23 72 44 L61 36 L53 42 L42 34 L34 43 Z" fill="${p.hair}"/>`,
+    sage:`<path d="M28 41 Q24 20 42 21 L49 30 L57 20 Q75 22 72 42 L62 35 L52 42 L42 34 L35 42 Z" fill="${p.hair}"/>`
+  };
+
+  let accessory = "";
+
+  if (p.style==="knight") {
+    accessory = `
+      <path d="M26 32 Q29 11 50 11 Q71 11 74 32 L68 40 L61 31 L50 36 L39 31 L31 40 Z"
+        fill="#92abd1" stroke="#e7d6a1" stroke-width="2"/>
+      <path d="M47 15 L50 27 L53 15" fill="#f7e5b4"/>
+      <path d="M38 39 L43 42 M57 42 L62 39" stroke="#263953" stroke-width="2"/>`;
+  }
+
+  if (p.style==="mage") {
+    accessory = `
+      <path d="M22 30 L43 19 L47 2 L57 18 L78 28 L64 30 L62 36 L37 36 L34 29 Z"
+        fill="#6e54a6" stroke="#d8b7ff" stroke-width="2"/>
+      <path d="M49 10 L52 16 L59 17 L54 21 L55 28 L49 24 L44 28 L45 21 L40 17 L47 16 Z"
+        fill="#9df5ff"/>`;
+  }
+
+  if (p.style==="archer") {
+    accessory = `
+      <path d="M27 42 Q11 20 36 12 L59 15 Q81 21 74 43 L64 34 L56 39 L45 32 L35 41 Z"
+        fill="#24515e" stroke="#6bb4a5" stroke-width="2"/>
+      <path d="M79 39 Q93 57 79 82" fill="none" stroke="#e5ca86" stroke-width="3"/>
+      <path d="M76 39 L80 33 M76 82 L80 88" stroke="#e5ca86" stroke-width="2"/>`;
+  }
+
+  if (p.style==="healer") {
+    accessory = `
+      <ellipse cx="50" cy="22" rx="23" ry="7"
+        fill="none" stroke="#f5e6a2" stroke-width="3"/>
+      <path d="M50 8 L53 17 L62 20 L53 23 L50 32 L47 23 L38 20 L47 17 Z"
+        fill="#fff1b2"/>
+      <path d="M62 62 L72 73 L65 79 L56 69 Z" fill="#91e8e7"/>`;
+  }
+
+  if (p.style==="berserker") {
+    accessory = `
+      <path d="M29 30 L16 17 L34 21 L33 5 L47 20 L55 3 L61 22 L81 11 L73 31"
+        fill="#ff944e" opacity=".9"/>
+      <path d="M31 38 L20 29 L33 30 L42 35 M69 38 L80 29 L67 30 L58 35"
+        fill="none" stroke="#f6c376" stroke-width="4"/>`;
+  }
+
+  if (p.style==="rogue") {
+    accessory = `
+      <path d="M23 45 Q19 15 50 11 Q82 17 77 45 L68 41 L62 30 L50 25 L38 30 L32 42 Z"
+        fill="#242741" stroke="#877ab4" stroke-width="2"/>
+      <path d="M28 46 L50 36 L72 46" fill="none" stroke="#a99bd9" stroke-width="2"/>
+      <path d="M27 66 L17 84 M73 66 L83 84" stroke="#d8e0f8" stroke-width="3"/>`;
+  }
+
+  if (p.style==="druid") {
+    accessory = `
+      <path d="M32 27 Q20 11 12 18 Q18 34 36 35 Z" fill="#8cc477" stroke="#d4eaa0" stroke-width="1.5"/>
+      <path d="M50 26 Q44 7 51 3 Q64 15 58 28 Z" fill="#acd982" stroke="#d4eaa0" stroke-width="1.5"/>
+      <path d="M66 32 Q80 14 88 23 Q80 39 65 38 Z" fill="#6cad79" stroke="#d4eaa0" stroke-width="1.5"/>
+      <path d="M47 28 L55 37 L65 28" fill="none" stroke="#d4eaa0" stroke-width="2"/>`;
+  }
+
+  return `
+  <svg class="character-art" viewBox="0 0 100 120"
+       xmlns="http://www.w3.org/2000/svg"
+       role="img" aria-label="${p.style} hero portrait">
+    <defs>
+      <linearGradient id="${uid}-bg" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${p.bg1}"/>
+        <stop offset="1" stop-color="${p.bg2}"/>
+      </linearGradient>
+      <linearGradient id="${uid}-coat" x1="0" y1="0" x2="1" y2="1">
+        <stop offset="0" stop-color="${p.armor}"/>
+        <stop offset="1" stop-color="${p.cloak}"/>
+      </linearGradient>
+    </defs>
+
+    <rect width="100" height="120" rx="10" fill="url(#${uid}-bg)"/>
+    <circle cx="50" cy="48" r="35" fill="${p.trim}" opacity=".10"/>
+    <path d="M4 120 Q8 84 29 76 L43 73 L57 73 L72 77 Q92 85 96 120 Z"
+      fill="${p.cloak}" stroke="${p.trim}" stroke-opacity=".7" stroke-width="1.5"/>
+    <path d="M26 120 L34 83 L50 91 L66 83 L76 120 Z"
+      fill="url(#${uid}-coat)"/>
+    <path d="M41 76 L50 90 L59 76"
+      fill="none" stroke="${p.trim}" stroke-width="3"/>
+
+    <path d="M40 65 L40 79 Q50 88 60 79 L60 65 Z"
+      fill="${p.skin}"/>
+
+    <path d="M25 47 Q20 18 50 17 Q80 18 75 47
+      L70 62 Q66 75 50 76 Q34 75 30 62 Z"
+      fill="${p.hair}"/>
+
+    <ellipse cx="50" cy="48" rx="20" ry="25" fill="${p.skin}"/>
+
+    <path d="M30 42 Q27 22 44 22 Q57 14 70 29
+      L70 42 L63 33 L54 37 L45 29 L37 42 Z"
+      fill="${p.hair}"/>
+
+    ${fringes[id] || ""}
+
+    <path d="M37 49 Q41 46 45 49"
+      fill="none" stroke="${p.hair}" stroke-width="2" stroke-linecap="round"/>
+    <path d="M55 49 Q59 46 63 49"
+      fill="none" stroke="${p.hair}" stroke-width="2" stroke-linecap="round"/>
+
+    <ellipse cx="41" cy="53" rx="3.5" ry="4" fill="${p.eyes}"/>
+    <ellipse cx="59" cy="53" rx="3.5" ry="4" fill="${p.eyes}"/>
+    <circle cx="42" cy="52" r="1.2" fill="white"/>
+    <circle cx="60" cy="52" r="1.2" fill="white"/>
+
+    <path d="M45 64 Q50 67 55 64"
+      fill="none" stroke="#a35e68" stroke-width="1.7" stroke-linecap="round"/>
+
+    <path d="M17 103 L29 85 L42 97 L50 91 L59 97 L72 85 L84 103"
+      fill="none" stroke="${p.trim}" stroke-opacity=".65" stroke-width="2"/>
+
+    ${accessory}
+
+    <path d="M8 10 L11 18 L19 21 L11 24 L8 32 L5 24 L0 21 L5 18 Z"
+      fill="#ffffff" opacity=".55"/>
+    <circle cx="87" cy="14" r="2" fill="${p.trim}"/>
+    <circle cx="87" cy="23" r="1.4" fill="#ffffff" opacity=".8"/>
+  </svg>`;
+}
+
+function avatar(id) {
+  return `<div class="avatar">${heroPortraitSVG(id)}</div>`;
 }
 
 function renderParty() {
   $("battleParty").innerHTML = state.heroes.map(id => {
     const fallen = (state.heroHp[id]||0)<=0;
 
-    return `<div class="hero-token ${fallen?"fallen":""}" title="${HEROES[id].name}">
-      ${HEROES[id].emoji}
+    return `<div class="hero-token ${fallen?"fallen":""}"
+      title="${HEROES[id].name}">
+      ${heroPortraitSVG(id)}
     </div>`;
   }).join("");
 
@@ -1049,6 +1222,7 @@ function renderParty() {
 
   $("partyPower").textContent = "PARTY POWER · "+fmt(power);
 }
+
 
 function renderRewards() {
   const r = region();
