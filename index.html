@@ -4,40 +4,15 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <meta name="theme-color" content="#17152d">
-  <title>Gem Miner: Rise of the Crystal Kingdom</title>
+  <title>Gem Miner: Crystal Kingdom</title>
   <link rel="stylesheet" href="style.css">
   <script defer src="game.js"></script>
-  <script>
-    window.addEventListener('error', function (event) {
-      const warning = document.getElementById('systemAlert');
-      if (warning && event.message) {
-        warning.hidden = false;
-        warning.textContent =
-          'Game script error: ' + event.message +
-          '. Check that index.html, style.css, game.js, and assets/ are uploaded correctly.';
-      }
-    });
-
-    window.addEventListener('load', function () {
-      setTimeout(function () {
-        if (!window.gemMinerReady) {
-          const warning = document.getElementById('systemAlert');
-          if (warning) {
-            warning.hidden = false;
-            warning.textContent =
-              'The game logic did not start. Check that game.js is next to index.html and uses the exact lowercase filename.';
-          }
-        }
-      }, 1200);
-    });
-  </script>
 </head>
+
 <body>
 <main class="shell">
-  <div class="system-alert" id="systemAlert" hidden></div>
-
   <header class="topbar">
-    <a class="brand" href="#top" aria-label="Gem Miner home">
+    <a class="brand" href="#top">
       <span class="logo">✦</span>
       <span>
         <b>CRYSTAL KINGDOM</b>
@@ -46,28 +21,17 @@
     </a>
 
     <div class="resources" aria-live="polite">
-  <span>◈ GOLD <b id="gold">75</b></span>
-  <span>◆ CRYSTALS <b id="crystals">35</b></span>
-  <span>⬡ ORE <b id="ore">0</b></span>
-  <span>✧ MANA <b id="mana">100 / 100</b></span>
-</div>
+      <span>◈ GOLD <b id="gold">75</b></span>
+      <span>◆ CRYSTALS <b id="crystals">35</b></span>
+      <span>⬡ ORE <b id="ore">0</b></span>
 
-<div class="sage-widget">
-  <button
-    class="sage-orb"
-    id="sageOrb"
-    data-action="sageToggle"
-    aria-label="Mute or activate Great Sage voice"
-    title="Click to mute or activate Great Sage"
-  >
-    <span class="sage-symbol">◈</span>
-  </button>
-  <div class="sage-label">
-    <b>GREAT SAGE</b>
-    <small id="sageStatus">VOICE ON</small>
-    <small id="sageMessage">Standing by.</small>
-  </div>
-</div>
+      <span class="mana-resource">
+        ✧ MANA <b id="mana">100 / 100</b>
+        <span class="mana-track">
+          <span id="manaBar"></span>
+        </span>
+      </span>
+    </div>
   </header>
 
   <section class="banner" id="top">
@@ -78,6 +42,7 @@
         Explore forgotten caves, defeat their guardians,
         and welcome a new hero after every cave clear.
       </p>
+
       <div class="region">
         <div>
           <small>CURRENT CAVE</small>
@@ -88,10 +53,9 @@
     </div>
 
     <img
-      src="assets/celeste.webp"
+      src="assets/hero-mage.svg"
       class="hero"
-      alt="Celeste, the healer"
-      onerror="this.onerror=null;this.src='assets/hero-mage.svg'"
+      alt="A magical hero"
     >
   </section>
 
@@ -113,7 +77,7 @@
           <div class="crystal c2"></div>
           <div class="ground"></div>
 
-          <div class="party" id="battleParty" aria-label="Your fighting party"></div>
+          <div class="party" id="battleParty"></div>
 
           <div class="enemy hidden" id="enemyVisual">
             <img src="assets/slime.svg" id="enemySprite" alt="Enemy">
@@ -122,8 +86,6 @@
           <div class="caption" id="caption">
             Your party is searching the tunnels…
           </div>
-
-          <div id="damageLayer"></div>
         </div>
 
         <div class="enemyinfo">
@@ -147,15 +109,14 @@
           <button class="primary" data-action="explore" id="exploreBtn">
             ⌖ Explore now
           </button>
+
           <button data-action="mine" id="mineBtn">
             ✧ Mine crystals
           </button>
         </div>
 
         <p class="hint" id="hint">
-          Exploration happens automatically after a hidden random
-          10–20 second interval. There is no retreat button:
-          your party fights until every hero falls.
+          Explore the tunnels, gather resources, and defeat every guardian.
         </p>
       </section>
 
@@ -165,10 +126,10 @@
             <p class="eyebrow">YOUR COMPANIONS</p>
             <h2>Adventuring party</h2>
           </div>
-          <span class="muted" id="partyPower">PARTY POWER · 39</span>
+          <span class="muted" id="partyPower">PARTY POWER</span>
         </div>
 
-        <div class="companions" id="companions" aria-live="polite"></div>
+        <div class="companions" id="companions"></div>
 
         <div class="partyfoot">
           <span>● Everyone attacks automatically</span>
@@ -179,8 +140,8 @@
       <section class="panel" id="hospitalPanel" hidden>
         <div class="panelhead">
           <div>
-            <p class="eyebrow">THE CRYSTAL KINGDOM INFIRMARY</p>
-            <h2 id="hospitalTitle">The whole party has fallen</h2>
+            <p class="eyebrow">CRYSTAL KINGDOM INFIRMARY</p>
+            <h2 id="hospitalTitle">The party has fallen</h2>
           </div>
           <span class="pill hospital-pill" id="hospitalStatus">
             TREATMENT NEEDED
@@ -188,8 +149,7 @@
         </div>
 
         <p class="hospital-copy" id="hospitalCopy">
-          Pay the healing fee to begin a one-minute recovery.
-          All battles remain paused while the party heals.
+          Pay the hospital fee to start recovery.
         </p>
 
         <div class="hospital-actions">
@@ -198,8 +158,9 @@
             <strong id="hospitalFee">50 gold</strong>
             <small id="hospitalTimer">Waiting for payment</small>
           </div>
+
           <button class="primary" data-action="payHeal" id="payHealBtn">
-            Pay &amp; begin 1-minute healing
+            Pay and recover
           </button>
         </div>
       </section>
@@ -210,8 +171,9 @@
             <p class="eyebrow">SUPPLIES</p>
             <h2>Snacks &amp; field kit</h2>
           </div>
-          <span class="muted">Use items between attacks</span>
+          <span class="muted">Healing and mana</span>
         </div>
+
         <div class="snack-grid" id="snackGrid"></div>
       </section>
 
@@ -229,12 +191,10 @@
         </div>
 
         <div class="bossinfo">
-          <img src="assets/boss.svg" alt="Guardian">
+          <img src="assets/boss.svg" alt="Cave guardian">
           <div>
             <b id="guardianName">The Prism Warden</b>
-            <p id="guardianDesc">
-              An ancient sentinel sealed inside the cavern.
-            </p>
+            <p id="guardianDesc">An ancient sentinel guards the cavern.</p>
             <span class="tag" id="bossPhase">DORMANT</span>
           </div>
         </div>
@@ -243,6 +203,7 @@
           <span>Threat level</span>
           <b id="threat">Low</b>
         </div>
+
         <div class="stat">
           <span>Monsters defeated</span>
           <b id="defeated">0</b>
@@ -264,7 +225,7 @@
           <span class="muted">Q · W · E · R · T · Y · U</span>
         </div>
 
-        <div class="skill-grid" id="skillGrid">
+        <div class="skill-grid">
           <button class="skill" data-skill="slash">
             <span class="skillicon pink">✦</span>
             <span>
@@ -278,7 +239,7 @@
             <span class="skillicon purple">✺</span>
             <span>
               <b>Arcane Burst</b>
-              <small>Powerful crystal damage</small>
+              <small>Powerful magical attack</small>
             </span>
             <strong id="cd-burst">READY</strong>
           </button>
@@ -296,7 +257,7 @@
             <span class="skillicon green">✚</span>
             <span>
               <b>Healing Wave</b>
-              <small>Celeste restores party HP</small>
+              <small>Restore health to living heroes</small>
             </span>
             <strong id="cd-heal">LOCKED</strong>
           </button>
@@ -305,7 +266,7 @@
             <span class="skillicon pink">☄</span>
             <span>
               <b>Meteor Rain</b>
-              <small>Massive burst of magic</small>
+              <small>Massive magical damage</small>
             </span>
             <strong id="cd-meteor">READY</strong>
           </button>
@@ -330,8 +291,7 @@
         </div>
 
         <p class="hint">
-          Cooldowns are displayed in whole seconds.
-          Unlock a healer by clearing the first cave.
+          Skills consume mana. Mana regenerates automatically.
         </p>
       </section>
 
@@ -350,7 +310,7 @@
             <small id="pickaxeLevel">Level 1 / 10</small>
           </div>
           <button data-action="upgrade" data-value="pickaxe" id="pickaxeUpgrade">
-            Upgrade <small id="pickaxeCost">25 C</small>
+            Upgrade <small id="pickaxeCost">35 C</small>
           </button>
         </div>
 
@@ -358,7 +318,7 @@
           <span class="upicon blue">➤</span>
           <div>
             <b>Party tempo</b>
-            <small id="speedLevel">Level 0 / 5 · 6.0s</small>
+            <small id="speedLevel">Level 0 / 5</small>
           </div>
           <button data-action="upgrade" data-value="speed" id="speedUpgrade">
             Upgrade <small id="speedCost">40 C</small>
@@ -398,8 +358,9 @@
         </div>
 
         <p class="hint recruit-intro">
-          Recruits are not battle heroes, but their skills help your expedition grow.
+          Recruit helpers to improve your expedition.
         </p>
+
         <div class="recruit-grid" id="recruitGrid"></div>
       </section>
 
@@ -409,9 +370,7 @@
             <p class="eyebrow">FIELD NOTES</p>
             <h2>Adventure log</h2>
           </div>
-          <button class="textbutton" data-action="clearLog" id="clearLog">
-            Clear
-          </button>
+          <button class="textbutton" data-action="clearLog">Clear</button>
         </div>
 
         <div class="log" id="logList" aria-live="polite"></div>
@@ -423,9 +382,35 @@
   <footer>
     <span>GEM MINER ✦ CRYSTAL KINGDOM</span>
     <span>Progress saves on this device.</span>
-    <button class="textbutton" data-action="reset" id="resetBtn">Reset save</button>
+    <button class="textbutton" data-action="reset">Reset save</button>
   </footer>
 </main>
+
+<!-- Great Sage is fixed to the browser viewport -->
+<div class="sage-dock" id="sageDock">
+  <button
+    class="sage-orb"
+    id="sageOrb"
+    data-action="sageToggle"
+    aria-label="Mute or activate Great Sage voice"
+    title="Mute or activate Great Sage"
+  >
+    <span class="sage-symbol">◈</span>
+  </button>
+
+  <section class="sage-panel" id="sagePanel" hidden>
+    <div class="sage-panel-head">
+      <div>
+        <b>GREAT SAGE</b>
+        <small id="sageStatus">VOICE ON</small>
+      </div>
+      <span class="sage-indicator">AI</span>
+    </div>
+
+    <p id="sageMessage">Standing by.</p>
+    <div class="sage-actions" id="sageActions" hidden></div>
+  </section>
+</div>
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 </body>

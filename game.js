@@ -69,7 +69,7 @@
   };
 
   // ==========================================
-  // CAVES AND ENEMIES
+  // REGIONS AND GUARDIANS
   // ==========================================
 
   const regions = [
@@ -136,7 +136,7 @@
   ];
 
   // ==========================================
-  // RECRUITABLE HELPERS
+  // HELPERS
   // ==========================================
 
   const RECRUITS = [
@@ -218,7 +218,7 @@
       role: "Mystic",
       portrait: "assets/hero-mage.svg",
       cost: 200,
-      desc: "+25 maximum mana and faster mana regeneration"
+      desc: "+25 maximum mana and faster regeneration"
     }
   ];
 
@@ -277,7 +277,6 @@
     }
   ];
 
-  // Mana required to use each skill.
   const SKILL_MANA_COST = {
     slash: 12,
     burst: 20,
@@ -313,7 +312,6 @@
     crystals: 35,
     ore: 0,
 
-    // Shared mana pool.
     mana: 100,
     manaBuffUntil: 0,
     manaWarning: false,
@@ -366,7 +364,7 @@
   };
 
   // ==========================================
-  // LOAD AND MIGRATE SAVE
+  // LOAD SAVE AND KEEP OLD PROGRESS
   // ==========================================
 
   function loadGame() {
@@ -417,17 +415,6 @@
       ...(stored.heroHp || {})
     };
 
-    // Old versions may not have stored mana yet.
-    if (!Number.isFinite(Number(stored.mana))) {
-      state.mana = 100;
-    }
-
-    state.mana = Math.max(
-      0,
-      Math.min(125, Number(state.mana) || 0)
-    );
-
-    // Restore previously earned heroes.
     if (stored.healer && !state.heroes.includes("celeste")) {
       state.heroes.push("celeste");
     }
@@ -442,10 +429,15 @@
 
     state.region = Math.max(
       0,
-      Math.min(
-        regions.length - 1,
-        Number(state.region) || 0
-      )
+      Math.min(regions.length - 1, Number(state.region) || 0)
+    );
+
+    const savedMaxMana =
+      100 + (state.recruits.includes("iris") ? 25 : 0);
+
+    state.mana = Math.max(
+      0,
+      Math.min(savedMaxMana, Number(state.mana) || 0)
     );
 
     state.heroes.forEach((id) => {
@@ -457,10 +449,7 @@
 
       state.heroHp[id] = Math.max(
         0,
-        Math.min(
-          HEROES[id].maxHp,
-          Number(state.heroHp[id])
-        )
+        Math.min(HEROES[id].maxHp, Number(state.heroHp[id]))
       );
     });
 
@@ -468,12 +457,10 @@
   }
 
   let s = loadGame();
-  let logs = Array.isArray(s.lastLog)
-    ? s.lastLog
-    : [];
+  let logs = Array.isArray(s.lastLog) ? s.lastLog : [];
 
   // ==========================================
-  // TIMERS
+  // TIMERS AND SAGE STATE
   // ==========================================
 
   let partyClock = 0;
@@ -484,21 +471,22 @@
   let exploreTimer = 0;
   let toastTimer = 0;
 
-  // Great Sage voice queue.
   const speechQueue = [];
   let speechBusy = false;
   let sageEnabled = true;
   let currentUtterance = null;
+  let speechGeneration = 0;
+
+  let currentPrompt = null;
+  let lowHealthWarning = false;
+  let lastAttackerNotice = 0;
 
   // ==========================================
   // GENERAL HELPERS
   // ==========================================
 
   const fmt = (n) =>
-    Math.max(
-      0,
-      Math.floor(Number(n) || 0)
-    ).toLocaleString();
+    Math.max(0, Math.floor(Number(n) || 0)).toLocaleString();
 
   const region = () =>
     regions[s.region] || regions[regions.length - 1];
@@ -518,21 +506,19 @@
   const maxMana = () =>
     100 + (s.recruits.includes("iris") ? 25 : 0);
 
-  const manaRate = () => {
+  function manaRate() {
     let rate = 1;
 
-    // Iris improves mana regeneration.
     if (s.recruits.includes("iris")) {
       rate += 0.75;
     }
 
-    // Astral Tea temporarily multiplies regeneration.
     if (s.manaBuffUntil > Date.now()) {
       rate *= 3;
     }
 
     return rate;
-  };
+  }
 
   const pInterval = () =>
     Math.max(3.5, 6 - s.speedLevel * 0.5);
@@ -541,8 +527,7 @@
     Math.max(
       2.2,
       5 - s.region * 0.6 - (s.bossMode ? 0.45 : 0)
-    ) *
-    (s.frostUntil > Date.now() ? 1.4 : 1);
+    ) * (s.frostUntil > Date.now() ? 1.4 : 1);
 
   const pickCost = () =>
     Math.floor(35 * Math.pow(1.8, s.pickaxe - 1));
@@ -587,17 +572,50 @@
   }
 
   // ==========================================
-  // GREAT SAGE TEXT-TO-SPEECH
+  // GREAT SAGE PANEL
   // ==========================================
 
   function updateSageStatus(text) {
-    const status = $("sageStatus");
-    if (status) status.textContent = text;
+    const el = $("sageStatus");
+    if (el) el.textContent = text;
   }
 
   function updateSageMessage(text) {
-    const message = $("sageMessage");
-    if (message) message.textContent = text;
+    const el = $("sageMessage");
+    if (el) el.textContent = text;
+  }
+
+  function sagePanelVisible() {
+    return (
+      speechBusy ||
+      speechQueue.length > 0 ||
+      currentPrompt !== null
+    );
+  }
+
+  // Prompt priorities ensure important alerts take precedence:
+  // hospital > Phoenix > low-health warning.
+  const promptPriority = {
+    lowHealth: 1,
+    phoenix: 2,
+    hospital: 3
+  };
+
+  function showPrompt(prompt) {
+    if (
+      currentPrompt &&
+      promptPriority[currentPrompt.type] >= promptPriority[prompt.type]
+    ) {
+      return;
+    }
+
+    currentPrompt = prompt;
+    refreshSagePanel();
+  }
+
+  function dismissPrompt() {
+    currentPrompt = null;
+    refreshSagePanel();
   }
 
   function pulseSageWord() {
@@ -605,21 +623,52 @@
     if (!orb) return;
 
     orb.classList.remove("word-pulse");
-
-    // Restart the small pulse for each detected spoken word.
     void orb.offsetWidth;
-
     orb.classList.add("word-pulse");
+  }
+
+  function getEnglishVoice() {
+    if (!("speechSynthesis" in window)) return null;
+
+    const voices = window.speechSynthesis.getVoices();
+
+    const english = voices.filter((voice) =>
+      /^en([_-]|$)/i.test(voice.lang)
+    );
+
+    const preferredPatterns = [
+      /natural/i,
+      /enhanced/i,
+      /neural/i,
+      /aria/i,
+      /jenny/i,
+      /samantha/i,
+      /google us english/i
+    ];
+
+    for (const pattern of preferredPatterns) {
+      const match = english.find((voice) =>
+        pattern.test(voice.name)
+      );
+
+      if (match) return match;
+    }
+
+    return english[0] || null;
   }
 
   function processSpeechQueue() {
     if (!sageEnabled || speechBusy || !speechQueue.length) {
+      refreshSagePanel();
       return;
     }
 
-    if (!("speechSynthesis" in window) ||
-        !("SpeechSynthesisUtterance" in window)) {
+    if (
+      !("speechSynthesis" in window) ||
+      !("SpeechSynthesisUtterance" in window)
+    ) {
       updateSageStatus("VOICE UNAVAILABLE");
+      refreshSagePanel();
       return;
     }
 
@@ -627,106 +676,301 @@
 
     speechBusy = true;
 
-    const orb = $("sageOrb");
+    const generation = speechGeneration;
 
-    if (orb) {
-      orb.classList.add("is-speaking");
-      orb.classList.remove("is-muted");
-    }
-
-    updateSageStatus("ANALYSING");
     updateSageMessage(message);
+    updateSageStatus("SPEAKING");
+    refreshSagePanel();
 
     const utterance = new SpeechSynthesisUtterance(message);
 
-    // A calm, precise, neutral synthesized voice.
-    // This does not copy a specific actor's voice.
+    // More conversational than the original stiff setting.
+    // The available browser voice still determines the actual sound.
     utterance.lang = "en-US";
-    utterance.rate = 0.93;
-    utterance.pitch = 0.86;
+    utterance.rate = 0.97;
+    utterance.pitch = 1.02;
     utterance.volume = 1;
 
-    const voices = window.speechSynthesis.getVoices();
-
-    const preferredVoice = voices.find((voice) =>
-      /^en(-|_)(US|GB)/i.test(voice.lang) &&
-      /natural|enhanced|neural/i.test(voice.name)
-    );
-
-    const englishVoice = preferredVoice ||
-      voices.find((voice) =>
-        /^en(-|_)/i.test(voice.lang)
-      );
-
-    if (englishVoice) {
-      utterance.voice = englishVoice;
-    }
+    const voice = getEnglishVoice();
+    if (voice) utterance.voice = voice;
 
     currentUtterance = utterance;
 
     utterance.onstart = () => {
+      if (generation !== speechGeneration) return;
       updateSageStatus("SPEAKING");
+      refreshSagePanel();
     };
 
     utterance.onboundary = (event) => {
+      if (generation !== speechGeneration) return;
+
       if (event.name === "word" || event.charIndex >= 0) {
         pulseSageWord();
       }
     };
 
-    utterance.onend = () => {
+    function finishUtterance() {
+      if (generation !== speechGeneration) return;
+
       speechBusy = false;
       currentUtterance = null;
 
-      const currentOrb = $("sageOrb");
+      updateSageStatus(sageEnabled ? "VOICE ON" : "VOICE MUTED");
+      refreshSagePanel();
 
-      if (currentOrb) {
-        currentOrb.classList.remove(
-          "is-speaking",
-          "word-pulse"
-        );
-      }
-
-      updateSageStatus(
-        sageEnabled ? "VOICE ON" : "VOICE MUTED"
-      );
-
-      // Speak the next queued message only after
-      // the current utterance has finished.
+      // Read announcements one at a time.
       window.setTimeout(processSpeechQueue, 180);
-    };
+    }
 
-    utterance.onerror = () => {
-      speechBusy = false;
-      currentUtterance = null;
-
-      const currentOrb = $("sageOrb");
-
-      if (currentOrb) {
-        currentOrb.classList.remove(
-          "is-speaking",
-          "word-pulse"
-        );
-      }
-
-      updateSageStatus(
-        sageEnabled ? "VOICE ON" : "VOICE MUTED"
-      );
-
-      window.setTimeout(processSpeechQueue, 300);
-    };
+    utterance.onend = finishUtterance;
+    utterance.onerror = finishUtterance;
 
     window.speechSynthesis.speak(utterance);
   }
 
   function announce(message) {
-    // Update the visible Sage message immediately.
     updateSageMessage(message);
 
-    // Add it to a single-file queue.
-    speechQueue.push(message);
+    if (!sageEnabled) {
+      refreshSagePanel();
+      return;
+    }
 
+    speechQueue.push(message);
+    refreshSagePanel();
     processSpeechQueue();
+  }
+
+  function refreshSagePanel() {
+    const panel = $("sagePanel");
+    const orb = $("sageOrb");
+
+    if (panel) {
+      panel.hidden = !sagePanelVisible();
+    }
+
+    if (orb) {
+      orb.classList.toggle("is-speaking", speechBusy);
+      orb.classList.toggle("is-muted", !sageEnabled);
+    }
+
+    renderSageActions();
+  }
+
+  function getHealingAdvice() {
+    const options = [];
+
+    if (
+      s.heroes.includes("celeste") ||
+      s.heroes.includes("sage")
+    ) {
+      options.push("Healing Wave");
+    }
+
+    options.push("Aegis Guard");
+
+    if ((s.snacks.rations || 0) > 0) {
+      options.push("Trail Rations");
+    }
+
+    if ((s.snacks.cake || 0) > 0) {
+      options.push("Crystal Cake");
+    }
+
+    return options;
+  }
+
+  function canUseSkill(key) {
+    if (!(key in SKILL_MANA_COST)) return false;
+    if (battleLocked()) return false;
+    if (!livingHeroes().length) return false;
+    if (s.mana < SKILL_MANA_COST[key]) return false;
+    if ((s.cooldowns[key] || 0) > 0) return false;
+
+    if (
+      ["heal", "phoenix"].includes(key) &&
+      !s.heroes.includes("celeste") &&
+      !s.heroes.includes("sage")
+    ) {
+      return false;
+    }
+
+    if (
+      ["slash", "burst", "meteor", "frost"].includes(key) &&
+      !s.enemy
+    ) {
+      return false;
+    }
+
+    if (
+      key === "phoenix" &&
+      !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0)
+    ) {
+      return false;
+    }
+
+    return true;
+  }
+
+  function renderSageActions() {
+    const box = $("sageActions");
+    if (!box) return;
+
+    if (!currentPrompt) {
+      box.hidden = true;
+
+      if (box.innerHTML) box.innerHTML = "";
+
+      return;
+    }
+
+    box.hidden = false;
+
+    let html = "";
+
+    if (currentPrompt.type === "phoenix") {
+      const ready = canUseSkill("phoenix");
+
+      html = `
+        <button
+          class="sage-primary"
+          data-sage-action="phoenix"
+          ${ready ? "" : "disabled"}
+        >Use Phoenix Blessing</button>
+
+        <button
+          class="sage-dismiss"
+          data-sage-action="dismiss"
+        >Not now</button>
+
+        <small>
+          Phoenix Blessing costs 45 mana.
+          ${ready ? "It is ready to use." : "It is currently unavailable."}
+        </small>
+      `;
+    } else if (currentPrompt.type === "lowHealth") {
+      const buttons = [];
+
+      if (
+        s.heroes.includes("celeste") ||
+        s.heroes.includes("sage")
+      ) {
+        buttons.push(`
+          <button
+            class="sage-primary"
+            data-sage-action="skill"
+            data-value="heal"
+            ${canUseSkill("heal") ? "" : "disabled"}
+          >Use Healing Wave</button>
+        `);
+      }
+
+      buttons.push(`
+        <button
+          class="sage-primary"
+          data-sage-action="skill"
+          data-value="guard"
+          ${canUseSkill("guard") ? "" : "disabled"}
+        >Use Aegis Guard</button>
+      `);
+
+      if ((s.snacks.rations || 0) > 0) {
+        buttons.push(`
+          <button
+            data-sage-action="snack"
+            data-value="rations"
+            ${battleLocked() ? "disabled" : ""}
+          >Use Trail Rations</button>
+        `);
+      }
+
+      if ((s.snacks.cake || 0) > 0) {
+        buttons.push(`
+          <button
+            data-sage-action="snack"
+            data-value="cake"
+            ${battleLocked() ? "disabled" : ""}
+          >Use Crystal Cake</button>
+        `);
+      }
+
+      buttons.push(`
+        <button
+          class="sage-dismiss"
+          data-sage-action="dismiss"
+        >Not now</button>
+      `);
+
+      html = buttons.join("");
+    } else if (currentPrompt.type === "hospital") {
+      html = `
+        <button
+          class="sage-primary"
+          data-sage-action="hospital"
+          ${s.gold >= s.hospitalFee ? "" : "disabled"}
+        >Pay hospital fee</button>
+
+        <button
+          class="sage-dismiss"
+          data-sage-action="dismiss"
+        >Not now</button>
+
+        <small>
+          Fee: ${fmt(s.hospitalFee)} gold.
+          ${s.gold >= s.hospitalFee
+            ? "Payment starts one-minute recovery."
+            : "Mine resources to earn more gold."}
+        </small>
+      `;
+    }
+
+    if (box.innerHTML !== html) {
+      box.innerHTML = html;
+    }
+  }
+
+  function showPhoenixPrompt(heroId) {
+    if (!livingHeroes().length) return;
+
+    showPrompt({
+      type: "phoenix",
+      heroId
+    });
+
+    updateSageMessage(
+      `${HEROES[heroId].name} is down. Would you like to use Phoenix Blessing?`
+    );
+
+    refreshSagePanel();
+  }
+
+  function showLowHealthPrompt() {
+    if (!livingHeroes().length) return;
+
+    showPrompt({
+      type: "lowHealth"
+    });
+
+    const advice = getHealingAdvice();
+
+    updateSageMessage(
+      `Your party's health is low. Consider using ${advice.join(", ")} to heal your team.`
+    );
+
+    refreshSagePanel();
+  }
+
+  function showHospitalPrompt() {
+    showPrompt({
+      type: "hospital"
+    });
+
+    updateSageMessage(
+      "Notice: All party members are down. Would you like to pay the hospital fee and begin recovery?"
+    );
+
+    refreshSagePanel();
   }
 
   function toggleSage() {
@@ -738,43 +982,31 @@
 
     sageEnabled = !sageEnabled;
 
-    const orb = $("sageOrb");
-
     if (!sageEnabled) {
-      window.speechSynthesis.cancel();
-
+      speechGeneration++;
+      speechQueue.length = 0;
       speechBusy = false;
       currentUtterance = null;
 
-      if (orb) {
-        orb.classList.remove(
-          "is-speaking",
-          "word-pulse"
-        );
-        orb.classList.add("is-muted");
-      }
+      window.speechSynthesis.cancel();
 
       updateSageStatus("VOICE MUTED");
+      refreshSagePanel();
       toast("Great Sage voice muted.");
+
       return;
     }
 
-    if (orb) {
-      orb.classList.remove("is-muted");
-    }
-
     updateSageStatus("VOICE ON");
+    refreshSagePanel();
+
     toast("Great Sage voice activated.");
 
-    if (speechQueue.length === 0) {
-      announce("Great Sage online. Awaiting your command.");
-    } else {
-      processSpeechQueue();
-    }
+    announce("Great Sage online. Voice notifications restored.");
   }
 
   // ==========================================
-  // LOG AND POPUP MESSAGES
+  // LOG AND TOAST
   // ==========================================
 
   function log(message) {
@@ -863,6 +1095,7 @@
           ? "Pay the hospital fee before battles can resume."
           : "The party is recovering; battles are paused."
       );
+
       return false;
     }
 
@@ -878,9 +1111,7 @@
   // AUTOMATIC EXPLORATION
   // ==========================================
 
-  function scheduleExplore(
-    delay = 10000 + Math.random() * 10000
-  ) {
+  function scheduleExplore(delay = 10000 + Math.random() * 10000) {
     clearTimeout(exploreTimer);
 
     if (s.enemy || battleLocked() || !livingHeroes().length) {
@@ -918,9 +1149,6 @@
         sprite: "assets/boss.svg",
         boss: true
       };
-
-      log(`${r.boss} emerges from the ancient seal.`);
-      toast(`${r.boss} challenges your party!`);
     } else {
       const hp = Math.floor(
         r.hp * scale * (0.85 + Math.random() * 0.3)
@@ -931,25 +1159,22 @@
         type: r.type,
         hp,
         maxHp: hp,
-        damage: Math.floor(
-          r.damage * (1 + s.region * 0.25)
-        ),
-        gold: Math.floor(
-          r.gold * (1 + s.region * 0.35)
-        ),
-        crystals: Math.floor(
-          r.crystals * (1 + s.region * 0.35)
-        ),
+        damage: Math.floor(r.damage * (1 + s.region * 0.25)),
+        gold: Math.floor(r.gold * (1 + s.region * 0.35)),
+        crystals: Math.floor(r.crystals * (1 + s.region * 0.35)),
         sprite: r.sprite,
         boss: false
       };
-
-      log(`${r.enemy} appears in the cavern!`);
-      toast("An enemy blocks the path!");
     }
 
     partyClock = 0;
     enemyClock = 0;
+
+    announce(
+      `Notice: Hostile detected. ${s.enemy.name} is approaching your party.`
+    );
+
+    log(`${s.enemy.name} appears in the cavern!`);
 
     render();
     save();
@@ -978,9 +1203,7 @@
       s.ore += ore;
       s.gold += Math.floor(crystals * 0.7);
 
-      log(
-        `Exploration found ${crystals} crystals and ${ore} ore.`
-      );
+      log(`Exploration found ${crystals} crystals and ${ore} ore.`);
 
       toast(`Found ${crystals} crystals and ${ore} ore.`);
 
@@ -999,9 +1222,7 @@
 
     const amount = Math.max(
       1,
-      Math.floor(
-        (s.pickaxe * 3 + Math.random() * s.pickaxe) * bonus
-      )
+      Math.floor((s.pickaxe * 3 + Math.random() * s.pickaxe) * bonus)
     );
 
     const oreAmount =
@@ -1023,7 +1244,7 @@
   }
 
   // ==========================================
-  // PARTY COMBAT
+  // PARTY ATTACKS
   // ==========================================
 
   function partyAttack() {
@@ -1047,13 +1268,8 @@
         s.damageLevel * 4 +
         (s.recruits.includes("darius") ? 6 : 0);
 
-      if (s.partyBuffUntil > Date.now()) {
-        amount *= 1.25;
-      }
-
-      if (s.recruits.includes("silas")) {
-        amount *= 1.15;
-      }
+      if (s.partyBuffUntil > Date.now()) amount *= 1.25;
+      if (s.recruits.includes("silas")) amount *= 1.15;
 
       const chance = Math.min(
         0.5,
@@ -1065,11 +1281,7 @@
 
       amount = Math.max(
         1,
-        Math.floor(
-          amount *
-          (critical ? 1.8 : 1) *
-          (0.88 + Math.random() * 0.24)
-        )
+        Math.floor(amount * (critical ? 1.8 : 1) * (0.88 + Math.random() * 0.24))
       );
 
       s.enemy.hp -= amount;
@@ -1091,6 +1303,10 @@
     save();
   }
 
+  // ==========================================
+  // ENEMY ATTACKS
+  // ==========================================
+
   function enemyAttack() {
     if (!s.enemy || battleLocked()) return;
 
@@ -1105,9 +1321,7 @@
     ];
 
     const targetId = targetOrder.find(
-      (id) =>
-        s.heroes.includes(id) &&
-        (s.heroHp[id] || 0) > 0
+      (id) => s.heroes.includes(id) && (s.heroHp[id] || 0) > 0
     );
 
     if (!targetId) {
@@ -1117,11 +1331,18 @@
 
     const target = HEROES[targetId];
 
+    // Rate-limit attacker speech to keep it useful.
+    if (Date.now() - lastAttackerNotice >= 12000) {
+      lastAttackerNotice = Date.now();
+
+      announce(
+        `Notice: Incoming attack. ${s.enemy.name} is attacking ${target.name}.`
+      );
+    }
+
     let amount = Math.max(
       1,
-      Math.floor(
-        s.enemy.damage * (0.82 + Math.random() * 0.36)
-      )
+      Math.floor(s.enemy.damage * (0.82 + Math.random() * 0.36))
     );
 
     if (s.guardCharges > 0) {
@@ -1143,10 +1364,17 @@
       (s.heroHp[targetId] === 0 ? " — hero down!" : ".")
     );
 
-    // Notify Great Sage when a hero falls.
     if (s.heroHp[targetId] === 0) {
       announce(`Notice: ${target.name} is down.`);
-      toast(`${target.name} has fallen, but the party keeps fighting!`);
+      toast(`${target.name} has fallen!`);
+
+      if (livingHeroes().length > 0) {
+        announce(
+          `Recommendation: ${target.name} is down. Would you like to use Phoenix Blessing?`
+        );
+
+        showPhoenixPrompt(targetId);
+      }
     }
 
     if (!livingHeroes().length) {
@@ -1164,9 +1392,7 @@
   function partyWiped() {
     if (s.needsHospital || isRecovering()) return;
 
-    const fallenEnemy = s.enemy
-      ? s.enemy.name
-      : "the enemy";
+    const fallenEnemy = s.enemy ? s.enemy.name : "the enemy";
 
     s.enemy = null;
     s.bossMode = false;
@@ -1189,6 +1415,12 @@
       `The hospital requires ${s.hospitalFee} gold.`
     );
 
+    announce(
+      "Notice: All party members are down. Pay the hospital fee to begin recovery."
+    );
+
+    showHospitalPrompt();
+
     toast("Party wiped! Pay the hospital fee to recover.");
 
     render();
@@ -1196,7 +1428,7 @@
   }
 
   // ==========================================
-  // ENEMY DEFEATED / NEW HERO RECRUITED
+  // VICTORY AND NEW HEROES
   // ==========================================
 
   function defeatEnemy() {
@@ -1205,10 +1437,7 @@
 
     s.gold += e.gold;
     s.crystals += e.crystals;
-    s.ore += e.boss
-      ? 8
-      : 1 + Math.floor(Math.random() * 3);
-
+    s.ore += e.boss ? 8 : 1 + Math.floor(Math.random() * 3);
     s.defeated += 1;
 
     if (e.boss) {
@@ -1233,12 +1462,10 @@
 
         log(`${newHero.name} joined the party after the cave clear!`);
 
-        // The voice queue ensures messages play one at a time.
         announce(
           `Notice: ${newHero.name} has joined your team.`
         );
 
-        // Celeste unlocks the two healer-related skills.
         if (rewardId === "celeste") {
           announce("New skill unlocked: Healing Wave.");
           announce("New skill unlocked: Phoenix Blessing.");
@@ -1252,22 +1479,16 @@
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
 
-        log(
-          `Unlocked cave ${s.region + 1}: ${region().name}.`
-        );
+        log(`Unlocked cave ${s.region + 1}: ${region().name}.`);
       } else {
-        log(
-          "The Crystal Kingdom's final guardian has fallen. All caves cleared!"
-        );
+        log("All cave guardians have fallen. The kingdom is saved!");
       }
     } else {
       log(
         `${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`
       );
 
-      toast(
-        `Victory! +${e.gold} gold · +${e.crystals} crystals`
-      );
+      toast(`Victory! +${e.gold} gold · +${e.crystals} crystals`);
     }
 
     s.enemy = null;
@@ -1289,10 +1510,12 @@
   }
 
   // ==========================================
-  // SKILLS AND MANA COSTS
+  // SKILLS AND MANA
   // ==========================================
 
   function skill(key) {
+    if (!(key in SKILL_MANA_COST)) return;
+
     if (battleLocked()) {
       return toast(
         s.needsHospital
@@ -1301,16 +1524,12 @@
       );
     }
 
-    if (!(key in SKILL_MANA_COST)) return;
-
-    if (s.cooldowns[key] > 0) {
-      return toast(
-        `Skill recharging: ${Math.ceil(s.cooldowns[key])}s`
-      );
-    }
-
     if (!livingHeroes().length) {
       return toast("Your party has fallen. Visit the hospital.");
+    }
+
+    if (s.cooldowns[key] > 0) {
+      return toast(`Skill recharging: ${Math.ceil(s.cooldowns[key])}s`);
     }
 
     if (
@@ -1325,40 +1544,29 @@
       !s.heroes.includes("celeste") &&
       !s.heroes.includes("sage")
     ) {
-      return toast(
-        "Clear the first cave to unlock healer support."
-      );
+      return toast("Clear the first cave to unlock healer support.");
     }
 
-    if (key === "phoenix") {
-      const fallen = s.heroes.find(
-        (id) => (s.heroHp[id] || 0) <= 0
-      );
-
-      if (!fallen) {
-        return toast("There is no fallen hero to revive.");
-      }
+    if (
+      key === "phoenix" &&
+      !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0)
+    ) {
+      return toast("There is no fallen hero to revive.");
     }
 
     const manaCost = SKILL_MANA_COST[key];
 
     if (s.mana < manaCost) {
-      return toast(
-        `Not enough mana. ${manaCost} mana is required.`
-      );
+      return toast(`Not enough mana. ${manaCost} mana is required.`);
     }
 
-    // Pay the mana cost only after validity checks pass.
     s.mana -= manaCost;
 
-    const skillBonus = s.recruits.includes("silas")
-      ? 1.15
-      : 1;
+    const skillBonus = s.recruits.includes("silas") ? 1.15 : 1;
 
     if (key === "slash") {
       const amount = Math.floor(
-        (45 + s.pickaxe * 5 + s.region * 12) *
-        skillBonus
+        (45 + s.pickaxe * 5 + s.region * 12) * skillBonus
       );
 
       s.enemy.hp -= amount;
@@ -1367,9 +1575,7 @@
       showDamage("RADIANT -" + amount, "enemy");
       enemyHitEffect();
 
-      log(
-        `Radiant Slash deals ${amount} damage and uses ${manaCost} mana.`
-      );
+      log(`Radiant Slash deals ${amount} damage.`);
     } else if (key === "burst") {
       const amount = Math.floor(
         (72 + s.region * 20) * skillBonus
@@ -1381,9 +1587,7 @@
       showDamage("ARCANE -" + amount, "enemy");
       enemyHitEffect();
 
-      log(
-        `Arcane Burst deals ${amount} damage and uses ${manaCost} mana.`
-      );
+      log(`Arcane Burst deals ${amount} damage.`);
     } else if (key === "guard") {
       livingHeroes().forEach((id) => {
         s.heroHp[id] = Math.min(
@@ -1397,9 +1601,7 @@
 
       showDamage("Aegis +12", "party", true);
 
-      log(
-        `Aegis Guard healed the living party and will soften the next hit. Mana used: ${manaCost}.`
-      );
+      log("Aegis Guard healed the party and will soften the next hit.");
     } else if (key === "heal") {
       const amount = Math.floor(
         28 * (s.recruits.includes("elise") ? 1.2 : 1)
@@ -1416,9 +1618,7 @@
 
       showDamage("HEAL +" + amount, "party", true);
 
-      log(
-        `Healing Wave restores up to ${amount} HP to each living ally. Mana used: ${manaCost}.`
-      );
+      log(`Healing Wave restores up to ${amount} HP to each living ally.`);
     } else if (key === "meteor") {
       const amount = Math.floor(
         (105 + s.region * 28) * skillBonus
@@ -1430,9 +1630,7 @@
       showDamage("METEOR -" + amount, "enemy");
       enemyHitEffect();
 
-      log(
-        `Meteor Rain deals ${amount} damage. Mana used: ${manaCost}.`
-      );
+      log(`Meteor Rain deals ${amount} damage.`);
     } else if (key === "frost") {
       const amount = Math.floor(
         (22 + s.region * 6) * skillBonus
@@ -1445,31 +1643,24 @@
       showDamage("FROST -" + amount, "enemy");
       enemyHitEffect();
 
-      log(
-        `Frost Nova deals ${amount} damage and slows the enemy. Mana used: ${manaCost}.`
-      );
+      log(`Frost Nova deals ${amount} damage and slows the enemy.`);
     } else if (key === "phoenix") {
       const fallen = s.heroes.find(
         (id) => (s.heroHp[id] || 0) <= 0
       );
 
       if (!fallen) {
-        // Safety check in case the party changed.
         s.mana = Math.min(maxMana(), s.mana + manaCost);
         return toast("There is no fallen hero to revive.");
       }
 
-      s.heroHp[fallen] = Math.ceil(
-        HEROES[fallen].maxHp * 0.4
-      );
-
+      s.heroHp[fallen] = Math.ceil(HEROES[fallen].maxHp * 0.4);
       s.cooldowns.phoenix = 45;
 
       showDamage("REVIVE", "party", true);
 
-      log(
-        `${HEROES[fallen].name} returns with 40% HP! Mana used: ${manaCost}.`
-      );
+      announce(`Notice: ${HEROES[fallen].name} has been revived.`);
+      log(`${HEROES[fallen].name} returns with 40% HP!`);
     }
 
     if (s.enemy && s.enemy.hp <= 0) {
@@ -1508,10 +1699,7 @@
       s.speedLevel += 1;
       partyClock = 0;
 
-      log(
-        `Party attack interval is now ${pInterval().toFixed(1)} seconds.`
-      );
-
+      log(`Party attack interval is now ${pInterval().toFixed(1)} seconds.`);
       toast("Party tempo improved!");
     } else if (kind === "damage") {
       const cost = damageCost();
@@ -1523,10 +1711,7 @@
       s.gold -= cost;
       s.damageLevel += 1;
 
-      log(
-        `Party damage increased to upgrade level ${s.damageLevel}.`
-      );
-
+      log(`Party damage increased to level ${s.damageLevel}.`);
       toast("Party hits harder!");
     } else if (kind === "crit") {
       const cost = critCost();
@@ -1538,10 +1723,7 @@
       s.crystals -= cost;
       s.critLevel += 1;
 
-      log(
-        `Critical strike chance increased to ${s.critLevel * 5}%.`
-      );
-
+      log(`Critical strike chance increased to ${s.critLevel * 5}%.`);
       toast("Critical strikes improved!");
     }
 
@@ -1550,7 +1732,7 @@
   }
 
   // ==========================================
-  // RECRUIT HELPERS
+  // HIRE RECRUITS
   // ==========================================
 
   function hireRecruit(id) {
@@ -1561,31 +1743,19 @@
     if (!recruit || s.recruits.includes(id)) return;
 
     if (s.gold < recruit.cost) {
-      return toast(
-        `You need ${recruit.cost} gold to recruit ${recruit.name}.`
-      );
+      return toast(`You need ${recruit.cost} gold to recruit ${recruit.name}.`);
     }
 
     s.gold -= recruit.cost;
     s.recruits.push(id);
 
     if (id === "iris") {
-      // Iris increases max mana to 125.
-      // Restore 25 mana on recruitment.
       s.mana = Math.min(maxMana(), s.mana + 25);
 
-      log(
-        "Iris joined your expedition. Maximum mana and regeneration increased."
-      );
-
-      toast(
-        "Iris recruited! Maximum mana is now 125."
-      );
+      log("Iris joined your expedition. Maximum mana and regeneration increased.");
+      toast("Iris recruited! Maximum mana is now 125.");
     } else {
-      log(
-        `${recruit.name} joined your kingdom as a ${recruit.role.toLowerCase()}.`
-      );
-
+      log(`${recruit.name} joined your kingdom as a ${recruit.role.toLowerCase()}.`);
       toast(`${recruit.name} joined the kingdom!`);
     }
 
@@ -1605,24 +1775,17 @@
     if (!snack) return;
 
     if (battleLocked()) {
-      return toast(
-        "Snacks can be used once the party has finished recovering."
-      );
+      return toast("Snacks can be used after hospital treatment.");
     }
 
     if (!livingHeroes().length) {
-      return toast(
-        "Your party needs hospital treatment first."
-      );
+      return toast("Your party needs hospital treatment first.");
     }
 
     if ((s.snacks[id] || 0) <= 0) {
-      return toast(
-        "You are out of that snack. Buy more in the supply stall."
-      );
+      return toast("You are out of that snack. Buy more.");
     }
 
-    // Avoid consuming a snack that cannot do anything.
     if (snack.effect === "mana" && s.mana >= maxMana()) {
       return toast("Your mana is already full.");
     }
@@ -1637,78 +1800,59 @@
       );
 
       if (living.length) {
-        const targetId = living[0];
+        const idToHeal = living[0];
 
         const amount = Math.floor(
           35 * (s.recruits.includes("mira_cook") ? 1.25 : 1)
         );
 
-        s.heroHp[targetId] = Math.min(
-          HEROES[targetId].maxHp,
-          s.heroHp[targetId] + amount
+        s.heroHp[idToHeal] = Math.min(
+          HEROES[idToHeal].maxHp,
+          s.heroHp[idToHeal] + amount
         );
 
         showDamage("+" + amount, "party", true);
 
-        log(
-          `Trail Rations restored ${amount} HP to ${HEROES[targetId].name}.`
-        );
+        log(`Trail Rations restored HP to ${HEROES[idToHeal].name}.`);
       }
     } else if (snack.effect === "buff") {
       s.partyBuffUntil = Date.now() + 20000;
-
       log("Moonberries boosted party damage for 20 seconds.");
     } else if (snack.effect === "ore") {
       s.ore += 4;
-
       log("Miner's Tea refreshed the crew. +4 ore.");
     } else if (snack.effect === "healAll") {
       const amount = Math.floor(
         24 * (s.recruits.includes("mira_cook") ? 1.25 : 1)
       );
 
-      livingHeroes().forEach((heroId) => {
-        s.heroHp[heroId] = Math.min(
-          HEROES[heroId].maxHp,
-          s.heroHp[heroId] + amount
+      livingHeroes().forEach((id) => {
+        s.heroHp[id] = Math.min(
+          HEROES[id].maxHp,
+          s.heroHp[id] + amount
         );
       });
 
       showDamage("TEAM +" + amount, "party", true);
-
-      log(
-        `Crystal Cake restored up to ${amount} HP to each living hero.`
-      );
+      log(`Crystal Cake healed the party by up to ${amount} HP.`);
     } else if (snack.effect === "mana") {
       const before = s.mana;
 
-      s.mana = Math.min(
-        maxMana(),
-        s.mana + 35
-      );
+      s.mana = Math.min(maxMana(), s.mana + 35);
 
-      const restored = Math.floor(s.mana - before);
+      const gained = Math.floor(s.mana - before);
 
-      // Re-arm the low-mana warning once mana is back
-      // above the threshold.
       if (s.mana / maxMana() > 0.3) {
         s.manaWarning = false;
       }
 
-      showDamage("MANA +" + restored, "party", true);
-
-      log(
-        `Etherberries restored ${restored} mana.`
-      );
-
-      toast(`Restored ${restored} mana.`);
+      showDamage("MANA +" + gained, "party", true);
+      log(`Etherberries restored ${gained} mana.`);
+      toast(`Restored ${gained} mana.`);
     } else if (snack.effect === "manaBuff") {
       s.manaBuffUntil = Date.now() + 30000;
 
-      log(
-        "Astral Tea tripled mana regeneration for 30 seconds."
-      );
-
+      log("Astral Tea tripled mana regeneration for 30 seconds.");
       toast("Mana regeneration boosted for 30 seconds!");
     }
 
@@ -1724,16 +1868,13 @@
     if (!snack) return;
 
     if (s.gold < snack.cost) {
-      return toast(
-        `You need ${snack.cost} gold to buy ${snack.name}.`
-      );
+      return toast(`You need ${snack.cost} gold to buy ${snack.name}.`);
     }
 
     s.gold -= snack.cost;
     s.snacks[id] = (s.snacks[id] || 0) + 1;
 
     log(`Bought one ${snack.name.toLowerCase()}.`);
-
     toast(`${snack.name} added to your bag.`);
 
     render();
@@ -1748,9 +1889,7 @@
     if (!s.needsHospital || isRecovering()) return;
 
     if (s.gold < s.hospitalFee) {
-      return toast(
-        `You need ${s.hospitalFee} gold to pay the healing fee.`
-      );
+      return toast(`You need ${s.hospitalFee} gold to pay the healing fee.`);
     }
 
     s.gold -= s.hospitalFee;
@@ -1759,13 +1898,8 @@
 
     supportClock = 0;
 
-    log(
-      `Paid ${s.hospitalFee} gold. Treatment has started; battles are paused for one minute.`
-    );
-
-    toast(
-      "Hospital fee paid. The party will heal for 1 minute."
-    );
+    log(`Paid ${s.hospitalFee} gold. One-minute recovery has started.`);
+    toast("Hospital fee paid. The party will heal for one minute.");
 
     render();
     save();
@@ -1782,67 +1916,74 @@
     s.guardCharges = 0;
     supportClock = 0;
 
-    log(
-      "Treatment complete. The entire party has recovered to full HP."
-    );
-
+    log("Treatment complete. The entire party has recovered to full HP.");
     toast("Your party is back on its feet!");
 
-    render();
-    save();
-    scheduleExplore();
-  }
-
-  // ==========================================
-  // RESET SAVE
-  // ==========================================
-
-  function resetGame() {
-    if (
-      !confirm(
-        "Reset all Gem Miner progress on this device? This cannot be undone."
-      )
-    ) {
-      return;
+    if (currentPrompt && currentPrompt.type === "hospital") {
+      currentPrompt = null;
     }
 
-    clearTimeout(exploreTimer);
-
-    localStorage.removeItem(SAVE_KEY);
-    localStorage.removeItem(OLD_SAVE_KEY);
-
-    s = clone(defaults);
-    logs = [];
-
-    partyClock = 0;
-    enemyClock = 0;
-    supportClock = 0;
-
-    log("A fresh expedition begins. Good luck, miner!");
-
-    announce("Notice: A new adventure has begun.");
-
     render();
     save();
     scheduleExplore();
   }
 
   // ==========================================
-  // RENDER PARTY
+  // GREAT SAGE PROMPT ACTIONS
+  // ==========================================
+
+  function handleSageAction(button) {
+    if (!button || button.disabled) return true;
+
+    const action = button.dataset.sageAction;
+    const value = button.dataset.value;
+
+    if (!action) return false;
+
+    if (action === "dismiss") {
+      dismissPrompt();
+      return true;
+    }
+
+    if (action === "phoenix") {
+      dismissPrompt();
+      skill("phoenix");
+      return true;
+    }
+
+    if (action === "skill") {
+      dismissPrompt();
+      skill(value);
+      return true;
+    }
+
+    if (action === "snack") {
+      dismissPrompt();
+      useSnack(value);
+      return true;
+    }
+
+    if (action === "hospital") {
+      dismissPrompt();
+      payHeal();
+      return true;
+    }
+
+    return false;
+  }
+
+  // ==========================================
+  // PARTY, REWARDS, SNACKS AND RECRUITS
   // ==========================================
 
   function renderParty() {
-    const party = $("battleParty");
-    const cards = $("companions");
-
-    party.innerHTML = s.heroes.map((id) => {
+    $("battleParty").innerHTML = s.heroes.map((id) => {
       const h = HEROES[id];
       const hp = s.heroHp[id] || 0;
-      const down = hp <= 0;
 
       return `
         <img
-          class="battle-hero ${down ? "fallen" : ""}"
+          class="battle-hero ${hp <= 0 ? "fallen" : ""}"
           src="${h.portrait}"
           alt="${esc(h.name)}"
           title="${esc(h.name)} · ${Math.floor(hp)}/${h.maxHp} HP"
@@ -1850,48 +1991,32 @@
       `;
     }).join("");
 
-    cards.innerHTML = s.heroes.map((id) => {
+    $("companions").innerHTML = s.heroes.map((id) => {
       const h = HEROES[id];
       const hp = s.heroHp[id] || 0;
-      const down = hp <= 0;
       const pct = Math.max(0, hp / h.maxHp * 100);
+      const down = hp <= 0;
 
       return `
         <article class="${down ? "is-fallen" : ""}">
           <div class="portrait">
-            <img
-              src="${h.portrait}"
-              alt="${esc(h.name)}"
-              loading="lazy"
-            >
+            <img src="${h.portrait}" alt="${esc(h.name)}" loading="lazy">
           </div>
-
           <div class="companion-info">
             <b>${esc(h.name)}</b>
             <small>${esc(h.role)}</small>
-
             <div class="minibar">
               <i style="width:${pct}%"></i>
             </div>
-
-            <small>
-              ${down ? "DOWN" : `HP ${Math.floor(hp)} / ${h.maxHp}`}
-            </small>
+            <small>${down ? "DOWN" : `HP ${Math.floor(hp)} / ${h.maxHp}`}</small>
           </div>
         </article>
       `;
     }).join("");
 
-    $("partyPower").textContent =
-      `PARTY POWER · ${fmt(totalPartyDamage())}`;
-
-    $("partyAttackLabel").textContent =
-      `Attack interval: ${pInterval().toFixed(1)}s`;
+    $("partyPower").textContent = `PARTY POWER · ${fmt(totalPartyDamage())}`;
+    $("partyAttackLabel").textContent = `Attack interval: ${pInterval().toFixed(1)}s`;
   }
-
-  // ==========================================
-  // REWARD DISPLAY
-  // ==========================================
 
   function renderRewards() {
     const next = $("nextHeroCard");
@@ -1911,44 +2036,28 @@
     }
 
     const h = HEROES[rewardId];
-    const already = s.heroes.includes(rewardId);
 
     next.innerHTML = `
-      <div class="reward-kicker">
-        ${already ? "NEXT CAVE REWARD" : "BOSS REWARD · NEW HERO"}
-      </div>
-
+      <div class="reward-kicker">BOSS REWARD · NEW HERO</div>
       <div class="reward-row">
-        <img
-          src="${h.portrait}"
-          alt="${esc(h.name)}"
-          loading="lazy"
-        >
-
+        <img src="${h.portrait}" alt="${esc(h.name)}" loading="lazy">
         <div>
           <b>${esc(h.name)}</b>
           <small>${esc(h.role)}</small>
           <small>${esc(h.tagline)}</small>
         </div>
       </div>
-
       <small class="reward-note">
         Defeat this cave's guardian to recruit ${esc(h.name)} automatically.
       </small>
     `;
   }
 
-  // ==========================================
-  // RENDER SNACKS
-  // ==========================================
-
   function renderSnacks() {
     $("snackGrid").innerHTML = SNACKS.map((snack) => {
       const count = s.snacks[snack.id] || 0;
-
       const noManaNeeded =
-        snack.effect === "mana" &&
-        s.mana >= maxMana();
+        snack.effect === "mana" && s.mana >= maxMana();
 
       return `
         <article class="snack-card">
@@ -1957,16 +2066,13 @@
             <b>${esc(snack.name)}</b>
             <em>×${count}</em>
           </div>
-
           <p>${esc(snack.desc)}</p>
-
           <div class="snack-actions">
             <button
               data-action="useSnack"
               data-value="${snack.id}"
               ${count <= 0 || battleLocked() || noManaNeeded ? "disabled" : ""}
             >Use</button>
-
             <button
               data-action="buySnack"
               data-value="${snack.id}"
@@ -1979,46 +2085,29 @@
     }).join("");
   }
 
-  // ==========================================
-  // RENDER RECRUITS
-  // ==========================================
-
   function renderRecruits() {
-    $("recruitCount").textContent =
-      `${s.recruits.length} hired`;
+    $("recruitCount").textContent = `${s.recruits.length} hired`;
 
     $("recruitGrid").innerHTML = RECRUITS.map((recruit) => {
       const hired = s.recruits.includes(recruit.id);
 
       return `
         <article class="recruit-card ${hired ? "hired" : ""}">
-          <img
-            src="${recruit.portrait}"
-            alt="${esc(recruit.name)}"
-            loading="lazy"
-          >
-
+          <img src="${recruit.portrait}" alt="${esc(recruit.name)}" loading="lazy">
           <div class="recruit-copy">
             <b>${esc(recruit.name)}</b>
             <small>${esc(recruit.role)}</small>
             <p>${esc(recruit.desc)}</p>
           </div>
-
           <button
             data-action="hire"
             data-value="${recruit.id}"
             ${hired || s.gold < recruit.cost ? "disabled" : ""}
-          >
-            ${hired ? "Hired" : `Hire · ${recruit.cost} G`}
-          </button>
+          >${hired ? "Hired" : `Hire · ${recruit.cost} G`}</button>
         </article>
       `;
     }).join("");
   }
-
-  // ==========================================
-  // RENDER HOSPITAL
-  // ==========================================
 
   function renderHospital() {
     const panel = $("hospitalPanel");
@@ -2038,11 +2127,10 @@
       : "TREATMENT NEEDED";
 
     $("hospitalCopy").textContent = timer
-      ? "The healers are tending to your party. No battles can start until the one-minute rest is complete; mining and recruiting remain available."
-      : "No retreat. The party fought until every hero fell. Pay the hospital fee to start a full one-minute recovery.";
+      ? "The healers are tending to your party. Battles are paused until the one-minute recovery finishes."
+      : "Every hero has fallen. Pay the hospital fee to begin a full one-minute recovery.";
 
-    $("hospitalFee").textContent =
-      `${fmt(s.hospitalFee)} gold`;
+    $("hospitalFee").textContent = `${fmt(s.hospitalFee)} gold`;
 
     if (timer) {
       const seconds = Math.max(
@@ -2053,9 +2141,7 @@
       $("hospitalTimer").textContent =
         `Recovery ends in ${String(Math.floor(seconds / 60)).padStart(2, "0")}:${String(seconds % 60).padStart(2, "0")}`;
 
-      $("payHealBtn").textContent =
-        "Healing in progress…";
-
+      $("payHealBtn").textContent = "Healing in progress…";
       $("payHealBtn").disabled = true;
     } else {
       $("hospitalTimer").textContent =
@@ -2063,16 +2149,60 @@
           ? `You need ${fmt(s.hospitalFee - s.gold)} more gold.`
           : "Ready when you are";
 
-      $("payHealBtn").textContent =
-        `Pay ${fmt(s.hospitalFee)} G & start healing`;
-
-      $("payHealBtn").disabled =
-        s.gold < s.hospitalFee;
+      $("payHealBtn").textContent = `Pay ${fmt(s.hospitalFee)} G & start healing`;
+      $("payHealBtn").disabled = s.gold < s.hospitalFee;
     }
   }
 
   // ==========================================
-  // MAIN RENDER FUNCTION
+  // LOW-HEALTH ADVICE
+  // ==========================================
+
+  function checkPartyHealthWarning() {
+    const active = livingHeroes();
+
+    if (!active.length || battleLocked()) {
+      lowHealthWarning = false;
+      return;
+    }
+
+    const ratios = active.map(
+      (id) => (s.heroHp[id] || 0) / HEROES[id].maxHp
+    );
+
+    const average = ratios.reduce(
+      (sum, ratio) => sum + ratio,
+      0
+    ) / ratios.length;
+
+    const healthIsLow =
+      ratios.some((ratio) => ratio <= 0.35) ||
+      average <= 0.45;
+
+    if (healthIsLow && !lowHealthWarning) {
+      lowHealthWarning = true;
+
+      const advice = getHealingAdvice();
+
+      announce(
+        `Notice: Your party's health is low. Consider using ${advice.join(", ")} to heal your team.`
+      );
+
+      showLowHealthPrompt();
+    }
+
+    if (ratios.every((ratio) => ratio >= 0.65)) {
+      lowHealthWarning = false;
+
+      if (currentPrompt && currentPrompt.type === "lowHealth") {
+        currentPrompt = null;
+        refreshSagePanel();
+      }
+    }
+  }
+
+  // ==========================================
+  // MAIN RENDER
   // ==========================================
 
   function render() {
@@ -2080,20 +2210,15 @@
     $("crystals").textContent = fmt(s.crystals);
     $("ore").textContent = fmt(s.ore);
 
-    // Update the mana resource shown in the top bar.
-    $("mana").textContent =
-      `${Math.floor(s.mana)} / ${maxMana()}`;
+    $("mana").textContent = `${Math.floor(s.mana)} / ${maxMana()}`;
+    $("manaBar").style.width = `${Math.max(0, s.mana / maxMana() * 100)}%`;
 
     $("regionName").textContent = region().name;
-
-    $("regionNumber").textContent =
-      `CAVE ${String(s.region + 1).padStart(2, "0")}`;
-
+    $("regionNumber").textContent = `CAVE ${String(s.region + 1).padStart(2, "0")}`;
     $("defeated").textContent = fmt(s.defeated);
 
     $("threat").textContent =
-      ["Low", "Moderate", "High", "Extreme"][s.region] ||
-      "Mythic";
+      ["Low", "Moderate", "High", "Extreme"][s.region] || "Mythic";
 
     $("guardianName").textContent = region().boss;
     $("guardianDesc").textContent = region().desc;
@@ -2111,22 +2236,12 @@
         : "Challenge guardian";
 
     $("bossBtn").disabled =
-      bossDone() ||
-      !!s.enemy ||
-      battleLocked() ||
-      !livingHeroes().length;
+      bossDone() || !!s.enemy || battleLocked() || !livingHeroes().length;
 
     $("exploreBtn").disabled =
-      !!s.enemy ||
-      battleLocked() ||
-      !livingHeroes().length;
+      !!s.enemy || battleLocked() || !livingHeroes().length;
 
-    $("mineBtn").disabled = false;
-
-    $("enemyVisual").classList.toggle(
-      "hidden",
-      !s.enemy
-    );
+    $("enemyVisual").classList.toggle("hidden", !s.enemy);
 
     if (s.enemy) {
       $("battleTitle").textContent = s.enemy.name;
@@ -2149,13 +2264,10 @@
         ? "A guardian's ancient power surges…"
         : "The party fights together!";
 
-      $("status").textContent =
-        battleLocked()
-          ? "● RECOVERING"
-          : "● IN COMBAT";
+      $("status").textContent = "● IN COMBAT";
 
       $("hint").textContent =
-        "No retreat is possible. The front-line hero takes hits first, and everyone keeps fighting until all heroes are down.";
+        "Your party fights automatically. Great Sage can advise you when an enemy attacks or a hero needs help.";
     } else {
       $("battleTitle").textContent = "The Crystal Road";
       $("enemyName").textContent = "No enemy nearby";
@@ -2164,72 +2276,35 @@
       $("enemyHealthBar").style.width = "0";
 
       $("status").textContent =
-        battleLocked()
-          ? "● RECOVERING"
-          : "● EXPLORING";
+        battleLocked() ? "● RECOVERING" : "● EXPLORING";
 
       $("caption").textContent = battleLocked()
         ? "The hospital doors are closed to monsters…"
         : "Your party is searching the tunnels…";
 
       $("hint").textContent = battleLocked()
-        ? "Battles are halted until treatment is complete. Mining is still open so you can earn resources."
-        : "Exploration happens automatically after a hidden random 10–20 second interval. There is no retreat button.";
+        ? "Battles pause during hospital treatment. Mining is still open."
+        : "Exploration happens automatically after a hidden random 10–20 second interval.";
     }
 
-    // Upgrade displays.
-    $("pickaxeLevel").textContent =
-      `Level ${s.pickaxe} / 10`;
+    $("pickaxeLevel").textContent = `Level ${s.pickaxe} / 10`;
+    $("pickaxeCost").textContent = s.pickaxe >= 10 ? "MAX" : `${fmt(pickCost())} C`;
+    $("pickaxeUpgrade").disabled = s.pickaxe >= 10 || s.crystals < pickCost();
 
-    $("pickaxeCost").textContent =
-      s.pickaxe >= 10 ? "MAX" : `${fmt(pickCost())} C`;
+    $("speedLevel").textContent = `Level ${s.speedLevel} / 5 · ${pInterval().toFixed(1)}s`;
+    $("speedCost").textContent = s.speedLevel >= 5 ? "MAX" : `${fmt(speedCost())} C`;
+    $("speedUpgrade").disabled = s.speedLevel >= 5 || s.crystals < speedCost();
 
-    $("pickaxeUpgrade").disabled =
-      s.pickaxe >= 10 || s.crystals < pickCost();
+    $("damageLevel").textContent = `Level ${s.damageLevel} / 10`;
+    $("damageCost").textContent = s.damageLevel >= 10 ? "MAX" : `${fmt(damageCost())} G`;
+    $("damageUpgrade").disabled = s.damageLevel >= 10 || s.gold < damageCost();
 
-    $("speedLevel").textContent =
-      `Level ${s.speedLevel} / 5 · ${pInterval().toFixed(1)}s`;
+    $("critLevel").textContent = `Level ${s.critLevel} / 8 · ${s.critLevel * 5}%`;
+    $("critCost").textContent = s.critLevel >= 8 ? "MAX" : `${fmt(critCost())} C`;
+    $("critUpgrade").disabled = s.critLevel >= 8 || s.crystals < critCost();
 
-    $("speedCost").textContent =
-      s.speedLevel >= 5 ? "MAX" : `${fmt(speedCost())} C`;
-
-    $("speedUpgrade").disabled =
-      s.speedLevel >= 5 || s.crystals < speedCost();
-
-    $("damageLevel").textContent =
-      `Level ${s.damageLevel} / 10`;
-
-    $("damageCost").textContent =
-      s.damageLevel >= 10 ? "MAX" : `${fmt(damageCost())} G`;
-
-    $("damageUpgrade").disabled =
-      s.damageLevel >= 10 || s.gold < damageCost();
-
-    $("critLevel").textContent =
-      `Level ${s.critLevel} / 8 · ${s.critLevel * 5}%`;
-
-    $("critCost").textContent =
-      s.critLevel >= 8 ? "MAX" : `${fmt(critCost())} C`;
-
-    $("critUpgrade").disabled =
-      s.critLevel >= 8 || s.crystals < critCost();
-
-    // Skill cooldown labels and mana checks.
-    const skillKeys = [
-      "slash",
-      "burst",
-      "guard",
-      "heal",
-      "meteor",
-      "frost",
-      "phoenix"
-    ];
-
-    for (const key of skillKeys) {
-      const button = document.querySelector(
-        `[data-skill="${key}"]`
-      );
-
+    for (const key of Object.keys(SKILL_MANA_COST)) {
+      const button = document.querySelector(`[data-skill="${key}"]`);
       const label = $("cd-" + key);
       const cost = SKILL_MANA_COST[key];
 
@@ -2241,15 +2316,12 @@
       const targetRequired =
         ["slash", "burst", "meteor", "frost"].includes(key);
 
-      const noMana = s.mana < cost;
-
       if (label) {
         if (healerRequired) {
           label.textContent = "LOCKED";
         } else if (s.cooldowns[key] > 0) {
-          label.textContent =
-            `${Math.ceil(s.cooldowns[key])}s`;
-        } else if (noMana) {
+          label.textContent = `${Math.ceil(s.cooldowns[key])}s`;
+        } else if (s.mana < cost) {
           label.textContent = `NEED ${cost} M`;
         } else {
           label.textContent = `READY · ${cost} M`;
@@ -2257,7 +2329,7 @@
 
         label.classList.toggle(
           "cooling",
-          s.cooldowns[key] > 0 || noMana
+          s.cooldowns[key] > 0 || s.mana < cost
         );
       }
 
@@ -2268,25 +2340,18 @@
           healerRequired ||
           (targetRequired && !s.enemy) ||
           s.cooldowns[key] > 0 ||
-          noMana;
+          s.mana < cost;
       }
     }
 
-    // Show mana regeneration state in the Sage display.
-    if (!speechBusy) {
-      if (!sageEnabled) {
-        updateSageStatus("VOICE MUTED");
-      } else if (s.manaBuffUntil > Date.now()) {
-        updateSageStatus("MANA BOOST ACTIVE");
-      } else {
-        updateSageStatus("VOICE ON");
-      }
-    }
-
-    const orb = $("sageOrb");
-
-    if (orb) {
-      orb.classList.toggle("is-muted", !sageEnabled);
+    if (speechBusy) {
+      updateSageStatus("SPEAKING");
+    } else if (!sageEnabled) {
+      updateSageStatus("VOICE MUTED");
+    } else if (s.manaBuffUntil > Date.now()) {
+      updateSageStatus("MANA BOOST ACTIVE");
+    } else {
+      updateSageStatus("VOICE ON");
     }
 
     renderParty();
@@ -2295,13 +2360,21 @@
     renderRecruits();
     renderHospital();
     renderLog();
+    refreshSagePanel();
   }
 
   // ==========================================
-  // BUTTON HANDLER
+  // BUTTON HANDLERS
   // ==========================================
 
   document.addEventListener("click", (event) => {
+    const sageButton = event.target.closest("[data-sage-action]");
+
+    if (sageButton) {
+      handleSageAction(sageButton);
+      return;
+    }
+
     const skillButton = event.target.closest("[data-skill]");
 
     if (skillButton) {
@@ -2337,9 +2410,7 @@
       if (!s.enemy && !bossDone()) {
         spawn(true);
       } else if (s.enemy) {
-        toast(
-          "Defeat the current enemy before challenging the guardian."
-        );
+        toast("Defeat the current enemy before challenging the guardian.");
       }
       return;
     }
@@ -2382,10 +2453,7 @@
     }
   });
 
-  // ==========================================
-  // KEYBOARD SKILL SHORTCUTS
-  // ==========================================
-
+  // Keyboard shortcuts for skills.
   document.addEventListener("keydown", (event) => {
     if (
       event.repeat ||
@@ -2426,12 +2494,11 @@
 
     lastTick = currentTime;
 
-    // Finish the one-minute hospital recovery.
     if (s.healingUntil && now >= s.healingUntil) {
       finishHealing();
     }
 
-    // Passive income from helpers.
+    // Recruit passive income.
     const goldRate =
       (s.recruits.includes("tessa") ? 0.8 : 0) +
       (s.recruits.includes("borin") ? 1.3 : 0);
@@ -2442,43 +2509,31 @@
     s.gold += goldRate * dt;
     s.crystals += crystalRate * dt;
 
-    // ========================================
-    // PASSIVE MANA REGENERATION
-    // Runs even when no enemy is present.
-    // ========================================
-
+    // Mana regenerates even outside combat.
     s.mana = Math.min(
       maxMana(),
       s.mana + manaRate() * dt
     );
 
-    // Low-mana warning: trigger below 20%.
-    // Rearm the warning once mana rises above 30%.
     const manaRatio = s.mana / maxMana();
 
     if (manaRatio < 0.2 && !s.manaWarning) {
       s.manaWarning = true;
 
-      announce(
-        "Notice: Your mana is running low."
-      );
-
+      announce("Notice: Your mana is running low.");
       log("Great Sage warns that mana is running low.");
     } else if (manaRatio > 0.3) {
       s.manaWarning = false;
     }
 
-    // Battle cooldowns and combat timers pause
-    // during hospital treatment.
+    checkPartyHealthWarning();
+
     if (!battleLocked()) {
       Object.keys(s.cooldowns).forEach((key) => {
-        s.cooldowns[key] = Math.max(
-          0,
-          s.cooldowns[key] - dt
-        );
+        s.cooldowns[key] = Math.max(0, s.cooldowns[key] - dt);
       });
 
-      // Combat timers only run while an enemy exists.
+      // Combat timers run only while an enemy exists.
       if (s.enemy) {
         partyClock += dt;
         enemyClock += dt;
@@ -2498,11 +2553,8 @@
         }
       }
 
-      // ======================================
-      // CELESTE'S PASSIVE HEALING
-      // Works inside AND outside combat.
-      // ======================================
-
+      // Celeste's passive healing also works when
+      // no enemy is present.
       const celesteAlive =
         s.heroes.includes("celeste") &&
         livingHeroes().includes("celeste");
@@ -2531,30 +2583,20 @@
 
             if (actualHealing > 0) {
               s.heroHp[id] = newHp;
-
-              showDamage(
-                "+" + actualHealing,
-                "party",
-                true
-              );
-
+              showDamage("+" + actualHealing, "party", true);
               healedAnyone = true;
             }
           }
 
           if (healedAnyone) {
-            log(
-              `Celeste's healing aura restores up to ${amount} HP to every living party member.`
-            );
+            log(`Celeste's healing aura restores up to ${amount} HP to every living hero.`);
           }
         }
       } else {
-        // Restart the healer timer if Celeste is down.
         supportClock = 0;
       }
     }
 
-    // Refresh the display four times per second.
     renderClock += dt;
 
     if (renderClock >= 0.25) {
@@ -2562,7 +2604,6 @@
       render();
     }
 
-    // Save periodically.
     if (
       Math.floor(now / 5000) !==
       Math.floor((now - dt * 1000) / 5000)
@@ -2571,14 +2612,10 @@
     }
   }
 
-  // Repair old enemy saves missing max HP.
+  // Repair older saves with an enemy missing max HP.
   if (s.enemy && !s.enemy.maxHp) {
     s.enemy.maxHp = s.enemy.hp;
   }
-
-  // ==========================================
-  // START THE GAME
-  // ==========================================
 
   if (!logs.length) {
     log("The crystal road awaits. Your party is ready.");
@@ -2591,15 +2628,12 @@
     scheduleExplore();
   }
 
-  // The speech system can use the browser's
-  // available voice list once it has loaded.
   if ("speechSynthesis" in window) {
     window.speechSynthesis.onvoiceschanged = () => {
-      // Voices are loaded by the browser.
+      // Available voices are selected when the next sentence begins.
     };
   }
 
   window.gemMinerReady = true;
-
   window.setInterval(tick, 200);
 })();
