@@ -630,50 +630,48 @@
     Math.floor(50 * Math.pow(1.85, s.critLevel));
 
   function updateMusicControl() {
-    const audio = $("backgroundMusic");
-    const button = $("musicToggle");
-    const volume = $("musicVolume");
-    const trackLabel = $("musicTrack");
+  const audio = $("backgroundMusic");
+  const button = $("musicToggle");
+  const volume = $("musicVolume");
+  const trackLabel = $("musicTrack");
 
-    if (audio && volume) {
-      audio.volume = Math.max(0, Math.min(1, Number(volume.value) || 0));
-    }
+  if (audio && volume) {
+    // Remember the volume selected by the player.
+    const selectedVolume = Math.max(
+      0,
+      Math.min(1, Number(volume.value) || 0)
+    );
 
-    if (button) {
-      const playing = !!audio && !audio.paused;
-      button.textContent = !musicEnabled
-        ? "♫ Music off"
-        : playing
-          ? "Ⅱ Pause music"
-          : "▶ Play music";
-      button.setAttribute("aria-pressed", String(playing));
-    }
+    // Lower the music to 18% of its selected volume
+    // while the Great Sage is speaking.
+    const isSageSpeaking = speechBusy && sageEnabled;
 
-    if (trackLabel && currentMusicKey && MUSIC_TRACKS[currentMusicKey]) {
-      trackLabel.textContent = MUSIC_TRACKS[currentMusicKey].label;
-    }
+    audio.volume = selectedVolume * (
+      isSageSpeaking ? 0.18 : 1
+    );
   }
 
-  function startBackgroundMusic() {
-    const audio = $("backgroundMusic");
-    if (!audio || !musicEnabled || !audio.src) {
-      updateMusicControl();
-      return;
-    }
+  if (button) {
+    const playing = !!audio && !audio.paused;
 
-    const volume = $("musicVolume");
-    if (volume) audio.volume = Number(volume.value);
+    button.textContent = !musicEnabled
+      ? "♫ Music off"
+      : playing
+        ? "Ⅱ Pause music"
+        : "▶ Play music";
 
-    const playAttempt = audio.play();
-    if (playAttempt && typeof playAttempt.then === "function") {
-      playAttempt.then(updateMusicControl).catch(() => {
-        // Browsers may block autoplay until the player clicks Play music.
-        updateMusicControl();
-      });
-    } else {
-      updateMusicControl();
-    }
+    button.setAttribute("aria-pressed", String(playing));
   }
+
+  if (
+    trackLabel &&
+    currentMusicKey &&
+    MUSIC_TRACKS[currentMusicKey]
+  ) {
+    trackLabel.textContent =
+      MUSIC_TRACKS[currentMusicKey].label;
+  }
+}
 
   function updateMusicScene() {
     const audio = $("backgroundMusic");
