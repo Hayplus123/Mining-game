@@ -1743,41 +1743,42 @@
           enemyAttack();
         }
 
-        if (
-          s.enemy &&
-          s.heroes.includes("celeste") &&
-          livingHeroes().includes("celeste")
-        ) {
-          supportClock += dt;
+        // Celeste's passive healing works both in and out of battle.
+if (
+  s.heroes.includes("celeste") &&
+  livingHeroes().includes("celeste")
+) {
+  supportClock += dt;
 
-          if (supportClock >= 10) {
-            supportClock = 0;
+  if (supportClock >= 10) {
+    supportClock = 0;
 
-            const targetId = livingHeroes().slice().sort(
-              (a, b) =>
-                (s.heroHp[a] / HEROES[a].maxHp) -
-                (s.heroHp[b] / HEROES[b].maxHp)
-            )[0];
+    const healed =
+      7 + (s.recruits.includes("elise") ? 4 : 0);
 
-            if (targetId) {
-              const healed =
-                7 + (s.recruits.includes("elise") ? 4 : 0);
+    const activeParty = livingHeroes();
+    let healedAnyone = false;
 
-              s.heroHp[targetId] = Math.min(
-                HEROES[targetId].maxHp,
-                s.heroHp[targetId] + healed
-              );
+    for (const id of activeParty) {
+      const oldHp = s.heroHp[id];
+      const maxHp = HEROES[id].maxHp;
+      const newHp = Math.min(maxHp, oldHp + healed);
+      const actualHealing = newHp - oldHp;
 
-              showDamage("+" + healed, "party", true);
-
-              log(
-                `Celeste’s healing aura restores ${healed} HP to ${HEROES[targetId].name}.`
-              );
-            }
-          }
-        }
+      if (actualHealing > 0) {
+        s.heroHp[id] = newHp;
+        showDamage("+" + actualHealing, "party", true);
+        healedAnyone = true;
       }
     }
+
+    if (healedAnyone) {
+      log(
+        `Celeste's healing aura restores up to ${healed} HP to every living party member.`
+      );
+    }
+  }
+}
 
     renderClock += dt;
 
