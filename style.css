@@ -1,4 +1,3 @@
-
 :root {
   --bg:#101020;
   --panel:#1c1a32;
@@ -52,7 +51,6 @@ button:disabled {
 }
 
 .full { width:100%; margin-top:12px; }
-
 button small { color:var(--gold); }
 
 .shell { max-width:1400px; margin:auto; padding:16px; }
@@ -166,10 +164,7 @@ h1 em { color:#d5b7ff; font-style:normal; }
   margin-bottom:14px;
 }
 
-.panelhead h2 {
-  margin:0;
-  font:20px Georgia,serif;
-}
+.panelhead h2 { margin:0; font:20px Georgia,serif; }
 
 .muted,.hint {
   color:var(--muted);
@@ -208,6 +203,7 @@ h1 em { color:#d5b7ff; font-style:normal; }
     radial-gradient(circle,#8ce7ef 1px,transparent 2px);
   background-size:65px 60px,105px 85px;
   opacity:.38;
+  pointer-events:none;
 }
 
 .crystal {
@@ -250,15 +246,16 @@ h1 em { color:#d5b7ff; font-style:normal; }
 }
 
 .hero-token {
-  display:grid;
-  place-items:center;
   flex:1;
   min-width:0;
   height:90px;
+  overflow:hidden;
+  padding:0;
+  display:grid;
+  place-items:center;
   border:1px solid #c3a2ff77;
   border-radius:9px;
   background:linear-gradient(#423460,#1d2039);
-  font-size:clamp(22px,4vw,35px);
   filter:drop-shadow(0 4px 7px #0008);
   transition:opacity .2s,filter .2s;
 }
@@ -272,6 +269,42 @@ h1 em { color:#d5b7ff; font-style:normal; }
   filter:grayscale(1) brightness(.45);
   opacity:.65;
 }
+
+/* Real hero SVG files */
+.hero-sprite {
+  display:block;
+  width:100%;
+  height:100%;
+  object-fit:contain;
+  object-position:center;
+}
+
+.avatar {
+  position:relative;
+  flex-shrink:0;
+  width:58px;
+  height:66px;
+  overflow:hidden;
+  padding:0;
+  display:grid;
+  place-items:center;
+  border:1px solid #b58aff77;
+  border-radius:8px;
+  background:linear-gradient(145deg,#4d3b68,#20213a);
+}
+
+.avatar .hero-sprite {
+  width:100%;
+  height:100%;
+}
+
+.hero-fallback {
+  display:grid;
+  place-items:center;
+  font-size:28px;
+}
+
+.hero-fallback[hidden] { display:none!important; }
 
 .enemy {
   position:absolute;
@@ -310,7 +343,8 @@ h1 em { color:#d5b7ff; font-style:normal; }
   z-index:10;
   color:var(--gold);
   font-size:16px;
-  font-weight:bold;
+  font-weight:1000;
+  text-shadow:0 2px 5px #000;
   animation:rise .9s forwards;
   pointer-events:none;
 }
@@ -375,23 +409,16 @@ h1 em { color:#d5b7ff; font-style:normal; }
   border-radius:10px;
   background:#ffffff05;
   min-width:0;
+  transition:opacity .2s;
 }
 
-.avatar {
-  flex-shrink:0;
-  width:52px;
-  height:61px;
-  display:grid;
-  place-items:center;
-  border:1px solid #b58aff55;
-  border-radius:8px;
-  background:linear-gradient(145deg,#4d3b68,#20213a);
-  font-size:28px;
-}
+.companion.fallen { opacity:.6; }
 
 .companion b,.companion small { display:block; }
 .companion b { font-size:12px; }
 .companion small { color:var(--muted); font-size:10px; margin-top:4px; }
+
+.hero-details { flex:1; min-width:0; }
 
 .minihealth {
   margin-top:8px;
@@ -486,7 +513,7 @@ h1 em { color:#d5b7ff; font-style:normal; }
 .skilltext small { color:var(--muted); margin-top:4px; font-size:10px; }
 .cooldown { color:var(--green); font-size:10px; white-space:nowrap; }
 
-.upgrade,.recruit {
+.upgrade {
   display:flex;
   align-items:center;
   gap:10px;
@@ -494,13 +521,12 @@ h1 em { color:#d5b7ff; font-style:normal; }
   border-bottom:1px solid #ffffff12;
 }
 
-.upgrade:last-child,.recruit:last-child { border-bottom:0; }
 .upicon { font-size:24px; width:35px; text-align:center; }
-.upgrade .details,.recruit .details { flex:1; min-width:0; }
-.upgrade b,.upgrade small,.recruit b,.recruit small { display:block; }
-.upgrade b,.recruit b { font-size:12px; }
-.upgrade small,.recruit small { color:var(--muted); font-size:10px; margin-top:4px; line-height:1.4; }
-.upgrade button,.recruit button { padding:8px; font-size:10px; }
+.upgrade .details { flex:1; min-width:0; }
+.upgrade b,.upgrade small { display:block; }
+.upgrade b { font-size:12px; }
+.upgrade small { color:var(--muted); font-size:10px; margin-top:4px; line-height:1.4; }
+.upgrade button { padding:8px; font-size:10px; }
 
 .snacks,.recruits {
   display:grid;
@@ -575,6 +601,7 @@ footer {
   display:flex;
   flex-wrap:wrap;
   justify-content:space-between;
+  align-items:center;
   gap:12px;
   border-top:1px solid #ffffff16;
   margin-top:20px;
@@ -615,110 +642,9 @@ footer {
   .banner { padding:18px; }
   .scene { height:235px; }
   .party { left:2%; right:34%; }
-  .hero-token { font-size:25px; height:78px; }
+  .hero-token { height:78px; }
   .hero-token:nth-child(2n) { height:95px; }
   .enemy { right:4%; width:85px; height:105px; font-size:49px; }
   .companions { grid-template-columns:1fr; }
   .enemyinfo { grid-template-columns:1fr; }
-  .snacks,.recruits { grid-template-columns:repeat(2,minmax(0,1fr)); }
-}
-
-
-/* ===== CODE-DRAWN HERO PORTRAITS ===== */
-
-.avatar {
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-  flex-shrink: 0;
-  width: 52px;
-  height: 61px;
-  border: 1px solid #b58aff77;
-  border-radius: 8px;
-  background: #22213b;
-}
-
-.avatar .character-art,
-.hero-token .character-art {
-  display: block;
-  width: 100%;
-  height: 100%;
-}
-
-.hero-token {
-  overflow: hidden;
-  padding: 0;
-  min-width: 0;
-  border: 1px solid #c3a2ff77;
-  border-radius: 9px;
-}
-
-.hero-token .character-art {
-  object-fit: contain;
-}
-
-.companion .avatar {
-  align-self: flex-start;
-}
-
-.companion .character-art {
-  border-radius: 7px;
-}
-
-.hero-token.fallen {
-  filter: grayscale(1) brightness(.45);
-  opacity: .65;
-}
-
-/* Keep the healer and other support heroes easy to identify. */
-.companion:has(.character-art) {
-  transition: opacity .2s, border-color .2s;
-}
-
-.companion.fallen {
-  opacity: .65;
-}
-
-
-/* Load the real character image files */
-.avatar {
-  position: relative;
-  overflow: hidden;
-  padding: 0;
-}
-
-.hero-sprite {
-  display: block;
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-  object-position: center;
-}
-
-.avatar .hero-sprite {
-  width: 100%;
-  height: 100%;
-}
-
-.hero-token .hero-sprite {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.hero-fallback {
-  position: absolute;
-  inset: 0;
-  display: grid;
-  place-items: center;
-  font-size: 28px;
-}
-
-.hero-fallback[hidden] {
-  display: none !important;
-}
-
-.hero-details {
-  flex: 1;
-  min-width: 0;
 }
