@@ -1,4 +1,4 @@
-(() => {
+(()=>{
   "use strict";
 
   const $ = (id) => document.getElementById(id);
@@ -159,7 +159,7 @@
   ];
 
   // ==========================================
-  // HELPERS
+  // RECRUITS
   // ==========================================
 
   const RECRUITS = [
@@ -470,12 +470,12 @@
       0,
       Number(state.caveCrystalProgress) || 0
     );
+
     state.elowenNextReviveAt = Math.max(
       0,
       Number(state.elowenNextReviveAt) || 0
     );
 
-    // Keep old progress, but make the infirmary cost more than a Revive Snack.
     if (state.needsHospital) {
       const minimumHospitalFee =
         1500 + state.region * 1200 +
@@ -510,8 +510,7 @@
 
     return state;
   }
-
-  let s = loadGame();
+    let s = loadGame();
   let logs = Array.isArray(s.lastLog) ? s.lastLog : [];
 
   // ==========================================
@@ -532,6 +531,19 @@
   let sageEnabled = true;
   let currentUtterance = null;
   let speechGeneration = 0;
+
+  // Wake-word assistant: listens for "Great Sage" while idle.
+  const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+  let recognition = null;
+  let recognitionRunning = false;
+  let recognitionEnabled = true;
+  let recognitionRestartTimer = null;
+  let recognitionPermissionWarningShown = false;
+  let commandModeActive = false;
+  let commandIdleTimer = null;
+  let ignoreRecognitionUntil = 0;
+  const COMMAND_IDLE_MS = 5000;
+  const MUSIC_DUCK_FACTOR = 0.06;
 
   let currentPrompt = null;
   let lowHealthWarning = false;
@@ -630,48 +642,51 @@
     Math.floor(50 * Math.pow(1.85, s.critLevel));
 
   function updateMusicControl() {
-  const audio = $("backgroundMusic");
-  const button = $("musicToggle");
-  const volume = $("musicVolume");
-  const trackLabel = $("musicTrack");
+    const audio = $("backgroundMusic");
+    const button = $("musicToggle");
+    const volume = $("musicVolume");
+    const trackLabel = $("musicTrack");
 
-  if (audio && volume) {
-    // Remember the volume selected by the player.
-    const selectedVolume = Math.max(
-      0,
-      Math.min(1, Number(volume.value) || 0)
-    );
+    if (audio && volume) {
+      const selectedVolume = Math.max(0, Math.min(1, Number(volume.value) || 0));
+      const duckMusic = commandModeActive || speechBusy;
+      audio.volume = selectedVolume * (duckMusic ? MUSIC_DUCK_FACTOR : 1);
+    }
 
-    // Lower the music to 18% of its selected volume
-    // while the Great Sage is speaking.
-    const isSageSpeaking = speechBusy && sageEnabled;
+    if (button) {
+      const playing = !!audio && !audio.paused;
+      button.textContent = !musicEnabled
+        ? "♫ Music off"
+        : playing
+          ? "Ⅱ Pause music"
+          : "▶ Play music";
+      button.setAttribute("aria-pressed", String(playing));
+    }
 
-    audio.volume = selectedVolume * (
-      isSageSpeaking ? 0.18 : 1
-    );
+    if (trackLabel && currentMusicKey && MUSIC_TRACKS[currentMusicKey]) {
+      trackLabel.textContent = MUSIC_TRACKS[currentMusicKey].label;
+    }
   }
 
-  if (button) {
-    const playing = !!audio && !audio.paused;
+  function startBackgroundMusic() {
+    const audio = $("backgroundMusic");
+    if (!audio || !musicEnabled || !audio.src) {
+      updateMusicControl();
+      return;
+    }
 
-    button.textContent = !musicEnabled
-      ? "♫ Music off"
-      : playing
-        ? "Ⅱ Pause music"
-        : "▶ Play music";
+    updateMusicControl();
 
-    button.setAttribute("aria-pressed", String(playing));
+    const playAttempt = audio.play();
+    if (playAttempt && typeof playAttempt.then === "function") {
+      playAttempt.then(updateMusicControl).catch(() => {
+        // Browsers may block autoplay until the player clicks Play music.
+        updateMusicControl();
+      });
+    } else {
+      updateMusicControl();
+    }
   }
-
-  if (
-    trackLabel &&
-    currentMusicKey &&
-    MUSIC_TRACKS[currentMusicKey]
-  ) {
-    trackLabel.textContent =
-      MUSIC_TRACKS[currentMusicKey].label;
-  }
-}
 
   function updateMusicScene() {
     const audio = $("backgroundMusic");
@@ -697,7 +712,8 @@
   function toggleMusic() {
     const audio = $("backgroundMusic");
     if (!audio) return;
-        if (musicEnabled && !audio.paused) {
+
+    if (musicEnabled && !audio.paused) {
       musicEnabled = false;
       audio.pause();
       try { localStorage.setItem("gemMinerMusicEnabled", "false"); } catch (error) {}
@@ -765,6 +781,8 @@
     );
   }
 
+  // Prompt priorities ensure important alerts take precedence:
+  // hospital > Phoenix > low-health warning.
   const promptPriority = {
     lowHealth: 1,
     phoenix: 2,
@@ -808,11 +826,8 @@
 
     if (!english.length) return null;
 
-    const naturalVoice = english.find((voice) =>
-      /natural|neural|online/i.test(voice.name)
-    );
-    if (naturalVoice) return naturalVoice;
-
+    // Prefer some commonly available English voices when installed.
+    // Voice names and availability vary by browser and operating system.
     const preferredPatterns = [
       /microsoft aria/i,
       /microsoft jenny/i,
@@ -858,6 +873,7 @@
     const message = speechQueue.shift();
 
     speechBusy = true;
+
     const generation = speechGeneration;
 
     updateSageMessage(message);
@@ -866,6 +882,8 @@
 
     const utterance = new SpeechSynthesisUtterance(message);
 
+    // More conversational than the original stiff setting.
+    // The available browser voice still determines the actual sound.
     utterance.lang = "en-US";
     utterance.rate = 0.94;
     utterance.pitch = 1.05;
@@ -899,6 +917,7 @@
       updateSageStatus(sageEnabled ? "VOICE ON" : "VOICE MUTED");
       refreshSagePanel();
 
+      // Read announcements one at a time.
       window.setTimeout(processSpeechQueue, 180);
     }
 
@@ -916,6 +935,8 @@
       return;
     }
 
+    // Discard the oldest waiting announcement if the queue is full.
+    // The sentence currently being spoken is never interrupted.
     if (speechQueue.length >= MAX_SPEECH_QUEUE) {
       speechQueue.shift();
     }
@@ -940,8 +961,7 @@
 
     renderSageActions();
   }
-
-  function getHealingAdvice() {
+    function getHealingAdvice() {
     const options = [];
 
     if (
@@ -951,7 +971,7 @@
       options.push("Healing Wave");
     }
 
-    options.push("Aegis Guard");
+    options.push("Guard");
 
     if ((s.snacks.rations || 0) > 0) {
       options.push("Trail Rations");
@@ -1003,11 +1023,14 @@
 
     if (!currentPrompt) {
       box.hidden = true;
+
       if (box.innerHTML) box.innerHTML = "";
+
       return;
     }
 
     box.hidden = false;
+
     let html = "";
 
     if (currentPrompt.type === "phoenix") {
@@ -1062,7 +1085,7 @@
           data-sage-action="skill"
           data-value="guard"
           ${canUseSkill("guard") ? "" : "disabled"}
-        >Use Aegis Guard</button>
+        >Use Guard</button>
       `);
 
       if ((s.snacks.rations || 0) > 0) {
@@ -1190,6 +1213,7 @@
       updateSageStatus("VOICE MUTED");
       refreshSagePanel();
       toast("Great Sage voice muted.");
+
       return;
     }
 
@@ -1197,6 +1221,7 @@
     refreshSagePanel();
 
     toast("Great Sage voice activated.");
+
     announce("Great Sage online. Voice notifications restored.");
   }
 
@@ -1243,6 +1268,7 @@
   function playImportantSound() {
     const now = Date.now();
 
+    // Stop duplicate alerts from overlapping.
     if (now - lastImportantSound < 450) return;
     lastImportantSound = now;
 
@@ -1262,6 +1288,7 @@
 
       const startAt = context.currentTime + 0.025;
 
+      // Quick double-beat navigation-style alert: low "bum", then higher "bum".
       const notes = [
         { frequency: 587, delay: 0, duration: 0.11 },
         { frequency: 784, delay: 0.14, duration: 0.15 }
@@ -1285,6 +1312,7 @@
         oscillator.stop(start + duration + 0.01);
       });
     } catch (error) {
+      // Audio is optional and must never interrupt the game.
       console.debug("Important-event sound unavailable.", error);
     }
   }
@@ -1339,6 +1367,7 @@
           ? "Pay the hospital fee before battles can resume."
           : "The party is recovering; battles are paused."
       );
+
       return false;
     }
 
@@ -1378,7 +1407,8 @@
         `Crystal gate closed. Gather ${fmt(crystalGoal() - s.caveCrystalProgress)} more crystals first.`
       );
     }
-        const r = region();
+
+    const r = region();
     const scale = Math.pow(1.65, s.region);
 
     s.bossMode = boss;
@@ -1464,10 +1494,6 @@
     }
   }
 
-  // ==========================================
-  // MINING
-  // ==========================================
-
   function mine() {
     const bonus = s.recruits.includes("luna") ? 1.2 : 1;
 
@@ -1494,8 +1520,7 @@
     render();
     save();
   }
-
-  // ==========================================
+    // ==========================================
   // PARTY ATTACKS
   // ==========================================
 
@@ -1595,7 +1620,7 @@
       amount = Math.ceil(amount * 0.45);
       s.guardCharges -= 1;
 
-      log("Aegis Guard absorbed part of the incoming hit.");
+      log("Guard absorbed part of the incoming hit.");
     }
 
     s.heroHp[targetId] = Math.max(
@@ -1616,9 +1641,7 @@
 
       if (livingHeroes().length > 0) {
         announce(
-          s.region >= 2
-            ? `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`
-            : `Notice: ${target.name} is down. Phoenix Blessing unlocks in Cave 3. Use a Revive Snack if you have one.`
+          `Notice: ${target.name} is down.`
         );
         showPhoenixPrompt(targetId);
       }
@@ -1664,7 +1687,7 @@
     );
 
     announce(
-      "Notice: All party members are down. Pay the hospital fee to begin recovery."
+      "Notice: All party members are down."
     );
 
     showHospitalPrompt();
@@ -1733,6 +1756,7 @@
         }
       } else {
         log("All cave guardians have fallen. The kingdom is saved!");
+        announce("All cave guardians have fallen. The kingdom is saved!");
       }
     } else {
       log(
@@ -1857,9 +1881,9 @@
       s.guardCharges = 1;
       s.cooldowns.guard = 18;
 
-      showDamage("Aegis +12", "party", true);
+      showDamage("Guard +12", "party", true);
 
-      log("Aegis Guard healed the party and will soften the next hit.");
+      log("Guard healed the party and will soften the next hit.");
     } else if (key === "heal") {
       const amount = Math.floor(
         28 * (s.recruits.includes("elise") ? 1.2 : 1)
@@ -1928,8 +1952,7 @@
     render();
     save();
   }
-
-  // ==========================================
+    // ==========================================
   // UPGRADES
   // ==========================================
 
@@ -2126,7 +2149,7 @@
 
       showDamage("REVIVE", "party", true);
 
-      announce(`Notice: ${HEROES[fallen].name} has been revived.`);
+      announce(`Notice: ${HEROES[fallen].name} has been revived by a Revive Snack.`);
       log(`${HEROES[fallen].name} was revived using a Revive Snack.`);
       toast(`${HEROES[fallen].name} is back!`);
     }
@@ -2135,7 +2158,8 @@
     render();
     save();
   }
-    function buySnack(id) {
+
+  function buySnack(id) {
     const snack = SNACKS.find(
       (entry) => entry.id === id
     );
@@ -2431,8 +2455,7 @@
       $("payHealBtn").disabled = s.gold < s.hospitalFee;
     }
   }
-
-  // ==========================================
+    // ==========================================
   // LOW-HEALTH ADVICE
   // ==========================================
 
@@ -2849,8 +2872,7 @@
 
     if (key) skill(key);
   });
-
-  // ==========================================
+    // ==========================================
   // MAIN GAME LOOP
   // ==========================================
 
@@ -2869,7 +2891,8 @@
       finishHealing();
     }
 
-    // Elowen's passive revival works every 60 seconds while she is alive.
+    // Elowen's passive: while she is alive, she revives one fallen ally
+    // every 60 seconds, but only if at least one party member is still standing.
     if (
       s.heroes.includes("elowen") &&
       livingHeroes().includes("elowen") &&
@@ -2885,7 +2908,11 @@
         s.elowenNextReviveAt = now + 60000;
 
         showDamage("REVIVED", "party", true);
-        announce(`Notice: Elowen revived ${HEROES[fallenId].name} with spirit magic.`);
+
+        announce(
+          `Notice: Elowen revived ${HEROES[fallenId].name} with spirit magic.`
+        );
+
         log(
           `Elowen revived ${HEROES[fallenId].name} at 30% HP. ` +
           "Her next revival is ready in 60 seconds."
@@ -2896,6 +2923,7 @@
       }
     }
 
+    // Recruit passive income.
     const goldRate =
       (s.recruits.includes("tessa") ? 0.8 : 0) +
       (s.recruits.includes("borin") ? 1.3 : 0);
@@ -2906,6 +2934,7 @@
     s.gold += goldRate * dt;
     s.crystals += crystalRate * dt;
 
+    // Mana regenerates even outside combat.
     s.mana = Math.min(
       maxMana(),
       s.mana + manaRate() * dt
@@ -2915,8 +2944,7 @@
 
     if (manaRatio < 0.2 && !s.manaWarning) {
       s.manaWarning = true;
-      announce("Notice: Your mana is running low.");
-      log("Great Sage warns that mana is running low.");
+      log("Mana is running low.");
     } else if (manaRatio > 0.3) {
       s.manaWarning = false;
     }
@@ -2928,6 +2956,7 @@
         s.cooldowns[key] = Math.max(0, s.cooldowns[key] - dt);
       });
 
+      // Combat timers run only while an enemy exists.
       if (s.enemy) {
         partyClock += dt;
         enemyClock += dt;
@@ -2947,6 +2976,7 @@
         }
       }
 
+      // Celeste's passive healing also works when no enemy is present.
       const celesteAlive =
         s.heroes.includes("celeste") &&
         livingHeroes().includes("celeste");
@@ -3006,6 +3036,801 @@
     }
   }
 
+  // ==========================================
+  // GREAT SAGE WAKE-WORD VOICE ASSISTANT
+  // ==========================================
+
+  function sagePanelVisible() {
+    return commandModeActive || speechBusy || speechQueue.length > 0;
+  }
+
+  function updateMusicControl() {
+    const audio = $("backgroundMusic");
+    const button = $("musicToggle");
+    const volume = $("musicVolume");
+    const trackLabel = $("musicTrack");
+
+    if (audio && volume) {
+      const selectedVolume = Math.max(
+        0,
+        Math.min(1, Number(volume.value) || 0)
+      );
+
+      const shouldDuck =
+        commandModeActive ||
+        speechBusy ||
+        speechQueue.length > 0;
+
+      audio.volume =
+        selectedVolume * (shouldDuck ? MUSIC_DUCK_FACTOR : 1);
+    }
+
+    if (button) {
+      const playing = !!audio && !audio.paused;
+
+      button.textContent = !musicEnabled
+        ? "♫ Music off"
+        : playing
+          ? "Ⅱ Pause music"
+          : "▶ Play music";
+
+      button.setAttribute("aria-pressed", String(playing));
+    }
+
+    if (
+      trackLabel &&
+      currentMusicKey &&
+      MUSIC_TRACKS[currentMusicKey]
+    ) {
+      trackLabel.textContent = MUSIC_TRACKS[currentMusicKey].label;
+    }
+  }
+
+  function refreshSagePanel() {
+    const panel = $("sagePanel");
+    const orb = $("sageOrb");
+    const dock = $("sageDock");
+    const shouldShow = sagePanelVisible();
+
+    if (dock) {
+      dock.classList.toggle("is-hidden", !shouldShow);
+    }
+
+    if (panel) {
+      panel.hidden = !shouldShow;
+    }
+
+    if (orb) {
+      orb.classList.toggle("is-speaking", speechBusy);
+
+      orb.classList.toggle(
+        "is-listening",
+        commandModeActive && !speechBusy
+      );
+
+      orb.classList.toggle("is-muted", !sageEnabled);
+
+      orb.setAttribute(
+        "aria-label",
+        commandModeActive
+          ? "Great Sage is listening. Click to return to wake-word standby."
+          : "Great Sage voice assistant"
+      );
+    }
+
+    if (commandModeActive && !speechBusy) {
+      updateSageStatus("LISTENING");
+
+      updateSageMessage(
+        "Listening for commands… Say ‘never mind’ or ‘nothing’ to return to idle."
+      );
+    }
+
+    updateMusicControl();
+    renderSageActions();
+  }
+
+  function cancelSageSpeech(clearQueue = true) {
+    speechGeneration++;
+
+    if (clearQueue) {
+      speechQueue.length = 0;
+    }
+
+    speechBusy = false;
+    currentUtterance = null;
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
+    }
+
+    updateMusicControl();
+  }
+
+  function armCommandIdleTimer() {
+    clearTimeout(commandIdleTimer);
+
+    if (!commandModeActive) return;
+
+    commandIdleTimer = setTimeout(() => {
+      if (speechBusy || speechQueue.length) {
+        armCommandIdleTimer();
+        return;
+      }
+
+      leaveCommandMode();
+    }, COMMAND_IDLE_MS);
+  }
+
+  function enterCommandMode() {
+    if (!sageEnabled) return;
+
+    // If she was talking, the wake phrase interrupts her immediately.
+    if (!commandModeActive || speechBusy || speechQueue.length) {
+      cancelSageSpeech(true);
+    }
+
+    commandModeActive = true;
+    currentPrompt = null;
+
+    updateSageMessage("Listening for commands…");
+    updateSageStatus("LISTENING");
+    updateMusicControl();
+    refreshSagePanel();
+    armCommandIdleTimer();
+  }
+
+  function leaveCommandMode() {
+    clearTimeout(commandIdleTimer);
+    commandIdleTimer = null;
+
+    commandModeActive = false;
+    currentPrompt = null;
+
+    updateSageStatus("WAKE WORD READY");
+    updateMusicControl();
+    refreshSagePanel();
+  }
+
+  function normalizeVoiceText(text) {
+    return String(text || "")
+      .toLowerCase()
+      .replace(/[’']/g, " ")
+      .replace(/[^a-z0-9\s-]/g, " ")
+      .replace(/\s+/g, " ")
+      .trim();
+  }
+
+  function stripWakePhrase(text) {
+    return normalizeVoiceText(text)
+      .replace(/^.*?\bgreat\s+sage\b/, "")
+      .trim();
+  }
+
+  function queueSageReply(message) {
+    if (message) announce(message);
+  }
+
+  function skillVoiceLabel(key) {
+    return {
+      slash: "Radiant Slash",
+      burst: "Arcane Burst",
+      guard: "Guard",
+      heal: "Healing Wave",
+      meteor: "Meteor Rain",
+      frost: "Frost Nova",
+      phoenix: "Phoenix Blessing"
+    }[key] || key;
+  }
+
+  function voiceSkillUnavailableReason(key) {
+    if (!isSkillUnlocked(key)) {
+      return `${skillVoiceLabel(key)} unlocks in Cave ${skillUnlockRegion(key) + 1}.`;
+    }
+
+    if (s.needsHospital) {
+      return "The party needs hospital treatment first.";
+    }
+
+    if (isRecovering()) {
+      return "The party is still recovering.";
+    }
+
+    if (!livingHeroes().length) {
+      return "No heroes are standing.";
+    }
+
+    if (s.mana < SKILL_MANA_COST[key]) {
+      return `You need ${SKILL_MANA_COST[key]} mana.`;
+    }
+
+    if ((s.cooldowns[key] || 0) > 0) {
+      return `${skillVoiceLabel(key)} is recharging for ${Math.ceil(s.cooldowns[key])} more seconds.`;
+    }
+
+    if (
+      ["slash", "burst", "meteor", "frost"].includes(key) &&
+      !s.enemy
+    ) {
+      return "There is no enemy to attack right now.";
+    }
+
+    if (
+      ["heal", "phoenix"].includes(key) &&
+      !s.heroes.includes("celeste") &&
+      !s.heroes.includes("sage")
+    ) {
+      return "Healer support has not joined the party yet.";
+    }
+
+    if (
+      key === "phoenix" &&
+      !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0)
+    ) {
+      return "There is no fallen hero to revive.";
+    }
+
+    return `${skillVoiceLabel(key)} cannot be used right now.`;
+  }
+    function getVoiceCommandMatches(text) {
+    const choices = [
+      {
+        kind: "skill",
+        key: "heal",
+        label: "Healing Wave",
+        patterns: [/\bhealing wave\b/gi, /\bheal\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "slash",
+        label: "Radiant Slash",
+        patterns: [/\bradiant slash\b/gi, /\bslash\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "burst",
+        label: "Arcane Burst",
+        patterns: [/\barcane burst\b/gi, /\bburst\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "guard",
+        label: "Guard",
+        patterns: [/\baegis guard\b/gi, /\baegis\b/gi, /\bguard\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "meteor",
+        label: "Meteor Rain",
+        patterns: [/\bmeteor rain\b/gi, /\bmeteor\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "frost",
+        label: "Frost Nova",
+        patterns: [/\bfrost nova\b/gi, /\bfrost\b/gi]
+      },
+      {
+        kind: "skill",
+        key: "phoenix",
+        label: "Phoenix Blessing",
+        patterns: [/\bphoenix blessing\b/gi, /\bphoenix\b/gi]
+      },
+      {
+        kind: "utility",
+        key: "mine",
+        label: "mining",
+        patterns: [/\bmine crystals\b/gi, /\bmine\b/gi]
+      },
+      {
+        kind: "utility",
+        key: "explore",
+        label: "exploration",
+        patterns: [/\bexplore\b/gi, /\bexploration\b/gi]
+      },
+      {
+        kind: "utility",
+        key: "status",
+        label: "status report",
+        patterns: [
+          /\bstatus report\b/gi,
+          /\bcheck status\b/gi,
+          /\bstatus\b/gi
+        ]
+      },
+      {
+        kind: "utility",
+        key: "hospital",
+        label: "hospital payment",
+        patterns: [
+          /\bpay (?:the )?hospital(?: fee)?\b/gi,
+          /\bpay (?:the )?healing fee\b/gi
+        ]
+      }
+    ];
+
+    const matches = [];
+
+    for (const choice of choices) {
+      let first = null;
+
+      for (const pattern of choice.patterns) {
+        const regex = new RegExp(pattern.source, pattern.flags);
+        let match;
+
+        while ((match = regex.exec(text)) !== null) {
+          if (
+            !first ||
+            match.index < first.index ||
+            (
+              match.index === first.index &&
+              match[0].length > first.text.length
+            )
+          ) {
+            first = {
+              index: match.index,
+              text: match[0]
+            };
+          }
+
+          if (!match[0].length) {
+            regex.lastIndex++;
+          }
+        }
+      }
+
+      if (first) {
+        matches.push({
+          ...choice,
+          index: first.index
+        });
+      }
+    }
+
+    matches.sort((a, b) => a.index - b.index);
+
+    const seen = new Set();
+
+    return matches.filter((choice) => {
+      const id = `${choice.kind}:${choice.key}`;
+
+      if (seen.has(id)) return false;
+
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function makeStatusReport() {
+    const living = livingHeroes();
+
+    const fallen = s.heroes.filter(
+      (id) => (s.heroHp[id] || 0) <= 0
+    );
+
+    const enemy = s.enemy
+      ? `${s.enemy.name}, ${Math.max(0, Math.floor(s.enemy.hp))} of ${s.enemy.maxHp} health remaining`
+      : "no enemy nearby";
+
+    const health = living.length
+      ? `${living.length} heroes standing${fallen.length ? ` and ${fallen.length} fallen` : ""}`
+      : "no heroes standing";
+
+    return (
+      `Status report. Cave ${s.region + 1}, ${region().name}. ` +
+      `${health}. Mana ${Math.floor(s.mana)} of ${maxMana()}. ` +
+      `${enemy}. ${fmt(s.gold)} gold and ${fmt(s.crystals)} crystals.`
+    );
+  }
+
+  function handleVoiceCommand(rawText) {
+    const text = normalizeVoiceText(stripWakePhrase(rawText));
+
+    if (
+      /\bnever mind\b|\bnothing\b/.test(text) ||
+      /\b(cancel|go idle|back to idle|stop listening)\b/.test(text)
+    ) {
+      cancelSageSpeech(true);
+      leaveCommandMode();
+      return;
+    }
+
+    if (!text) {
+      updateSageMessage("Listening for commands…");
+      armCommandIdleTimer();
+      refreshSagePanel();
+      return;
+    }
+
+    clearTimeout(commandIdleTimer);
+    commandIdleTimer = null;
+
+    const commands = getVoiceCommandMatches(text);
+
+    if (!commands.length) {
+      queueSageReply(
+        "I did not recognize that command. Try Healing Wave, Guard, mine crystals, explore, or status report."
+      );
+      return;
+    }
+
+    const completed = [];
+    const replies = [];
+
+    for (const command of commands) {
+      if (command.kind === "skill") {
+        if (canUseSkill(command.key)) {
+          skill(command.key);
+          completed.push(command.label);
+        } else {
+          replies.push(
+            voiceSkillUnavailableReason(command.key)
+          );
+        }
+      } else if (command.key === "mine") {
+        mine();
+        completed.push("mining");
+      } else if (command.key === "explore") {
+        if (s.enemy) {
+          replies.push(
+            "Defeat the current enemy before exploring again."
+          );
+        } else if (battleLocked()) {
+          replies.push(
+            "The party is unavailable during hospital treatment."
+          );
+        } else {
+          explore();
+          completed.push("exploration");
+        }
+      } else if (command.key === "status") {
+        replies.push(makeStatusReport());
+      } else if (command.key === "hospital") {
+        if (s.needsHospital && s.gold >= s.hospitalFee) {
+          payHeal();
+          completed.push("hospital treatment");
+        } else if (s.needsHospital) {
+          replies.push(
+            `The hospital needs ${fmt(s.hospitalFee)} gold.`
+          );
+        } else {
+          replies.push(
+            "Your party does not need hospital payment right now."
+          );
+        }
+      }
+    }
+
+    if (completed.length) {
+      replies.unshift(
+        `Done. ${completed.join(" and ")} ${
+          completed.length === 1
+            ? "command is"
+            : "commands are"
+        } complete.`
+      );
+    }
+
+    queueSageReply(
+      replies.join(" ") || "Command complete."
+    );
+  }
+
+  function handleRecognitionResult(event) {
+    for (
+      let i = event.resultIndex;
+      i < event.results.length;
+      i++
+    ) {
+      const result = event.results[i];
+      const rawText =
+        (result[0] && result[0].transcript) || "";
+
+      if (!rawText.trim()) continue;
+
+      const text = normalizeVoiceText(rawText);
+      const wake = /\bgreat\s+sage\b/i.exec(text);
+
+      const exitPhrase =
+        /\bnever mind\b|\bnothing\b|\bgo idle\b|\bstop listening\b/i.test(text);
+
+      // Hearing the wake phrase interrupts Sage's current speech.
+      if (
+        wake &&
+        (!commandModeActive || speechBusy || speechQueue.length)
+      ) {
+        enterCommandMode();
+
+        const trailing = text
+          .slice(wake.index + wake[0].length)
+          .trim();
+
+        if (result.isFinal && trailing) {
+          handleVoiceCommand(trailing);
+        } else if (result.isFinal) {
+          armCommandIdleTimer();
+        }
+
+        continue;
+      }
+
+      // Cancellation phrases work while command mode is active.
+      if (commandModeActive && exitPhrase) {
+        handleVoiceCommand(text);
+        continue;
+      }
+
+      // Ignore most recognition picked up while Sage is speaking.
+      if (
+        speechBusy ||
+        Date.now() < ignoreRecognitionUntil
+      ) {
+        continue;
+      }
+
+      if (commandModeActive) {
+        armCommandIdleTimer();
+
+        if (result.isFinal) {
+          handleVoiceCommand(text);
+        } else {
+          updateSageMessage("Listening for commands…");
+          updateSageStatus("LISTENING");
+          refreshSagePanel();
+        }
+      }
+    }
+  }
+
+  function startWakeRecognition() {
+    if (
+      !recognition ||
+      !recognitionEnabled ||
+      recognitionRunning
+    ) {
+      return;
+    }
+
+    if (recognitionRestartTimer) {
+      clearTimeout(recognitionRestartTimer);
+      recognitionRestartTimer = null;
+    }
+
+    try {
+      recognition.start();
+      recognitionRunning = true;
+    } catch (error) {
+      if (error && error.name === "InvalidStateError") {
+        return;
+      }
+
+      console.warn(
+        "Great Sage could not start speech recognition.",
+        error
+      );
+
+      scheduleRecognitionRestart(1000);
+    }
+  }
+
+  function scheduleRecognitionRestart(delay = 450) {
+    if (!recognitionEnabled || recognitionRestartTimer) {
+      return;
+    }
+
+    recognitionRestartTimer = setTimeout(() => {
+      recognitionRestartTimer = null;
+      startWakeRecognition();
+    }, delay);
+  }
+
+  function setupWakeRecognition() {
+    if (!SpeechRecognitionAPI) {
+      console.warn(
+        "This browser does not support speech recognition."
+      );
+
+      updateSageStatus("VOICE COMMANDS UNSUPPORTED");
+
+      setTimeout(() => {
+        toast(
+          "Voice commands require speech recognition support and microphone access in your browser."
+        );
+      }, 800);
+
+      return;
+    }
+
+    recognition = new SpeechRecognitionAPI();
+    recognition.lang = "en-US";
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.maxAlternatives = 1;
+
+    recognition.onstart = () => {
+      recognitionRunning = true;
+    };
+
+    recognition.onresult = handleRecognitionResult;
+
+    recognition.onerror = (event) => {
+      recognitionRunning = false;
+
+      console.warn(
+        "Great Sage voice recognition error:",
+        event.error
+      );
+
+      if (
+        event.error === "not-allowed" ||
+        event.error === "service-not-allowed"
+      ) {
+        recognitionEnabled = false;
+        updateSageStatus("MICROPHONE PERMISSION NEEDED");
+
+        if (!recognitionPermissionWarningShown) {
+          recognitionPermissionWarningShown = true;
+
+          toast(
+            "Allow microphone access for this site, then reload the game to use Great Sage voice commands."
+          );
+        }
+
+        return;
+      }
+
+      if (
+        event.error === "audio-capture" &&
+        !recognitionPermissionWarningShown
+      ) {
+        recognitionPermissionWarningShown = true;
+
+        toast(
+          "Great Sage could not find a microphone. Check your microphone settings."
+        );
+      }
+
+      scheduleRecognitionRestart(
+        event.error === "network" ? 1200 : 500
+      );
+    };
+
+    recognition.onend = () => {
+      recognitionRunning = false;
+      scheduleRecognitionRestart(350);
+    };
+
+    startWakeRecognition();
+  }
+
+  function processSpeechQueue() {
+    if (!sageEnabled || speechBusy || !speechQueue.length) {
+      refreshSagePanel();
+      return;
+    }
+
+    if (
+      !("speechSynthesis" in window) ||
+      !("SpeechSynthesisUtterance" in window)
+    ) {
+      updateSageStatus("VOICE UNAVAILABLE");
+      refreshSagePanel();
+      return;
+    }
+
+    const message = speechQueue.shift();
+
+    speechBusy = true;
+    const generation = speechGeneration;
+
+    updateSageMessage(message);
+    updateSageStatus("SPEAKING");
+    updateMusicControl();
+    refreshSagePanel();
+
+    const utterance = new SpeechSynthesisUtterance(message);
+
+    utterance.lang = "en-US";
+    utterance.rate = 0.94;
+    utterance.pitch = 1.05;
+    utterance.volume = 1;
+
+    const voice = getEnglishVoice();
+    if (voice) utterance.voice = voice;
+
+    currentUtterance = utterance;
+
+    utterance.onstart = () => {
+      if (generation !== speechGeneration) return;
+
+      updateSageStatus("SPEAKING");
+      refreshSagePanel();
+    };
+
+    utterance.onboundary = (event) => {
+      if (generation !== speechGeneration) return;
+
+      if (event.name === "word" || event.charIndex >= 0) {
+        pulseSageWord();
+      }
+    };
+
+    function finishUtterance() {
+      if (generation !== speechGeneration) return;
+
+      speechBusy = false;
+      currentUtterance = null;
+
+      // Briefly ignore the microphone picking up the end of her voice.
+      ignoreRecognitionUntil = Date.now() + 700;
+
+      updateSageStatus(
+        commandModeActive
+          ? "LISTENING"
+          : "WAKE WORD READY"
+      );
+
+      updateMusicControl();
+      refreshSagePanel();
+
+      setTimeout(() => {
+        if (speechQueue.length) {
+          processSpeechQueue();
+        } else {
+          if (commandModeActive) {
+            armCommandIdleTimer();
+          }
+
+          scheduleRecognitionRestart(100);
+        }
+      }, 150);
+    }
+
+    utterance.onend = finishUtterance;
+    utterance.onerror = finishUtterance;
+
+    window.speechSynthesis.speak(utterance);
+  }
+
+  function announce(message) {
+    if (!sageEnabled) return;
+
+    // Keep routine reminders in the log rather than announcing them aloud.
+    if (
+      /mana is running low|party.?s health is low|great sage online|your party.?s health is low/i.test(message)
+    ) {
+      return;
+    }
+
+    updateSageMessage(message);
+
+    if (speechQueue.length >= MAX_SPEECH_QUEUE) {
+      speechQueue.shift();
+    }
+
+    speechQueue.push(message);
+
+    refreshSagePanel();
+    processSpeechQueue();
+  }
+
+  function toggleSage() {
+    // Clicking the icon ends command mode; wake-word listening stays on.
+    if (commandModeActive) {
+      cancelSageSpeech(true);
+      leaveCommandMode();
+    } else if (speechBusy || speechQueue.length) {
+      cancelSageSpeech(true);
+      currentPrompt = null;
+      refreshSagePanel();
+    }
+  }
+
+  // ==========================================
+  // INITIALIZE GAME
+  // ==========================================
+
+  // Repair older saves with an enemy missing max HP.
   if (s.enemy && !s.enemy.maxHp) {
     s.enemy.maxHp = s.enemy.hp;
   }
@@ -3017,13 +3842,17 @@
   render();
   save();
   updateMusicScene();
+  setupWakeRecognition();
+  refreshSagePanel();
 
   if (!s.enemy && !battleLocked()) {
     scheduleExplore();
   }
 
   if ("speechSynthesis" in window) {
-    window.speechSynthesis.onvoiceschanged = () => {};
+    window.speechSynthesis.onvoiceschanged = () => {
+      // Available voices are selected when the next sentence begins.
+    };
   }
 
   window.gemMinerReady = true;
