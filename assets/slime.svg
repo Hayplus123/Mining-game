@@ -8,7 +8,5 @@
 <path d="M77 117 Q91 128 106 116" fill="none" stroke="#342451" stroke-width="4" stroke-linecap="round"/>
 <path d="M76 32 83 7 95 29Z" fill="#9feeff" stroke="#e8fcff" stroke-width="2"/>
 <path d="M114 50 133 37 133 63Z" fill="#a2f5ff" stroke="#e8fcff" stroke-width="2"/>
-<circle cx="68" cy="88" r="5" fill="#fff"/><circle cx="110" cy="88" r="5" fill="#fff"/>
-<circle cx="68" cy="88" r="2" fill="#312552"/><circle cx="110" cy="88" r="2" fill="#312552"/>
 <circle cx="51" cy="109" r="7" fill="#ffb8e8" opacity=".5"/><circle cx="127" cy="109" r="7" fill="#ffb8e8" opacity=".5"/>
 </svg>
