@@ -1,0 +1,1135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Gem Miner: Rise of the Crystal Kingdom</title>
+<style>
+:root {
+  --bg:#09101e;--panel:#131f34;--panel2:#0d192b;
+  --line:#344965;--blue:#79e5ff;--gold:#ffdc80;
+  --purple:#cda0ff;--green:#8effb2;--red:#ff777f;
+}
+*{box-sizing:border-box}
+body{margin:0;background:radial-gradient(ellipse at top,#1b3655,var(--bg) 70%);color:#eff6ff;font:14px system-ui,sans-serif}
+button{font:inherit;font-weight:750;color:#fff;background:linear-gradient(#315577,#192d48);border:1px solid #50749a;border-radius:8px;padding:9px;cursor:pointer}
+button:hover:not(:disabled){filter:brightness(1.25)}
+button:disabled{opacity:.38;cursor:not-allowed}
+h1{font-size:20px;color:var(--gold);margin:0}
+h2{font-size:16px;color:var(--blue);margin:0 0 10px}
+h3{font-size:12px;color:#b8d8ff;margin:12px 0 7px}
+p{line-height:1.5}
+small,.muted{color:#a9bfd9}
+.app{max-width:1250px;margin:auto;padding:12px}
+header,.panel,.stats{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:12px}
+header{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:12px}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{font-size:36px}
+.resources,.row,.actions,.tabs{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+.resources{justify-content:flex-end}
+.pill{background:#0b1729;border:1px solid var(--line);border-radius:8px;padding:8px;font-weight:800}
+.blue{color:var(--blue)}.gold{color:var(--gold)}.purple{color:var(--purple)}.green{color:var(--green)}.red{color:var(--red)}
+.layout{display:grid;grid-template-columns:215px minmax(0,1fr) 230px;gap:12px}
+.main{display:flex;flex-direction:column;gap:10px;min-width:0}
+.card{background:var(--panel2);border:1px solid #2b415d;border-radius:9px;padding:10px;margin:8px 0}
+.row{justify-content:space-between}
+.row+.row{margin-top:8px}
+.name{font-weight:800}
+.desc{font-size:11px;color:#a9bfd9;margin:4px 0 8px}
+.price{font-size:12px;color:var(--gold);font-weight:800}
+.stats{text-align:center}
+.big{font-size:25px;font-weight:900}
+.bar{height:9px;background:#2a3c54;border-radius:9px;overflow:hidden;margin:7px 0}
+.bar span{display:block;height:100%;width:0;background:linear-gradient(90deg,#45dfff,#b66cff);transition:width .2s}
+.arena{height:300px;position:relative;overflow:hidden;border:2px solid #426588;border-radius:12px;background:radial-gradient(ellipse at 50% 45%,#245b78,#142c46 58%,#091523);isolation:isolate}
+.arena:before{content:"";position:absolute;inset:0;background-image:linear-gradient(#a6edff12 1px,transparent 1px),linear-gradient(90deg,#a6edff12 1px,transparent 1px);background-size:28px 28px;z-index:-1}
+.ground{position:absolute;bottom:0;height:48px;width:100%;background:linear-gradient(#52687a,#17263b);clip-path:polygon(0 40%,15% 5%,30% 50%,45% 10%,62% 40%,80% 0,100% 42%,100% 100%,0 100%)}
+.fighter{position:absolute;top:87px;font-size:44px;transition:transform .22s;filter:drop-shadow(0 4px 5px #0009);z-index:3}
+.player{left:12%}.ally{left:30%;top:112px;font-size:35px}.ally2{left:43%;top:145px;font-size:31px}
+.foe{right:15%;font-size:68px;top:76px}
+.arena.battle .player{animation:slash .7s ease}
+.arena.battle .foe{animation:hit .5s ease}
+.arena.boss .foe{font-size:86px;top:60px}
+.arena.danger:after{content:"⚠️ INCOMING ATTACK!";position:absolute;top:8px;left:0;right:0;text-align:center;color:#ffb2b2;font-weight:900;animation:blink .45s infinite alternate}
+@keyframes slash{50%{transform:translateX(80px) rotate(-18deg)}}
+@keyframes hit{25%{transform:translateX(15px);filter:brightness(2) drop-shadow(0 0 15px red)}70%{transform:translateX(-12px)}}
+@keyframes blink{to{opacity:.35}}
+.floating{position:absolute;z-index:8;pointer-events:none;font-weight:1000;font-size:20px;text-shadow:0 2px 4px #000;animation:rise 1s forwards}
+@keyframes rise{to{transform:translateY(-55px) scale(1.2);opacity:0}}
+.combatstats{display:flex;justify-content:space-around;gap:8px;flex-wrap:wrap;font-size:12px;background:#0b1729;padding:9px;border-radius:8px}
+.actions>*{flex:1}
+.tabs>*{flex:1}
+.tabs button{font-size:11px;padding:10px 4px}
+.tabs button.active{border-color:var(--blue);background:#18506b}
+.content{min-height:210px}
+.item{display:flex;justify-content:space-between;align-items:center;gap:8px;background:#0b1729;border:1px solid #2e4563;border-radius:9px;padding:9px;margin:7px 0}
+.iteminfo{min-width:0}.item button{font-size:11px}
+.log{font-size:12px;line-height:1.7;color:#c2d6ec}
+.footer{text-align:center;color:#8298b3;font-size:10px}
+hr{border:0;border-top:1px solid var(--line);margin:12px 0}
+@media(max-width:900px){.layout{grid-template-columns:1fr 1fr}.main{grid-column:1/-1;grid-row:1}}
+@media(max-width:550px){.layout{grid-template-columns:1fr}.main{grid-column:1;grid-row:auto}.arena{height:250px}.fighter{font-size:36px}.foe{font-size:54px}}
+</style>
+</head>
+<body>
+<div class="app">
+<header>
+ <div class="brand"><div class="logo">💎</div><div><h1>CRYSTAL KINGDOM</h1><small>Gem Miner · Rise of the Adventurers</small></div></div>
+ <div class="resources">
+  <div class="pill blue">💎 <span id="gems">0</span></div>
+  <div class="pill gold">🪙 <span id="coins">0</span></div>
+  <div class="pill purple">✨ <span id="shards">0</span></div>
+ </div>
+</header>
+
+<div class="layout">
+<aside class="panel">
+ <h2>⚒️ Workshop</h2>
+
+ <div class="card"><b>⛏️ Pickaxe</b><p class="desc">Capped at level 10. No infinite damage scaling.</p><div class="row"><span id="pickInfo">Lv. 1/10</span><button id="pickBtn">Upgrade</button></div><small id="pickCost"></small></div>
+
+ <div class="card"><b>🧑‍🏭 Hire Miner</b><p class="desc">Earn gems automatically.</p><div class="row"><span id="workerInfo">0 workers</span><button id="workerBtn">Hire</button></div><small id="workerCost"></small></div>
+
+ <div class="card"><b>🚃 Mine Cart</b><p class="desc">Produces extra gems per second.</p><div class="row"><span id="cartInfo">0 carts</span><button id="cartBtn">Build</button></div><small id="cartCost"></small></div>
+
+ <div class="card"><b>🔮 Resonance</b><p class="desc">Improve mining efficiency.</p><div class="row"><span id="resInfo">Lv. 0</span><button id="resBtn">Research</button></div><small id="resCost"></small></div>
+
+ <div class="card">
+  <b>⚔️ Party Attack Speed</b>
+  <p class="desc">Your party attacks more frequently. Maximum level 5.</p>
+  <div class="row"><span id="speedInfo">Lv. 0/5</span><button id="speedBtn">Upgrade</button></div>
+  <small id="speedCost"></small>
+ </div>
+
+ <hr><b>💰 Business</b>
+ <div class="desc">Sell ores in the Market tab to pay for upgrades, supplies, and your adventurer team.</div>
+</aside>
+
+<main class="main">
+ <section class="stats">
+  <div class="muted">CURRENT REGION</div><div class="big" id="regionTitle">💎 Crystal Cave</div>
+  <div class="combatstats"><span>⛏️ Power: <b id="power">1</b></span><span>⚙️ Auto/sec: <b id="auto">0</b></span><span>⭐ Level: <b id="level">1</b></span></div>
+  <div class="bar"><span id="xpbar"></span></div><small id="xptext">XP 0/100</small>
+ </section>
+
+ <section class="arena" id="arena">
+  <div class="fighter player" id="playerSprite">🧙</div>
+  <div class="fighter ally" id="allySprite">⚔️</div>
+  <div class="fighter ally2" id="ally2Sprite">🧝</div>
+  <div class="fighter foe" id="foeSprite">💎</div>
+  <div class="ground"></div>
+ </section>
+
+ <section class="panel" id="battlePanel">
+  <div class="row"><b id="battleTitle">Crystal Cave</b><span class="badge" id="battleState">Exploration</span></div>
+  <div class="desc" id="battleDesc">Mine crystals or explore to discover encounters.</div>
+  <div class="row"><span id="enemyHealthLabel">No enemy</span><span id="enemyHealth">—</span></div>
+  <div class="bar"><span id="enemyBar" style="background:linear-gradient(90deg,#ff5d68,#ffbd71)"></span></div>
+  <div class="row"><span>❤️ Party HP</span><b id="partyHealth">100/100</b></div>
+  <div class="bar"><span id="partyBar" style="background:linear-gradient(90deg,#42e29a,#aaffcb)"></span></div>
+  <div class="combatstats" id="combatTimers" style="margin:8px 0">
+   <span>⚔️ Party attack: <b id="partyTimerDisplay">Ready</b></span>
+   <span>👾 Monster attack: <b id="enemyTimerDisplay">—</b></span>
+  </div>
+  <div class="actions">
+   <button id="mineBtn">⛏️ Mine</button><button id="exploreBtn">🗺️ Explore</button><button id="retreatBtn">🏃 Retreat</button>
+  </div>
+ </section>
+
+ <div class="tabs">
+  <button data-tab="home" class="active">🏠 Home</button>
+  <button data-tab="team">🧑‍🤝‍🧑 Team</button>
+  <button data-tab="skills">✨ Skills</button>
+  <button data-tab="regions">🗺️ Regions</button>
+  <button data-tab="market">🛒 Market</button>
+  <button data-tab="quests">📜 Quests</button>
+ </div>
+ <section class="panel content" id="content"></section>
+ <div class="footer">Autosaves in your browser · Crystal Kingdom v4</div>
+</main>
+
+<aside class="panel">
+ <h2>🧙 Adventurer</h2>
+ <div class="row"><span>❤️ Health</span><b id="hp">100/100</b></div>
+ <div class="bar"><span id="hpbar" style="background:#ff777f;width:100%"></span></div>
+ <div class="row"><span>⚡ Mana</span><b id="mana">100/100</b></div>
+ <div class="bar"><span id="manabar"></span></div>
+ <div class="row"><span>🛡️ Defense</span><b id="defense">0</b></div>
+ <div class="row"><span>⚔️ Team power</span><b id="teamPower">0</b></div>
+ <hr>
+ <h3>YOUR PARTY</h3>
+ <div id="partyList"></div>
+ <hr>
+ <h3>⚔️ BATTLE SKILLS</h3>
+ <div id="skillButtons" class="list"></div>
+ <hr>
+ <h3>📊 RECORDS</h3>
+ <div class="row"><span>Gems mined</span><b id="total">0</b></div>
+ <div class="row"><span>Enemies defeated</span><b id="kills">0</b></div>
+ <div class="row"><span>Bosses defeated</span><b id="bossKills">0</b></div>
+ <div class="row"><span>Quests done</span><b id="questCount">0</b></div>
+ <hr>
+ <button id="saveBtn" style="width:100%">💾 Save now</button>
+ <button id="resetBtn" style="width:100%;margin-top:7px">Reset game</button>
+ <small id="saveStatus">Ready</small>
+</aside>
+</div>
+</div>
+
+<script>
+"use strict";
+
+const $=id=>document.getElementById(id);
+
+const REGIONS=[
+ {name:"Crystal Cave",icon:"💎",ore:"Crystal",oreIcon:"💎",value:2,unlock:0,enemy:"Cave Slime",foe:"🟢",hp:90,attack:8,reward:90,boss:"Crystal Guardian",bossIcon:"🗿",bossHP:900,bossAttack:22,bossReward:1000},
+ {name:"Frozen Cavern",icon:"❄️",ore:"Ice Crystal",oreIcon:"🧊",value:6,unlock:500,enemy:"Frost Wolf",foe:"🐺",hp:350,attack:18,reward:300,boss:"Frost Titan",bossIcon:"🥶",bossHP:4000,bossAttack:45,bossReward:4500},
+ {name:"Lava Mines",icon:"🌋",ore:"Firestone",oreIcon:"🔥",value:15,unlock:3000,enemy:"Ember Demon",foe:"👹",hp:1100,attack:35,reward:1200,boss:"Infernal Dragon",bossIcon:"🐉",bossHP:16000,bossAttack:80,bossReward:18000},
+ {name:"Ancient Ruins",icon:"🏛️",ore:"Ancient Gem",oreIcon:"🔮",value:40,unlock:15000,enemy:"Stone Knight",foe:"🗿",hp:4500,attack:65,reward:5000,boss:"Ancient Overlord",bossIcon:"👾",bossHP:65000,bossAttack:140,bossReward:70000},
+ {name:"Starfall Depths",icon:"🌌",ore:"Star Crystal",oreIcon:"🌟",value:100,unlock:75000,enemy:"Void Stalker",foe:"👁️",hp:18000,attack:130,reward:18000,boss:"Void Sovereign",bossIcon:"🌑",bossHP:250000,bossAttack:260,bossReward:300000}
+];
+
+const ALLIES=[
+ {id:"knight",name:"Kael the Knight",icon:"⚔️",cost:250,desc:"Front-line fighter. Reduces incoming damage.",damage:15,role:"Warrior"},
+ {id:"mage",name:"Mira the Mage",icon:"🧙‍♀️",cost:500,desc:"Magic attacks hit harder against bosses.",damage:23,role:"Mage"},
+ {id:"healer",name:"Lumi the Healer",icon:"🧝",cost:650,desc:"Restores party health during battle.",damage:5,role:"Healer"},
+ {id:"beast",name:"Rex the Beast",icon:"🐺",cost:1200,desc:"Powerful companion with high damage.",damage:35,role:"Beast"},
+ {id:"archer",name:"Sylva the Archer",icon:"🏹",cost:2200,desc:"Long-range attacks and critical hits.",damage:45,role:"Ranger"}
+];
+
+const SKILLS=[
+ {id:"slash",name:"Power Slash",icon:"⚔️",cost:0,mana:10,cd:2,desc:"Deal 2.5× your mining power as damage.",kind:"damage"},
+ {id:"arcane",name:"Arcane Burst",icon:"🔮",cost:0,mana:25,cd:3,desc:"Deal 4× power plus bonus magic damage.",kind:"magic"},
+ {id:"guard",name:"Aegis Guard",icon:"🛡️",cost:0,mana:15,cd:3,desc:"Reduce the next enemy attack by 65%.",kind:"guard"},
+ {id:"heal",name:"Healing Wave",icon:"💚",cost:0,mana:25,cd:4,desc:"Restore 30% of party maximum health.",kind:"heal"},
+ {id:"rally",name:"Team Rally",icon:"📣",cost:1000,mana:30,cd:5,desc:"Empower all allies for three rounds.",kind:"rally"},
+ {id:"storm",name:"Crystal Storm",icon:"🌩️",cost:2500,mana:40,cd:5,desc:"Deal 6× power damage and stagger the enemy.",kind:"storm"}
+];
+
+const DEFAULT={
+ gems:0,coins:200,shards:0,total:0,xp:0,level:1,
+ pick:1,workers:0,carts:0,resonance:0,
+ region:0,unlocked:[0],
+ ore:{"Crystal":0,"Ice Crystal":0,"Firestone":0,"Ancient Gem":0,"Star Crystal":0},
+ allies:[],skills:["slash","arcane","guard","heal"],cooldowns:{},
+ hp:100,maxHP:100,mana:100,maxMana:100,defense:5,
+ enemy:null,enemyHP:0,enemyMax:0,enemyAttack:0,
+ enemyIsBoss:false,bossPhase:1,telegraph:false,guarded:false,rally:0,stagger:0,
+ partySpeedLevel:0,partyAttackTimer:6,enemyAttackTimer:5,
+ kills:0,bossKills:0,quests:[],treasure:0
+};
+
+function clone(x){return JSON.parse(JSON.stringify(x))}
+
+function load(){
+ try{
+  const v=JSON.parse(localStorage.getItem("crystalKingdomSave"));
+  if(!v)return clone(DEFAULT);
+
+  const s={...clone(DEFAULT),...v};
+  s.ore={...DEFAULT.ore,...(v.ore||{})};
+  s.unlocked=Array.isArray(v.unlocked)?v.unlocked:[0];
+  s.allies=Array.isArray(v.allies)?v.allies:[];
+  s.skills=Array.isArray(v.skills)?v.skills:["slash","arcane","guard","heal"];
+  s.cooldowns=v.cooldowns||{};
+  s.quests=Array.isArray(v.quests)?v.quests:[];
+  s.partySpeedLevel=Math.max(0,Math.min(5,Math.floor(Number(v.partySpeedLevel)||0)));
+  s.partyAttackTimer=6;
+  s.enemyAttackTimer=5;
+  return s;
+ }catch(e){return clone(DEFAULT)}
+}
+
+let s=load();
+let tab="home";
+let events=["Your adventure begins!"];
+let lastTick=Date.now();
+let battleBusy=false;
+let lastRenderedSecond=-1;
+
+function save(){
+ try{
+  localStorage.setItem("crystalKingdomSave",JSON.stringify(s));
+  $("saveStatus").textContent="Saved automatically";
+ }catch(e){
+  $("saveStatus").textContent="Storage unavailable";
+ }
+}
+
+function fmt(n){
+ n=Math.floor(n||0);
+ return n>=1e9?(n/1e9).toFixed(1)+"B":
+ n>=1e6?(n/1e6).toFixed(1)+"M":
+ n>=1000?(n/1000).toFixed(1)+"K":n.toLocaleString();
+}
+
+function region(){return REGIONS[s.region]}
+function log(m){events.unshift(m);events=events.slice(0,8)}
+function power(){return Math.floor(s.pick*(1+s.resonance*.2)*(1+s.level*.025))}
+function auto(){return s.workers+s.carts*5}
+function needXP(){return s.level*100}
+function allyData(){return ALLIES.filter(a=>s.allies.includes(a.id))}
+function teamDamage(){return allyData().reduce((n,a)=>n+a.damage,0)}
+function maxPartyHP(){return s.maxHP+allyData().length*12}
+function currentHP(){return Math.min(s.hp,maxPartyHP())}
+
+function partyAttackInterval(){
+ return Math.max(3.5,6-s.partySpeedLevel*.5);
+}
+
+function enemyAttackInterval(){
+ return Math.max(1.5,5-s.region*.7-(s.enemyIsBoss?.5:0));
+}
+
+function speedCost(){
+ return Math.floor(800*Math.pow(2,s.partySpeedLevel));
+}
+
+function gainXP(n){
+ s.xp+=n;
+ while(s.xp>=needXP()){
+  s.xp-=needXP();
+  s.level++;
+  s.maxHP+=8;
+  s.maxMana+=5;
+  s.hp=Math.min(maxPartyHP(),s.hp+20);
+  s.mana=Math.min(s.maxMana,s.mana+15);
+  log("⭐ Level up! Level "+s.level+". Your party grows stronger.");
+ }
+}
+
+function gainGems(n){
+ n=Math.max(0,Math.floor(n));
+ s.gems+=n;
+ s.total+=n;
+ s.ore[region().ore]+=n;
+ gainXP(Math.max(1,Math.floor(n*.4)));
+}
+
+function floatText(text,color="#fff"){
+ const el=document.createElement("div");
+ el.className="floating";
+ el.textContent=text;
+ el.style.color=color;
+ el.style.left=(20+Math.random()*55)+"%";
+ el.style.top="36%";
+ $("arena").appendChild(el);
+ setTimeout(()=>el.remove(),1000);
+}
+
+function animate(kind){
+ const arena=$("arena");
+ arena.classList.remove("battle","danger");
+ void arena.offsetWidth;
+ arena.classList.add(kind);
+ setTimeout(()=>arena.classList.remove("battle","danger"),750);
+}
+
+function pickCost(){return Math.floor(40*Math.pow(2.2,s.pick-1))}
+function workerCost(){return Math.floor(100*Math.pow(1.65,s.workers))}
+function cartCost(){return Math.floor(400*Math.pow(1.8,s.carts))}
+function resCost(){return Math.floor(300*Math.pow(2,s.resonance))}
+
+function buy(type){
+ let cost,currency="coins";
+
+ if(type==="pick"){
+  if(s.pick>=10){
+   log("Your pickaxe has reached its maximum level (10).");
+   render();
+   return;
+  }
+  cost=pickCost();
+  currency="gems";
+ }else if(type==="worker"){
+  cost=workerCost();
+ }else if(type==="cart"){
+  cost=cartCost();
+ }else if(type==="res"){
+  cost=resCost();
+  currency="gems";
+ }
+
+ if(s[currency]<cost){
+  log("Not enough "+currency+"!");
+  render();
+  return;
+ }
+
+ s[currency]-=cost;
+
+ if(type==="pick")s.pick++;
+ if(type==="worker")s.workers++;
+ if(type==="cart")s.carts++;
+ if(type==="res")s.resonance++;
+
+ log("Upgrade purchased: "+type+".");
+ save();
+ render();
+}
+
+$("pickBtn").onclick=()=>buy("pick");
+$("workerBtn").onclick=()=>buy("worker");
+$("cartBtn").onclick=()=>buy("cart");
+$("resBtn").onclick=()=>buy("res");
+
+$("speedBtn").onclick=()=>{
+ if(s.partySpeedLevel>=5){
+  log("Your party's attack speed is already at maximum level!");
+  render();
+  return;
+ }
+
+ const cost=speedCost();
+
+ if(s.coins<cost){
+  log("Not enough coins to upgrade party attack speed!");
+  render();
+  return;
+ }
+
+ s.coins-=cost;
+ s.partySpeedLevel++;
+
+ // Apply the new speed without making the party wait a full old interval.
+ s.partyAttackTimer=Math.min(s.partyAttackTimer,partyAttackInterval());
+
+ log("⚔️ Party attack speed upgraded to level "+
+     s.partySpeedLevel+"/5! Party attacks every "+
+     partyAttackInterval().toFixed(1)+" seconds.");
+
+ save();
+ render();
+};
+
+function mine(){
+ if(battleBusy)return;
+
+ let n=power();
+ gainGems(n);
+ s.mana=Math.min(s.maxMana,s.mana+2);
+
+ floatText("+"+fmt(n)+" "+region().oreIcon,"#9ef5ff");
+ animate("battle");
+ log("Mined "+fmt(n)+" "+region().ore+".");
+
+ if(Math.random()<.025){
+  let bonus=50*(s.region+1);
+  s.coins+=bonus;
+  s.treasure++;
+  log("Found a hidden purse: "+bonus+" coins!");
+ }
+
+ save();
+ render();
+}
+
+$("mineBtn").onclick=mine;
+
+function explore(){
+ if(s.enemy){
+  log("You must finish or retreat from the current battle first.");
+  render();
+  return;
+ }
+
+ const roll=Math.random();
+
+ if(roll<.38){
+  let n=power()*10*(s.region+1);
+  gainGems(n);
+  log("Found a rich deposit: "+fmt(n)+" gems!");
+ }else if(roll<.60){
+  let n=80*(s.region+1);
+  s.coins+=n;
+  s.treasure++;
+  log("Found a treasure chest with "+n+" coins!");
+ }else if(roll<.90){
+  spawnEnemy(false);
+ }else{
+  spawnEnemy(true);
+ }
+
+ save();
+ render();
+}
+
+$("exploreBtn").onclick=explore;
+
+function spawnEnemy(boss){
+ const r=region();
+
+ s.enemyIsBoss=boss;
+ s.bossPhase=1;
+ s.telegraph=false;
+ s.guarded=false;
+ s.stagger=0;
+ s.rally=0;
+
+ s.enemy=boss?r.boss:r.enemy;
+ s.enemyHP=boss?r.bossHP:Math.floor(r.hp*(.8+Math.random()*.4));
+ s.enemyMax=s.enemyHP;
+ s.enemyAttack=boss?r.bossAttack:r.attack;
+
+ // Each encounter starts both independent timers.
+ s.partyAttackTimer=partyAttackInterval();
+ s.enemyAttackTimer=enemyAttackInterval();
+
+ log(boss?
+  "🚨 BOSS ENCOUNTER: "+s.enemy+"! Prepare for a long battle!":
+  "⚔️ "+s.enemy+" attacks your party!");
+
+ animate("battle");
+
+ if(boss)$("arena").classList.add("boss");
+
+ save();
+ render();
+}
+
+function bossPhaseCheck(){
+ if(!s.enemyIsBoss)return;
+
+ let pct=s.enemyHP/s.enemyMax;
+ let phase=pct<=.3?3:pct<=.65?2:1;
+
+ if(phase>s.bossPhase){
+  s.bossPhase=phase;
+  s.enemyAttack=Math.floor(s.enemyAttack*1.3);
+  s.enemyHP=Math.min(s.enemyMax,Math.floor(s.enemyHP+s.enemyMax*.08));
+
+  log("🔥 "+s.enemy+" enters phase "+phase+"! Its attacks grow stronger.");
+  floatText("PHASE "+phase,"#ff7979");
+ }
+}
+
+function damageEnemy(amount,label){
+ if(!s.enemy)return;
+
+ amount=Math.max(1,Math.floor(amount));
+ s.enemyHP-=amount;
+
+ floatText("-"+fmt(amount),"#ffb2a0");
+ animate("battle");
+ log(label+" deals "+fmt(amount)+" damage.");
+
+ bossPhaseCheck();
+
+ if(s.enemyHP<=0){
+  victory();
+ }else{
+  if(s.enemyIsBoss && Math.random()<.28){
+   s.telegraph=true;
+   log("⚠️ "+s.enemy+" is charging a devastating attack! Use Guard or Healing Wave.");
+  }else{
+   s.telegraph=false;
+  }
+  render();
+ }
+}
+
+function partyAttack(){
+ if(!s.enemy||battleBusy)return;
+
+ battleBusy=true;
+
+ try{
+  const base=power();
+
+  damageEnemy(base,"Your attack");
+
+  if(s.enemy){
+   for(const a of allyData()){
+    if(!s.enemy)break;
+
+    if(a.id==="healer"){
+     let heal=Math.floor(s.maxHP*.045);
+     s.hp=Math.min(maxPartyHP(),s.hp+heal);
+     floatText("+"+heal+" HP","#8effb2");
+    }
+
+    let dmg=a.damage*(1+s.level*.03)*(s.rally>0?1.5:1);
+
+    if(a.id==="mage"&&s.enemyIsBoss)dmg*=1.3;
+    if(a.id==="archer"&&Math.random()<.25)dmg*=2;
+
+    damageEnemy(dmg,a.name);
+   }
+  }
+
+  if(s.rally>0)s.rally--;
+
+ }finally{
+  battleBusy=false;
+  save();
+  render();
+ }
+}
+
+function enemyTurn(){
+ if(!s.enemy)return;
+
+ if(s.stagger>0){
+  s.stagger--;
+  log(s.enemy+" is staggered and loses its turn!");
+  s.telegraph=false;
+  return;
+ }
+
+ const multiplier=s.telegraph?(s.enemyIsBoss?1.9:1.3):1;
+
+ let damage=Math.max(
+  1,
+  Math.floor(s.enemyAttack*multiplier-s.defense-allyData().length*2)
+ );
+
+ if(s.guarded){
+  damage=Math.floor(damage*.35);
+  s.guarded=false;
+ }
+
+ s.hp-=damage;
+
+ floatText("-"+damage+" HP","#ff777f");
+ animate("danger");
+
+ log(s.enemy+(s.telegraph?" unleashes its charged attack":" attacks")+
+     " for "+damage+" damage!");
+
+ s.telegraph=false;
+
+ if(s.hp<=0){
+  s.hp=Math.max(1,Math.floor(s.maxHP*.5));
+  s.coins=Math.floor(s.coins*.9);
+
+  s.enemy=null;
+  s.enemyHP=0;
+  s.enemyMax=0;
+  s.enemyIsBoss=false;
+  s.telegraph=false;
+
+  log("Your party retreats and recovers. You lose 10% of your coins.");
+ }
+}
+
+function victory(){
+ const r=region();
+ const boss=s.enemyIsBoss;
+ const defeatedName=s.enemy;
+
+ let coins=boss?r.bossReward:r.reward;
+ let gems=boss?100*(s.region+1):20*(s.region+1);
+
+ s.coins+=coins;
+ gainGems(gems);
+ s.kills++;
+
+ if(boss){
+  s.bossKills++;
+  s.shards+=2+s.region;
+  s.maxHP+=10;
+  s.maxMana+=10;
+  s.hp=Math.min(maxPartyHP(),s.hp+45);
+
+  log("🏆 BOSS DEFEATED! "+coins+" coins, "+gems+
+      " gems and "+(2+s.region)+" shards!");
+ }else{
+  log("Victory! Earned "+coins+" coins and "+gems+" gems.");
+ }
+
+ s.enemy=null;
+ s.enemyHP=0;
+ s.enemyMax=0;
+ s.enemyIsBoss=false;
+ s.telegraph=false;
+ s.guarded=false;
+ s.stagger=0;
+
+ s.mana=Math.min(s.maxMana,s.mana+20);
+
+ // Reset timers so a future encounter starts fresh.
+ s.partyAttackTimer=partyAttackInterval();
+ s.enemyAttackTimer=5;
+
+ save();
+ render();
+}
+
+function retreat(){
+ if(!s.enemy){
+  log("You are not in combat.");
+  render();
+  return;
+ }
+
+ s.enemy=null;
+ s.enemyHP=0;
+ s.enemyMax=0;
+ s.enemyIsBoss=false;
+ s.telegraph=false;
+ s.guarded=false;
+
+ s.partyAttackTimer=partyAttackInterval();
+ s.enemyAttackTimer=5;
+
+ s.hp=Math.max(1,s.hp-5);
+ log("You escaped the encounter, but lost 5 health.");
+
+ save();
+ render();
+}
+
+$("retreatBtn").onclick=retreat;
+
+function useSkill(id){
+ const sk=SKILLS.find(x=>x.id===id);
+
+ if(!sk||!s.skills.includes(id))return;
+
+ if(s.cooldowns[id]>0){
+  log(sk.name+" is on cooldown.");
+  render();
+  return;
+ }
+
+ if(s.mana<sk.mana){
+  log("Not enough mana for "+sk.name+".");
+  render();
+  return;
+ }
+
+ if(!s.enemy&&["damage","magic","storm"].includes(sk.kind)){
+  log("Find an enemy before using an attack skill.");
+  render();
+  return;
+ }
+
+ s.mana-=sk.mana;
+ s.cooldowns[id]=sk.cd;
+
+ switch(sk.kind){
+  case "damage":
+   damageEnemy(power()*2.5,"⚔️ Power Slash");
+   break;
+
+  case "magic":
+   damageEnemy(power()*4+20*s.region,"🔮 Arcane Burst");
+   break;
+
+  case "storm":
+   damageEnemy(power()*6,"🌩️ Crystal Storm");
+   if(s.enemy)s.stagger=1;
+   break;
+
+  case "guard":
+   s.guarded=true;
+   log("🛡️ Aegis Guard activated. Incoming damage reduced!");
+   floatText("GUARD","#8fe8ff");
+   break;
+
+  case "heal":
+   let amount=Math.floor(s.maxHP*.3);
+   s.hp=Math.min(maxPartyHP(),s.hp+amount);
+   floatText("+"+amount+" HP","#8effb2");
+   log("💚 Healing Wave restores "+amount+" health.");
+   break;
+
+  case "rally":
+   s.rally=3;
+   log("📣 Team Rally! Your allies deal 50% extra damage for 3 rounds.");
+   break;
+ }
+
+ // Offensive skills do not trigger an immediate enemy counterattack.
+ // The enemy continues to attack on its own independent timer.
+
+ save();
+ render();
+}
+
+function recruit(id){
+ const a=ALLIES.find(x=>x.id===id);
+
+ if(!a||s.allies.includes(id))return;
+
+ if(s.coins<a.cost){
+  log("Not enough coins to recruit "+a.name+".");
+  render();
+  return;
+ }
+
+ s.coins-=a.cost;
+ s.allies.push(id);
+ s.hp=Math.min(maxPartyHP(),s.hp+12);
+
+ log("🤝 "+a.name+" joined your adventurer party!");
+
+ save();
+ render();
+}
+
+function unlockSkill(id){
+ const sk=SKILLS.find(x=>x.id===id);
+
+ if(!sk||s.skills.includes(id))return;
+
+ if(s.coins<sk.cost){
+  log("Not enough coins to learn "+sk.name+".");
+  render();
+  return;
+ }
+
+ s.coins-=sk.cost;
+ s.skills.push(id);
+
+ log("✨ Learned "+sk.name+"!");
+
+ save();
+ render();
+}
+
+function unlockRegion(i){
+ const r=REGIONS[i];
+
+ if(s.unlocked.includes(i)){
+  s.region=i;
+  s.enemy=null;
+  s.enemyHP=0;
+  s.enemyMax=0;
+  s.enemyIsBoss=false;
+  s.telegraph=false;
+  s.partyAttackTimer=partyAttackInterval();
+  s.enemyAttackTimer=5;
+  log("Travelled to "+r.name+".");
+ }else if(s.total>=r.unlock){
+  s.unlocked.push(i);
+  s.region=i;
+  s.enemy=null;
+  s.enemyHP=0;
+  s.enemyMax=0;
+  s.enemyIsBoss=false;
+  s.telegraph=false;
+  s.partyAttackTimer=partyAttackInterval();
+  s.enemyAttackTimer=5;
+  log("Unlocked "+r.name+"!");
+ }else{
+  log("Mine "+fmt(r.unlock-s.total)+" more total gems to unlock "+r.name+".");
+ }
+
+ save();
+ render();
+}
+
+function sellOre(ore){
+ const r=REGIONS.find(x=>x.ore===ore);
+ const n=s.ore[ore]||0;
+
+ if(n<=0){
+  log("No "+ore+" available to sell.");
+  render();
+  return;
+ }
+
+ s.ore[ore]=0;
+ s.coins+=n*r.value;
+
+ log("Sold "+fmt(n)+" "+ore+" for "+fmt(n*r.value)+" coins.");
+
+ save();
+ render();
+}
+
+const QUESTS=[
+ {id:"q1",name:"A Miner's Beginning",desc:"Mine 100 gems total.",check:()=>s.total>=100,reward:200},
+ {id:"q2",name:"Build Your Team",desc:"Recruit two allies.",check:()=>s.allies.length>=2,reward:500},
+ {id:"q3",name:"Monster Hunter",desc:"Defeat five enemies.",check:()=>s.kills>=5,reward:700},
+ {id:"q4",name:"Guardian Slayer",desc:"Defeat your first boss.",check:()=>s.bossKills>=1,reward:1500},
+ {id:"q5",name:"Explore the World",desc:"Unlock the Frozen Cavern.",check:()=>s.unlocked.includes(1),reward:400},
+ {id:"q6",name:"Legendary Miner",desc:"Reach level 10.",check:()=>s.level>=10,reward:3000}
+];
+
+function claimQuest(id){
+ const q=QUESTS.find(x=>x.id===id);
+
+ if(!q||s.quests.includes(id)||!q.check())return;
+
+ s.quests.push(id);
+ s.coins+=q.reward;
+
+ log("📜 Quest complete: "+q.name+"! +"+q.reward+" coins.");
+
+ save();
+ render();
+}
+
+function item(name,desc,button,disabled,attr){
+ return `<div class="item"><div class="iteminfo"><b>${name}</b><div class="desc">${desc}</div></div><button ${disabled?"disabled":""} ${attr}>${button}</button></div>`;
+}
+
+function renderTab(){
+ const c=$("content");
+
+ if(tab==="home"){
+  const goal=REGIONS.find((r,i)=>!s.unlocked.includes(i));
+
+  c.innerHTML=`<h2>🏠 Adventurer's Guild</h2>
+  <p class="muted">Mine, recruit allies, master skills, and defeat the guardians protecting each region.</p>
+  <div class="card"><h3>YOUR NEXT OBJECTIVES</h3>
+  <div class="log">${goal?"• Mine "+fmt(Math.max(0,goal.unlock-s.total))+" more lifetime gems to unlock "+goal.name+".":"• All regions unlocked!"}<br>• Recruit allies in the Team tab.<br>• Explore to find monsters and boss encounters.<br>• Sell ore for coins to expand your kingdom.</div></div>
+  <h3>RECENT EVENTS</h3><div class="log">${events.map(x=>"• "+x).join("<br>")}</div>
+  <hr><div class="row"><span>Pickaxe cap</span><b>${s.pick}/10</b></div>
+  <div class="row"><span>Mining automation</span><b>${auto()} gems/sec</b></div>
+  <div class="row"><span>Party attack speed</span><b>${partyAttackInterval().toFixed(1)} sec</b></div>
+  <div class="row"><span>Party speed upgrade</span><b>${s.partySpeedLevel}/5</b></div>
+  <div class="row"><span>Bosses defeated</span><b>${s.bossKills}</b></div>`;
+ }
+
+ if(tab==="team"){
+  c.innerHTML=`<h2>🧑‍🤝‍🧑 Adventurer Recruitment</h2>
+  <p class="muted">Your party attacks automatically in combat. Healers support your team; warriors and mages deal damage.</p>
+  ${ALLIES.map(a=>item(a.icon+" "+a.name,a.role+" · "+a.desc,s.allies.includes(a.id)?"Recruited":"Recruit · "+a.cost+" coins",s.allies.includes(a.id)||s.coins<a.cost,`data-recruit="${a.id}"`)).join("")}
+  <div class="card"><b>Party composition</b><p class="desc">Your allies each take part in automatic party attacks. Build a balanced team for difficult bosses.</p></div>`;
+ }
+
+ if(tab==="skills"){
+  c.innerHTML=`<h2>✨ Skills & Magic</h2>
+  <p class="muted">Use skills during combat. Mana regenerates slowly, and cooldowns prevent constant ability spam.</p>
+  ${SKILLS.map(sk=>item(sk.icon+" "+sk.name,sk.desc+" · "+sk.mana+" mana · "+sk.cd+" sec cooldown",s.skills.includes(sk.id)?"Learned":"Learn · "+sk.cost+" coins",s.skills.includes(sk.id)||s.coins<sk.cost,`data-learn="${sk.id}"`)).join("")}`;
+ }
+
+ if(tab==="regions"){
+  c.innerHTML=`<h2>🗺️ Regions & Bosses</h2>
+  <p class="muted">Each region has normal encounters and a much stronger boss. Bosses gain new phases as their health drops. Enemies attack faster in harder regions.</p>
+  ${REGIONS.map((r,i)=>`<div class="item"><div class="iteminfo"><b>${r.icon} ${r.name}</b><div class="desc">Ore: ${r.ore} · ${r.value} coins each<br>Monster attack interval: ${Math.max(1.5,5-i*.7).toFixed(1)} sec<br>Boss: ${r.boss} · ${fmt(r.bossHP)} HP · Reward ${fmt(r.bossReward)} coins</div></div><button data-region="${i}" ${!s.unlocked.includes(i)&&s.total<r.unlock?"disabled":""}>${s.unlocked.includes(i)?(s.region===i?"Current":"Travel"):"Unlock"}</button></div>`).join("")}
+  <div class="card"><b>⚠️ Challenge a boss</b><p class="desc">Explore to encounter monsters and bosses. Prepare with allies, healing, mana and defense.</p></div>`;
+ }
+
+ if(tab==="market"){
+  c.innerHTML=`<h2>🛒 Kingdom Market</h2>
+  <p class="muted">Coins are for recruitment, skills, healing, and supplies. Ore prices depend on the region.</p>
+  ${REGIONS.map(r=>item(r.oreIcon+" "+r.ore,fmt(s.ore[r.ore]||0)+" available · "+r.value+" coins each","Sell all",!(s.ore[r.ore]>0),`data-sell="${r.ore}"`)).join("")}
+  <hr><h3>SUPPLIES</h3>
+  ${item("🥪 Energy Ration","Restore 25 mana.","Buy · 80 coins",s.coins<80||s.mana>=s.maxMana,'data-buy="mana"')}
+  ${item("💚 Healing Potion","Restore 40 health.","Buy · 100 coins",s.coins<100||s.hp>=maxPartyHP(),'data-buy="heal"')}
+  ${item("🛡️ Armor Upgrade","Permanently add 5 defense.","Buy · "+fmt(500+s.defense*100)+" coins",s.coins<500+s.defense*100,'data-buy="armor"')}`;
+ }
+
+ if(tab==="quests"){
+  c.innerHTML=`<h2>📜 Guild Quests</h2>
+  <p class="muted">Claim rewards when objectives are completed.</p>
+  ${QUESTS.map(q=>item((s.quests.includes(q.id)?"✅ ":"📜 ")+q.name,q.desc+" · Reward "+fmt(q.reward)+" coins",s.quests.includes(q.id)?"Completed":q.check()?"Claim reward":"In progress",s.quests.includes(q.id)||!q.check(),`data-quest="${q.id}"`)).join("")}`;
+ }
+
+ c.querySelectorAll("[data-recruit]").forEach(b=>b.onclick=()=>recruit(b.dataset.recruit));
+ c.querySelectorAll("[data-learn]").forEach(b=>b.onclick=()=>unlockSkill(b.dataset.learn));
+ c.querySelectorAll("[data-region]").forEach(b=>b.onclick=()=>unlockRegion(+b.dataset.region));
+ c.querySelectorAll("[data-sell]").forEach(b=>b.onclick=()=>sellOre(b.dataset.sell));
+ c.querySelectorAll("[data-quest]").forEach(b=>b.onclick=()=>claimQuest(b.dataset.quest));
+ c.querySelectorAll("[data-buy]").forEach(b=>b.onclick=()=>buySupply(b.dataset.buy));
+}
+
+function buySupply(type){
+ if(type==="mana"){
+  if(s.coins<80||s.mana>=s.maxMana)return;
+  s.coins-=80;
+  s.mana=Math.min(s.maxMana,s.mana+25);
+ }
+
+ if(type==="heal"){
+  if(s.coins<100||s.hp>=maxPartyHP())return;
+  s.coins-=100;
+  s.hp=Math.min(maxPartyHP(),s.hp+40);
+ }
+
+ if(type==="armor"){
+  let c=500+s.defense*100;
+  if(s.coins<c)return;
+  s.coins-=c;
+  s.defense+=5;
+ }
+
+ log("Supply purchased.");
+ save();
+ render();
+}
+
+document.querySelectorAll("[data-tab]").forEach(b=>b.onclick=()=>{
+ tab=b.dataset.tab;
+ document.querySelectorAll("[data-tab]").forEach(x=>x.classList.toggle("active",x===b));
+ renderTab();
+});
+
+function render(){
+ $("gems").textContent=fmt(s.gems);
+ $("coins").textContent=fmt(s.coins);
+ $("shards").textContent=fmt(s.shards);
+
+ $("pickInfo").textContent="Lv. "+s.pick+"/10";
+ $("pickCost").textContent=s.pick>=10?"MAX LEVEL":fmt(pickCost())+" gems";
+ $("pickBtn").textContent=s.pick>=10?"MAXED":"Upgrade";
+ $("pickBtn").disabled=s.pick>=10||s.gems<pickCost();
+
+ $("workerInfo").textContent=s.workers+" workers";
+ $("workerCost").textContent=fmt(workerCost())+" coins";
+ $("workerBtn").disabled=s.coins<workerCost();
+
+ $("cartInfo").textContent=s.carts+" carts";
+ $("cartCost").textContent=fmt(cartCost())+" coins";
+ $("cartBtn").disabled=s.coins<cartCost();
+
+ $("resInfo").textContent="Lv. "+s.resonance;
+ $("resCost").textContent=fmt(resCost())+" gems";
+ $("resBtn").disabled=s.gems<resCost();
+
+ $("speedInfo").textContent="Lv. "+s.partySpeedLevel+"/5";
+ $("speedCost").textContent=s.partySpeedLevel>=5?"MAX LEVEL":fmt(speedCost())+" coins";
+ $("speedBtn").textContent=s.partySpeedLevel>=5?"MAXED":"Upgrade";
+ $("speedBtn").disabled=s.partySpeedLevel>=5||s.coins<speedCost();
+
+ $("regionTitle").textContent=region().icon+" "+region().name;
+ $("power").textContent=fmt(power());
+ $("auto").textContent=fmt(auto());
+ $("level").textContent=s.level;
+
+ $("xptext").textContent="XP "+fmt(s.xp)+"/"+fmt(needXP());
+ $("xpbar").style.width=Math.min(100,s.xp/needXP()*100)+"%";
+
+ $("total").textContent=fmt(s.total);
+ $("kills").textContent=s.kills;
+ $("bossKills").textContent=s.bossKills;
+ $("questCount").textContent=s.quests.length;
+
+ $("hp").textContent=Math.floor(s.hp)+"/"+maxPartyHP();
+ $("hpbar").style.width=Math.max(0,s.hp/maxPartyHP()*100)+"%";
+ $("partyHealth").textContent=Math.floor(s.hp)+"/"+maxPartyHP();
+ $("partyBar").style.width=Math.max(0,s.hp/maxPartyHP()*100)+"%";
+
+ $("mana").textContent=Math.floor(s.mana)+"/"+s.maxMana;
+ $("manabar").style.width=s.mana/s.maxMana*100+"%";
+
+ $("defense").textContent=s.defense;
+ $("teamPower").textContent=fmt(power()+teamDamage());
+
+ $("partyList").innerHTML=allyData().length?
+  allyData().map(a=>`<div class="row"><span>${a.icon} ${a.name}</span><b>${a.damage} ATK</b></div>`).join(""):
+  "<small>Recruit allies in the Team tab.</small>";
+
+ $("allySprite").style.display=s.allies.includes("knight")?"block":"none";
+ $("ally2Sprite").textContent=allyData()[1]?.icon||"";
+ $("ally2Sprite").style.display=allyData().length>1?"block":"none";
+
+ $("foeSprite").textContent=s.enemy?
+  (s.enemyIsBoss?region().bossIcon:region().foe):region().icon;
+
+ $("arena").classList.toggle("boss",!!s.enemyIsBoss);
+
+ $("battleTitle").textContent=s.enemyIsBoss?
+  "BOSS: "+s.enemy:(s.enemy||region().name);
+
+ $("battleState").textContent=s.enemy?
+  (s.enemyIsBoss?"BOSS PHASE "+s.bossPhase:"IN COMBAT"):"Exploration";
+
+ $("battleDesc").textContent=s.enemy?
+  (s.telegraph?"⚠️ A powerful attack is charging! Guard or heal!":
+  "Combat is automatic. Your party and the monster attack on separate timers."):
+  region().name+" — explore to encounter enemies and bosses.";
+
+ $("enemyHealthLabel").textContent=s.enemy?"Enemy HP":"No enemy";
+ $("enemyHealth").textContent=s.enemy?fmt(Math.max(0,s.enemyHP))+"/"+fmt(s.enemyMax):"—";
+ $("enemyBar").style.width=s.enemy?Math.max(0,s.enemyHP/s.enemyMax*100)+"%":"0%";
+
+ $("retreatBtn").disabled=!s.enemy;
+
+ $("partyTimerDisplay").textContent=s.enemy?
+  Math.max(0,Math.ceil(s.partyAttackTimer))+" sec":"—";
+
+ $("enemyTimerDisplay").textContent=s.enemy?
+  Math.max(0,Math.ceil(s.enemyAttackTimer))+" sec":"—";
+
+ $("skillButtons").innerHTML=s.skills.map(id=>{
+  const sk=SKILLS.find(x=>x.id===id);
+  const cd=s.cooldowns[id]||0;
+  const attack=["damage","magic","storm"].includes(sk.kind);
+
+  return `<button data-skill="${id}" ${
+   cd>0||s.mana<sk.mana||(!s.enemy&&attack)?"disabled":""}>
+   ${sk.icon} ${sk.name}${cd>0?" ("+Math.ceil(cd)+" sec)":""}
+  </button>`;
+ }).join("");
+
+ $("skillButtons").querySelectorAll("[data-skill]").forEach(b=>{
+  b.onclick=()=>useSkill(b.dataset.skill);
+ });
+
+ renderTab();
+}
+
+$("saveBtn").onclick=()=>{
+ save();
+ log("Game saved.");
+ render();
+};
+
+$("resetBtn").onclick=()=>{
+ if(confirm("Delete your saved Crystal Kingdom progress?")){
+  localStorage.removeItem("crystalKingdomSave");
+  s=clone(DEFAULT);
+  events=["A new adventure begins!"];
+  tab="home";
+  save();
+  render();
+ }
+};
+
+// Main game loop: automatic mining, regeneration, cooldowns and combat.
+setInterval(()=>{
+ const now=Date.now();
+ const dt=Math.min(2,(now-lastTick)/1000);
+ lastTick=now;
+
+ // Passive gem production
+ const n=Math.floor(auto()*dt);
+ if(n>0)gainGems(n);
+
+ // Passive regeneration
+ s.mana=Math.min(s.maxMana,s.mana+3*dt);
+ s.hp=Math.min(maxPartyHP(),s.hp+.4*dt);
+
+ // Skill cooldown countdown
+ Object.keys(s.cooldowns).forEach(k=>{
+  s.cooldowns[k]=Math.max(0,(s.cooldowns[k]||0)-dt);
+ });
+
+ // Independent party and enemy combat clocks
+ if(s.enemy&&!battleBusy){
+  s.partyAttackTimer-=dt;
+  s.enemyAttackTimer-=dt;
+
+  // Party attacks when its own timer expires.
+  if(s.enemy&&s.partyAttackTimer<=0){
+   s.partyAttackTimer=partyAttackInterval();
+   partyAttack();
+  }
+
+  // The monster attacks independently, even if the party
+  // has not attacked yet or the player has not used a skill.
+  if(s.enemy&&s.enemyAttackTimer<=0){
+   s.enemyAttackTimer=enemyAttackInterval();
+   enemyTurn();
+  }
+ }
+
+ // Refresh countdown labels and skill cooldown displays once per second.
+ const second=Math.floor(now/1000);
+ if(second!==lastRenderedSecond){
+  lastRenderedSecond=second;
+  render();
+ }
+
+ save();
+},250);
+
+render();
+</script>
+</body>
+</html>
