@@ -628,34 +628,40 @@
   }
 
   function getEnglishVoice() {
-    if (!("speechSynthesis" in window)) return null;
+  if (!("speechSynthesis" in window)) return null;
 
-    const voices = window.speechSynthesis.getVoices();
+  const voices = window.speechSynthesis.getVoices();
 
-    const english = voices.filter((voice) =>
-      /^en([_-]|$)/i.test(voice.lang)
+  const english = voices.filter((voice) =>
+    /^en([_-]|$)/i.test(voice.lang)
+  );
+
+  // Prefer commonly available feminine-sounding voices.
+  const femaleVoicePatterns = [
+    /female/i,
+    /aria/i,
+    /jenny/i,
+    /samantha/i,
+    /zira/i,
+    /hazel/i,
+    /sonia/i,
+    /ava/i,
+    /victoria/i,
+    /karen/i,
+    /google us english/i
+  ];
+
+  for (const pattern of femaleVoicePatterns) {
+    const match = english.find((voice) =>
+      pattern.test(voice.name)
     );
 
-    const preferredPatterns = [
-      /natural/i,
-      /enhanced/i,
-      /neural/i,
-      /aria/i,
-      /jenny/i,
-      /samantha/i,
-      /google us english/i
-    ];
-
-    for (const pattern of preferredPatterns) {
-      const match = english.find((voice) =>
-        pattern.test(voice.name)
-      );
-
-      if (match) return match;
-    }
-
-    return english[0] || null;
+    if (match) return match;
   }
+
+  // Fall back to another English voice if none match.
+  return english[0] || null;
+}
 
   function processSpeechQueue() {
     if (!sageEnabled || speechBusy || !speechQueue.length) {
@@ -687,10 +693,9 @@
     // More conversational than the original stiff setting.
     // The available browser voice still determines the actual sound.
     utterance.lang = "en-US";
-    utterance.rate = 0.97;
-    utterance.pitch = 1.02;
+    utterance.rate = 0.95;
+    utterance.pitch = 1.14;
     utterance.volume = 1;
-
     const voice = getEnglishVoice();
     if (voice) utterance.voice = voice;
 
