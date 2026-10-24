@@ -1494,26 +1494,67 @@
     400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
   );
 
-    playImportantSound();
+    
+function playImportantSound() {
+  const now = Date.now();
 
-    clearTimeout(exploreTimer);
+  // Prevent overlapping alerts from sounding messy.
+  if (now - lastImportantSound < 450) return;
+  lastImportantSound = now;
 
-    log(
-      `Every hero has fallen against ${fallenEnemy}. ` +
-      `The hospital requires ${s.hospitalFee} gold.`
-    );
+  try {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
 
-    announce(
-      "Notice: All party members are down. Pay the hospital fee to begin recovery."
-    );
+    if (!AudioContextClass) return;
 
-    showHospitalPrompt();
+    if (!importantAudioContext) {
+      importantAudioContext = new AudioContextClass();
+    }
 
-    toast("Party wiped! Pay the hospital fee to recover.");
+    const context = importantAudioContext;
 
-    render();
-    save();
+    if (context.state === "suspended") {
+      context.resume().catch(() => {});
+    }
+
+    const startAt = context.currentTime + 0.025;
+
+    // A bright, short, two-tone navigation-style alert.
+    // This is an original sound inspired by navigation alerts,
+    // rather than a recording of Google Maps audio.
+    const notes = [
+      { frequency: 880, delay: 0, duration: 0.10 },
+      { frequency: 1175, delay: 0.13, duration: 0.16 }
+    ];
+
+    notes.forEach(({ frequency, delay, duration }) => {
+      const start = startAt + delay;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        start + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.01);
+    });
+  } catch (error) {
+    // Audio failures must never stop the game.
+    console.debug("Important-event sound unavailable.", error);
   }
+}
+
 
   // ==========================================
   // VICTORY AND NEW HEROES
