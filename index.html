@@ -46,10 +46,28 @@
     </a>
 
     <div class="resources" aria-live="polite">
-      <span>◈ GOLD <b id="gold">75</b></span>
-      <span>◆ CRYSTALS <b id="crystals">35</b></span>
-      <span>⬡ ORE <b id="ore">0</b></span>
-    </div>
+  <span>◈ GOLD <b id="gold">75</b></span>
+  <span>◆ CRYSTALS <b id="crystals">35</b></span>
+  <span>⬡ ORE <b id="ore">0</b></span>
+  <span>✧ MANA <b id="mana">100 / 100</b></span>
+</div>
+
+<div class="sage-widget">
+  <button
+    class="sage-orb"
+    id="sageOrb"
+    data-action="sageToggle"
+    aria-label="Mute or activate Great Sage voice"
+    title="Click to mute or activate Great Sage"
+  >
+    <span class="sage-symbol">◈</span>
+  </button>
+  <div class="sage-label">
+    <b>GREAT SAGE</b>
+    <small id="sageStatus">VOICE ON</small>
+    <small id="sageMessage">Standing by.</small>
+  </div>
+</div>
   </header>
 
   <section class="banner" id="top">
