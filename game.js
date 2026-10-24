@@ -1088,51 +1088,67 @@
     }, 2300);
   }
 
-  function playImportantSound() {
-    const now = Date.now();
+  
+function playImportantSound() {
+  const now = Date.now();
 
-    // Avoid playing twice for a hero-down + party-wipe event in the same instant.
-    if (now - lastImportantSound < 450) return;
-    lastImportantSound = now;
+  // Prevent overlapping alerts from sounding messy.
+  if (now - lastImportantSound < 450) return;
+  lastImportantSound = now;
 
-    try {
-      const AudioContextClass =
-        window.AudioContext || window.webkitAudioContext;
-      if (!AudioContextClass) return;
+  try {
+    const AudioContextClass =
+      window.AudioContext || window.webkitAudioContext;
 
-      if (!importantAudioContext) {
-        importantAudioContext = new AudioContextClass();
-      }
+    if (!AudioContextClass) return;
 
-      const context = importantAudioContext;
-      if (context.state === "suspended") {
-        context.resume().catch(() => {});
-      }
-
-      const startAt = context.currentTime + 0.03;
-
-      // Two soft, low notes: a short "bum-bum" cue, not a continuous alarm.
-      [112, 84].forEach((frequency, index) => {
-        const start = startAt + index * 0.19;
-        const oscillator = context.createOscillator();
-        const gain = context.createGain();
-
-        oscillator.type = "sine";
-        oscillator.frequency.setValueAtTime(frequency, start);
-        gain.gain.setValueAtTime(0.0001, start);
-        gain.gain.exponentialRampToValueAtTime(0.055, start + 0.025);
-        gain.gain.exponentialRampToValueAtTime(0.0001, start + 0.15);
-
-        oscillator.connect(gain);
-        gain.connect(context.destination);
-        oscillator.start(start);
-        oscillator.stop(start + 0.16);
-      });
-    } catch (error) {
-      // Sound is optional; unsupported audio must never stop the game.
-      console.debug("Important-event sound was unavailable.", error);
+    if (!importantAudioContext) {
+      importantAudioContext = new AudioContextClass();
     }
+
+    const context = importantAudioContext;
+
+    if (context.state === "suspended") {
+      context.resume().catch(() => {});
+    }
+
+    const startAt = context.currentTime + 0.025;
+
+    // A bright, short, two-tone navigation-style alert.
+    // This is an original sound inspired by navigation alerts,
+    // rather than a recording of Google Maps audio.
+    const notes = [
+      { frequency: 880, delay: 0, duration: 0.10 },
+      { frequency: 1175, delay: 0.13, duration: 0.16 }
+    ];
+
+    notes.forEach(({ frequency, delay, duration }) => {
+      const start = startAt + delay;
+      const oscillator = context.createOscillator();
+      const gain = context.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(frequency, start);
+
+      gain.gain.setValueAtTime(0.0001, start);
+      gain.gain.exponentialRampToValueAtTime(0.12, start + 0.012);
+      gain.gain.exponentialRampToValueAtTime(
+        0.0001,
+        start + duration
+      );
+
+      oscillator.connect(gain);
+      gain.connect(context.destination);
+
+      oscillator.start(start);
+      oscillator.stop(start + duration + 0.01);
+    });
+  } catch (error) {
+    // Audio failures must never stop the game.
+    console.debug("Important-event sound unavailable.", error);
   }
+}
+
 
   function showDamage(message, side = "enemy", healing = false) {
     const scene = $("scene");
