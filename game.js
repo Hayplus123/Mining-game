@@ -3653,14 +3653,9 @@
   }
 
   function handleRecognitionResult(event) {
-    for (
-      let i = event.resultIndex;
-      i < event.results.length;
-      i++
-    ) {
+    for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
-      const rawText =
-        (result[0] && result[0].transcript) || "";
+      const rawText = (result[0] && result[0].transcript) || "";
 
       if (!rawText.trim()) continue;
 
@@ -3670,16 +3665,11 @@
       const exitPhrase =
         /\bnever mind\b|\bnothing\b|\bgo idle\b|\bstop listening\b/i.test(text);
 
-      // Hearing the wake phrase interrupts Sage's current speech.
-      if (
-        wake &&
-        (!commandModeActive || speechBusy || speechQueue.length)
-      ) {
+      // The wake phrase interrupts Sage immediately, even while she is speaking.
+      if (wake && (!commandModeActive || speechBusy || speechQueue.length)) {
         enterCommandMode();
 
-        const trailing = text
-          .slice(wake.index + wake[0].length)
-          .trim();
+        const trailing = text.slice(wake.index + wake[0].length).trim();
 
         if (result.isFinal && trailing) {
           handleVoiceCommand(trailing);
@@ -3690,17 +3680,48 @@
         continue;
       }
 
-      // Cancellation phrases work while command mode is active.
+      // "Never mind" and "nothing" cancel speech and leave command mode.
       if (commandModeActive && exitPhrase) {
         handleVoiceCommand(text);
         continue;
       }
 
-      // Ignore most recognition picked up while Sage is speaking.
-      if (
-        speechBusy ||
-        Date.now() < ignoreRecognitionUntil
-      ) {
+      // NEW: Allow a direct command to interrupt Sage's current speech.
+      // Require an action word at the beginning to reduce accidental
+      // interruption from the microphone picking up Sage's own voice.
+      if (speechBusy) {
+        const startsWithAction =
+          /^(?:please\s+)?(?:use|cast|activate|mine|explore|upgrade|improve|buy|purchase|get|pay)\b/i.test(text);
+
+        const recognizedCommands = getVoiceCommandMatches(text);
+
+        if (startsWithAction && recognizedCommands.length > 0) {
+          // Stop the current sentence and discard queued replies.
+          cancelSageSpeech(true);
+
+          // Let the new command's final recognition result through.
+          ignoreRecognitionUntil = 0;
+
+          // Enable command mode if Sage was speaking an automatic alert.
+          if (!commandModeActive) {
+            enterCommandMode();
+          }
+
+          if (result.isFinal) {
+            handleVoiceCommand(text);
+          } else {
+            armCommandIdleTimer();
+            updateSageMessage("Listening for commands…");
+            updateSageStatus("LISTENING");
+            refreshSagePanel();
+          }
+
+          continue;
+        }
+      }
+
+      // Ignore ordinary microphone input picked up while Sage is speaking.
+      if (speechBusy || Date.now() < ignoreRecognitionUntil) {
         continue;
       }
 
