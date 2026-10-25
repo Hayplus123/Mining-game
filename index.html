@@ -358,6 +358,25 @@
 
 <div class="toast" id="toast" role="status" aria-live="polite"></div>
 
+<!-- Great Sage microphone status indicator -->
+<div
+  class="sage-listen-status"
+  id="sageListeningStatus"
+  data-state="starting"
+  role="status"
+  aria-live="polite"
+>
+  <span
+    class="sage-status-light"
+    id="sageListeningLight"
+    aria-hidden="true"
+  ></span>
+
+  <span id="sageListeningText">
+    Starting microphone...
+  </span>
+</div>
+
 <audio id="backgroundMusic" loop preload="auto"></audio>
 </body>
 </html>

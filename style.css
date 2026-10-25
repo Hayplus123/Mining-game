@@ -1686,3 +1686,117 @@ footer {
     margin-left: auto;
   }
 }
+/* ==========================================
+   GREAT SAGE MICROPHONE STATUS
+   ========================================== */
+
+.sage-listen-status {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 99998;
+
+  display: flex;
+  align-items: center;
+  gap: 9px;
+
+  max-width: calc(100vw - 24px);
+  padding: 10px 14px;
+
+  border: 1px solid #8ce7ef44;
+  border-radius: 999px;
+
+  background: rgba(23, 21, 45, 0.96);
+  color: #e6e0fa;
+
+  font: 500 10px 'DM Sans', sans-serif;
+  letter-spacing: 0.025em;
+
+  box-shadow:
+    0 8px 24px #0005,
+    0 0 14px #8ce7ef12;
+
+  pointer-events: none;
+}
+
+.sage-status-light {
+  width: 9px;
+  height: 9px;
+  flex-shrink: 0;
+
+  border-radius: 50%;
+  background: #f5d48d;
+
+  box-shadow: 0 0 8px currentColor;
+}
+
+.sage-listen-status[data-state="wake"] {
+  border-color: #8ce7ef55;
+}
+
+.sage-listen-status[data-state="wake"] .sage-status-light {
+  background: #8ce7ef;
+  color: #8ce7ef;
+  animation: sageMicPulse 2s ease-in-out infinite;
+}
+
+.sage-listen-status[data-state="command"] {
+  border-color: #b58aff99;
+  color: #e3d1ff;
+}
+
+.sage-listen-status[data-state="command"] .sage-status-light {
+  background: #b58aff;
+  color: #b58aff;
+  animation: sageMicPulse 0.9s ease-in-out infinite;
+}
+
+.sage-listen-status[data-state="speaking"] .sage-status-light {
+  background: #a4edc0;
+  color: #a4edc0;
+  animation: sageMicPulse 0.6s ease-in-out infinite;
+}
+
+.sage-listen-status[data-state="error"] {
+  border-color: #ff8eaa88;
+  color: #ffc5d0;
+}
+
+.sage-listen-status[data-state="error"] .sage-status-light {
+  background: #ff8eaa;
+  color: #ff8eaa;
+  animation: none;
+}
+
+.sage-listen-status[data-state="starting"] .sage-status-light {
+  background: #f5d48d;
+  color: #f5d48d;
+  animation: sageMicPulse 1.5s ease-in-out infinite;
+}
+
+@keyframes sageMicPulse {
+  0%, 100% {
+    opacity: 0.55;
+    transform: scale(0.85);
+  }
+
+  50% {
+    opacity: 1;
+    transform: scale(1.15);
+  }
+}
+
+@media (max-width: 480px) {
+  .sage-listen-status {
+    right: 12px;
+    bottom: 12px;
+    font-size: 9px;
+    padding: 9px 11px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sage-status-light {
+    animation: none !important;
+  }
+}

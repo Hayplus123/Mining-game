@@ -764,9 +764,52 @@
   // ==========================================
 
   function updateSageStatus(text) {
-    const el = $("sageStatus");
-    if (el) el.textContent = text;
+  const el = $("sageStatus");
+
+  if (el) {
+    el.textContent = text;
   }
+
+  const indicator = $("sageListeningStatus");
+  const label = $("sageListeningText");
+
+  if (!indicator || !label) return;
+
+  // Display the actual state of the assistant.
+  if (
+    /UNSUPPORTED|UNAVAILABLE|PERMISSION NEEDED/i.test(text) ||
+    !recognitionEnabled
+  ) {
+    indicator.dataset.state = "error";
+
+    label.textContent = /PERMISSION NEEDED/i.test(text)
+      ? "Microphone permission needed"
+      : "Voice recognition unavailable";
+
+    return;
+  }
+
+  if (speechBusy || /SPEAKING/i.test(text)) {
+    indicator.dataset.state = "speaking";
+    label.textContent = "Great Sage is speaking";
+    return;
+  }
+
+  if (commandModeActive) {
+    indicator.dataset.state = "command";
+    label.textContent = "Listening for your command...";
+    return;
+  }
+
+  if (recognitionRunning) {
+    indicator.dataset.state = "wake";
+    label.textContent = 'Listening for "Great Sage"';
+    return;
+  }
+
+  indicator.dataset.state = "starting";
+  label.textContent = "Starting microphone...";
+}
 
   function updateSageMessage(text) {
     const el = $("sageMessage");
@@ -3648,8 +3691,14 @@
     recognition.maxAlternatives = 1;
 
     recognition.onstart = () => {
-      recognitionRunning = true;
-    };
+  recognitionRunning = true;
+
+  updateSageStatus(
+    commandModeActive
+      ? "LISTENING"
+      : "WAKE WORD READY"
+  );
+};
 
     recognition.onresult = handleRecognitionResult;
 
