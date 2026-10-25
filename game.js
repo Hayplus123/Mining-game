@@ -3025,10 +3025,11 @@
         s.elowenSelfReviveAt = 0;
       } else {
         if (!s.elowenSelfReviveAt) {
-          s.elowenSelfReviveAt = now + 60000;
-          log("Elowen has fallen. Her spirit will return in 60 seconds.");
-          save();
-        }
+  s.elowenSelfReviveAt = now + 60000;
+
+  log("Elowen has fallen. Her spirit will return in 60 seconds.");
+  save();
+}
 
         if (now >= s.elowenSelfReviveAt) {
           s.heroHp.elowen = Math.ceil(HEROES.elowen.maxHp * 0.3);
