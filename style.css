@@ -1800,3 +1800,193 @@ footer {
     animation: none !important;
   }
 }
+/* ==========================================
+   GREAT SAGE AUTOPILOT STATUS
+   ========================================== */
+
+.sage-autopilot-status {
+  margin: 12px 0;
+  padding: 11px;
+  border: 1px solid #ffffff18;
+  border-radius: 10px;
+  background: linear-gradient(
+    145deg,
+    #ffffff08,
+    #080b191c
+  );
+}
+
+.sage-autopilot-heading {
+  margin: 0 0 10px;
+  color: #a9a2c5;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.15em;
+}
+
+.sage-autopilot-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 0;
+}
+
+.sage-autopilot-row + .sage-autopilot-row {
+  border-top: 1px solid #ffffff10;
+}
+
+.sage-autopilot-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #e8e3f5;
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.sage-mode-dot {
+  flex: 0 0 auto;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #77738d;
+  box-shadow: 0 0 5px #77738d55;
+}
+
+.sage-mode-state {
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  border: 1px solid #ffffff1b;
+  border-radius: 6px;
+  color: #aaa4c3;
+  background: #ffffff06;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+
+/* Mode is off */
+.sage-mode-state[data-state="off"] {
+  color: #aaa4c3;
+}
+
+/* Battle Autopilot is running */
+.sage-mode-state[data-state="active"] {
+  color: #ff9da6;
+  border-color: #ff465866;
+  background: #ff354514;
+}
+
+.sage-autopilot-row:has(
+  #sageBattleAutoStatus[data-state="active"]
+) .sage-mode-dot {
+  background: #ff4658;
+  box-shadow: 0 0 9px #ff3545bb;
+}
+
+/* Kingdom Autopilot is unlocked but inactive */
+.sage-mode-state[data-state="ready"] {
+  color: #a4edc0;
+  border-color: #8ee7bd35;
+  background: #8ee7bd0c;
+}
+
+/* Kingdom Autopilot is locked */
+.sage-mode-state[data-state="locked"] {
+  color: #aaa4c3;
+  border-color: #ffffff16;
+  background: #ffffff05;
+}
+
+/* Kingdom Autopilot is running */
+#sageKingdomAutoStatus[data-state="active"] {
+  color: #ff9da6;
+  border-color: #ff465866;
+  background: #ff354514;
+}
+
+.sage-autopilot-row:has(
+  #sageKingdomAutoStatus[data-state="active"]
+) .sage-mode-dot {
+  background: #ff4658;
+  box-shadow: 0 0 9px #ff3545bb;
+}
+
+.sage-autopilot-help {
+  margin: 8px 0 0;
+  color: #9f99b9;
+  font-size: 9px;
+  line-height: 1.55;
+}
+
+/* Red appearance while Battle Autopilot runs */
+.sage-orb.is-battle-auto {
+  color: #fff4f4;
+  border-color: #ff555d;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff1f1,
+    #ff535b 22%,
+    #8b1624 60%,
+    #2a0b15 83%
+  );
+  box-shadow:
+    0 0 14px #ff384d99,
+    0 0 28px #e92d3d55,
+    inset 0 0 12px #ffffff55;
+}
+
+/* Red appearance while Kingdom Autopilot runs */
+.sage-orb.is-kingdom-auto {
+  color: #fff4f4;
+  border-color: #ff454f;
+  background: radial-gradient(
+    circle at 35% 30%,
+    #fff1f1,
+    #ff414b 22%,
+    #8b1624 60%,
+    #2a0b15 83%
+  );
+  box-shadow:
+    0 0 18px #ff344dba,
+    0 0 34px #e92d3d77,
+    inset 0 0 12px #ffffff77;
+}
+
+/* Spin the symbol slowly, not the entire button */
+.sage-orb.is-kingdom-auto .sage-symbol {
+  display: inline-block;
+  animation: sageKingdomAutopilotSpin 12s linear infinite;
+  text-shadow: 0 0 12px #fff, 0 0 22px #ff5763;
+}
+
+@keyframes sageKingdomAutopilotSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 480px) {
+  .sage-autopilot-status {
+    padding: 9px;
+  }
+
+  .sage-autopilot-name {
+    font-size: 9px;
+  }
+
+  .sage-mode-state {
+    font-size: 7px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sage-orb.is-kingdom-auto .sage-symbol {
+    animation: none;
+  }
+}

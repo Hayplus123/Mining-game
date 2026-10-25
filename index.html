@@ -352,6 +352,41 @@
     </div>
 
     <p id="sageMessage">Standing by.</p>
+        <!-- Great Sage Autopilot Status -->
+    <section class="sage-autopilot-status" aria-label="Autopilot modes">
+      <p class="sage-autopilot-heading">AUTOPILOT MODES</p>
+
+      <div class="sage-autopilot-row">
+        <span class="sage-autopilot-name">
+          <span class="sage-mode-dot" aria-hidden="true"></span>
+          Battle Autopilot
+        </span>
+        <span
+          class="sage-mode-state"
+          id="sageBattleAutoStatus"
+          data-state="off"
+          aria-live="polite"
+        >OFF</span>
+      </div>
+
+      <div class="sage-autopilot-row">
+        <span class="sage-autopilot-name">
+          <span class="sage-mode-dot" aria-hidden="true"></span>
+          Kingdom Autopilot
+        </span>
+        <span
+          class="sage-mode-state"
+          id="sageKingdomAutoStatus"
+          data-state="locked"
+          aria-live="polite"
+        >LOCKED</span>
+      </div>
+
+      <p class="sage-autopilot-help" id="sageAutopilotHelp">
+        Battle Autopilot is ready when you need it.
+        Kingdom Autopilot unlocks after defeating the new cave guardian.
+      </p>
+    </section>
     <div class="sage-actions" id="sageActions" hidden></div>
   </section>
 </div>
