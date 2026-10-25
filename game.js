@@ -3315,81 +3315,50 @@
 
     return `${skillVoiceLabel(key)} cannot be used right now.`;
   }
-    function getVoiceCommandMatches(text) {
+  function getVoiceCommandMatches(text) {
     const choices = [
-      {
-        kind: "skill",
-        key: "heal",
-        label: "Healing Wave",
-        patterns: [/\bhealing wave\b/gi, /\bheal\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "slash",
-        label: "Radiant Slash",
-        patterns: [/\bradiant slash\b/gi, /\bslash\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "burst",
-        label: "Arcane Burst",
-        patterns: [/\barcane burst\b/gi, /\bburst\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "guard",
-        label: "Guard",
-        patterns: [/\baegis guard\b/gi, /\baegis\b/gi, /\bguard\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "meteor",
-        label: "Meteor Rain",
-        patterns: [/\bmeteor rain\b/gi, /\bmeteor\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "frost",
-        label: "Frost Nova",
-        patterns: [/\bfrost nova\b/gi, /\bfrost\b/gi]
-      },
-      {
-        kind: "skill",
-        key: "phoenix",
-        label: "Phoenix Blessing",
-        patterns: [/\bphoenix blessing\b/gi, /\bphoenix\b/gi]
-      },
-      {
-        kind: "utility",
-        key: "mine",
-        label: "mining",
-        patterns: [/\bmine crystals\b/gi, /\bmine\b/gi]
-      },
-      {
-        kind: "utility",
-        key: "explore",
-        label: "exploration",
-        patterns: [/\bexplore\b/gi, /\bexploration\b/gi]
-      },
-      {
-        kind: "utility",
-        key: "status",
-        label: "status report",
-        patterns: [
-          /\bstatus report\b/gi,
-          /\bcheck status\b/gi,
-          /\bstatus\b/gi
-        ]
-      },
-      {
-        kind: "utility",
-        key: "hospital",
-        label: "hospital payment",
-        patterns: [
-          /\bpay (?:the )?hospital(?: fee)?\b/gi,
-          /\bpay (?:the )?healing fee\b/gi
-        ]
-      }
+      // Skills
+      { kind: "skill", key: "heal", label: "Healing Wave", patterns: [/\bhealing wave\b/gi, /\bheal\b/gi] },
+      { kind: "skill", key: "slash", label: "Radiant Slash", patterns: [/\bradiant slash\b/gi, /\bslash\b/gi] },
+      { kind: "skill", key: "burst", label: "Arcane Burst", patterns: [/\barcane burst\b/gi, /\bburst\b/gi] },
+      { kind: "skill", key: "guard", label: "Guard", patterns: [/\baegis guard\b/gi, /\baegis\b/gi, /\bguard\b/gi] },
+      { kind: "skill", key: "meteor", label: "Meteor Rain", patterns: [/\bmeteor rain\b/gi, /\bmeteor\b/gi] },
+      { kind: "skill", key: "frost", label: "Frost Nova", patterns: [/\bfrost nova\b/gi, /\bfrost\b/gi] },
+      { kind: "skill", key: "phoenix", label: "Phoenix Blessing", patterns: [/\bphoenix blessing\b/gi, /\bphoenix\b/gi] },
+
+      // Mining and exploration
+      { kind: "utility", key: "mine", label: "mining", patterns: [/\bmine\s+(?:some\s+)?crystals\b/gi, /\bmine\b/gi] },
+      { kind: "utility", key: "explore", label: "exploration", patterns: [/\bexplore\b/gi, /\bexploration\b/gi] },
+      { kind: "utility", key: "status", label: "status report", patterns: [/\bstatus report\b/gi, /\bcheck status\b/gi, /\bstatus\b/gi] },
+      { kind: "utility", key: "hospital", label: "hospital treatment", patterns: [/\bpay (?:the )?hospital(?: fee)?\b/gi, /\bpay (?:the )?healing fee\b/gi] },
+
+      // Upgrades
+      { kind: "upgrade", key: "pickaxe", label: "pickaxe", patterns: [/\bupgrade (?:my |the )?pickaxe\b/gi, /\bpickaxe upgrade\b/gi, /\bimprove (?:my |the )?pickaxe\b/gi] },
+      { kind: "upgrade", key: "speed", label: "attack speed", patterns: [/\bupgrade (?:the )?(?:attack )?speed\b/gi, /\bupgrade attack speed\b/gi, /\battack speed upgrade\b/gi] },
+      { kind: "upgrade", key: "damage", label: "damage", patterns: [/\bupgrade (?:the )?(?:party )?damage\b/gi, /\bupgrade party damage\b/gi, /\bdamage upgrade\b/gi] },
+      { kind: "upgrade", key: "crit", label: "critical strikes", patterns: [/\bupgrade (?:the )?crit(?:ical)?(?: strikes?| chance)?\b/gi, /\bcritical strikes? upgrade\b/gi, /\bcritical strike chance\b/gi] },
+
+      // Use named snacks
+      { kind: "snack", action: "use", key: "rations", label: "Trail Rations", patterns: [/\buse (?:the )?(?:trail rations|rations)\b/gi, /\beat (?:the )?(?:trail rations|rations)\b/gi] },
+      { kind: "snack", action: "use", key: "moonberries", label: "Moonberries", patterns: [/\buse (?:the )?moonberries\b/gi, /\beat (?:the )?moonberries\b/gi] },
+      { kind: "snack", action: "use", key: "tea", label: "Miner's Tea", patterns: [/\buse (?:the )?miner(?:\s+s)?\s+tea\b/gi, /\beat (?:the )?miner(?:\s+s)?\s+tea\b/gi] },
+      { kind: "snack", action: "use", key: "cake", label: "Crystal Cake", patterns: [/\buse (?:the )?crystal cake\b/gi, /\beat (?:the )?crystal cake\b/gi] },
+      { kind: "snack", action: "use", key: "etherberry", label: "Etherberries", patterns: [/\buse (?:the )?etherberries\b/gi, /\beat (?:the )?etherberries\b/gi] },
+      { kind: "snack", action: "use", key: "astralTea", label: "Astral Tea", patterns: [/\buse (?:the )?astral tea\b/gi, /\bdrink (?:the )?astral tea\b/gi] },
+      { kind: "snack", action: "use", key: "revive", label: "Revive Snack", patterns: [/\buse (?:the )?revive snack\b/gi] },
+
+      // Buy named snacks
+      { kind: "snack", action: "buy", key: "rations", label: "Trail Rations", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?(?:trail rations|rations)\b/gi] },
+      { kind: "snack", action: "buy", key: "moonberries", label: "Moonberries", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?moonberries\b/gi] },
+      { kind: "snack", action: "buy", key: "tea", label: "Miner's Tea", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?miner(?:\s+s)?\s+tea\b/gi] },
+      { kind: "snack", action: "buy", key: "cake", label: "Crystal Cake", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?crystal cake\b/gi] },
+      { kind: "snack", action: "buy", key: "etherberry", label: "Etherberries", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?etherberries\b/gi] },
+      { kind: "snack", action: "buy", key: "astralTea", label: "Astral Tea", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?astral tea\b/gi] },
+      { kind: "snack", action: "buy", key: "revive", label: "Revive Snack", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?revive snack\b/gi] },
+
+      // General snack commands
+      { kind: "snack", action: "use", key: "auto", label: "a suitable snack", patterns: [/\buse (?:a |the |some )?snack\b/gi, /\beat (?:a |the |some )?snack\b/gi] },
+      { kind: "snack", action: "buy", key: "auto", label: "a snack", patterns: [/\b(?:buy|purchase|get)\s+(?:a |the |some )?snack\b/gi] }
     ];
 
     const matches = [];
@@ -3405,10 +3374,7 @@
           if (
             !first ||
             match.index < first.index ||
-            (
-              match.index === first.index &&
-              match[0].length > first.text.length
-            )
+            (match.index === first.index && match[0].length > first.text.length)
           ) {
             first = {
               index: match.index,
@@ -3435,7 +3401,7 @@
     const seen = new Set();
 
     return matches.filter((choice) => {
-      const id = `${choice.kind}:${choice.key}`;
+      const id = `${choice.kind}:${choice.action || ""}:${choice.key}`;
 
       if (seen.has(id)) return false;
 
@@ -3446,7 +3412,6 @@
 
   function makeStatusReport() {
     const living = livingHeroes();
-
     const fallen = s.heroes.filter(
       (id) => (s.heroHp[id] || 0) <= 0
     );
@@ -3459,16 +3424,13 @@
       ? `${living.length} heroes standing${fallen.length ? ` and ${fallen.length} fallen` : ""}`
       : "no heroes standing";
 
-    return (
-      `Status report. Cave ${s.region + 1}, ${region().name}. ` +
-      `${health}. Mana ${Math.floor(s.mana)} of ${maxMana()}. ` +
-      `${enemy}. ${fmt(s.gold)} gold and ${fmt(s.crystals)} crystals.`
-    );
+    return `Status report. Cave ${s.region + 1}, ${region().name}. ${health}. Mana ${Math.floor(s.mana)} of ${maxMana()}. ${enemy}. ${fmt(s.gold)} gold and ${fmt(s.crystals)} crystals.`;
   }
 
   function handleVoiceCommand(rawText) {
     const text = normalizeVoiceText(stripWakePhrase(rawText));
 
+    // Exit command mode.
     if (
       /\bnever mind\b|\bnothing\b/.test(text) ||
       /\b(cancel|go idle|back to idle|stop listening)\b/.test(text)
@@ -3492,7 +3454,7 @@
 
     if (!commands.length) {
       queueSageReply(
-        "I did not recognize that command. Try Healing Wave, Guard, mine crystals, explore, or status report."
+        "I did not recognize that command. Try Healing Wave, Guard, mine crystals, upgrade pickaxe, use Trail Rations, buy Revive Snack, explore, or status report."
       );
       return;
     }
@@ -3500,63 +3462,194 @@
     const completed = [];
     const replies = [];
 
+    // Choose a useful snack when the user simply says "use snack".
+    function chooseSnackToUse() {
+      const available = (id) => (s.snacks[id] || 0) > 0;
+
+      const living = livingHeroes();
+      const fallen = s.heroes.some(
+        (id) => (s.heroHp[id] || 0) <= 0
+      );
+
+      const injured = living.filter(
+        (id) => (s.heroHp[id] || 0) < HEROES[id].maxHp
+      );
+
+      if (fallen && living.length && available("revive")) {
+        return "revive";
+      }
+
+      if (injured.length >= 2 && available("cake")) {
+        return "cake";
+      }
+
+      if (injured.length && available("rations")) {
+        return "rations";
+      }
+
+      if (injured.length && available("cake")) {
+        return "cake";
+      }
+
+      if (
+        s.mana < maxMana() - 10 &&
+        available("etherberry")
+      ) {
+        return "etherberry";
+      }
+
+      if (
+        s.enemy &&
+        available("moonberries") &&
+        s.partyBuffUntil <= Date.now()
+      ) {
+        return "moonberries";
+      }
+
+      if (
+        s.manaBuffUntil <= Date.now() &&
+        available("astralTea")
+      ) {
+        return "astralTea";
+      }
+
+      if (available("tea")) return "tea";
+
+      return null;
+    }
+
     for (const command of commands) {
       if (command.kind === "skill") {
         if (canUseSkill(command.key)) {
           skill(command.key);
           completed.push(command.label);
         } else {
-          replies.push(
-            voiceSkillUnavailableReason(command.key)
-          );
+          replies.push(voiceSkillUnavailableReason(command.key));
         }
-      } else if (command.key === "mine") {
+
+      } else if (command.kind === "utility" && command.key === "mine") {
         mine();
         completed.push("mining");
-      } else if (command.key === "explore") {
+
+      } else if (command.kind === "utility" && command.key === "explore") {
         if (s.enemy) {
-          replies.push(
-            "Defeat the current enemy before exploring again."
-          );
+          replies.push("Defeat the current enemy before exploring again.");
         } else if (battleLocked()) {
-          replies.push(
-            "The party is unavailable during hospital treatment."
-          );
+          replies.push("The party is unavailable during hospital treatment.");
         } else {
           explore();
           completed.push("exploration");
         }
-      } else if (command.key === "status") {
+
+      } else if (command.kind === "utility" && command.key === "status") {
         replies.push(makeStatusReport());
-      } else if (command.key === "hospital") {
+
+      } else if (command.kind === "utility" && command.key === "hospital") {
         if (s.needsHospital && s.gold >= s.hospitalFee) {
           payHeal();
           completed.push("hospital treatment");
         } else if (s.needsHospital) {
-          replies.push(
-            `The hospital needs ${fmt(s.hospitalFee)} gold.`
-          );
+          replies.push(`The hospital needs ${fmt(s.hospitalFee)} gold.`);
+        } else {
+          replies.push("Your party does not need hospital payment right now.");
+        }
+
+      } else if (command.kind === "upgrade") {
+        const levelKey = {
+          pickaxe: "pickaxe",
+          speed: "speedLevel",
+          damage: "damageLevel",
+          crit: "critLevel"
+        }[command.key];
+
+        const previousLevel = s[levelKey];
+
+        upgrade(command.key);
+
+        if (s[levelKey] > previousLevel) {
+          completed.push(`${command.label} upgrade`);
         } else {
           replies.push(
-            "Your party does not need hospital payment right now."
+            `I could not upgrade ${command.label}. You may need more gold or crystals, or that upgrade may already be at its maximum level.`
           );
+        }
+
+      } else if (command.kind === "snack") {
+        let snackId = command.key;
+
+        // Pick the most useful available snack for a general request.
+        if (snackId === "auto" && command.action === "use") {
+          snackId = chooseSnackToUse();
+
+          if (!snackId) {
+            replies.push("I could not find a suitable snack in your bag to use right now.");
+            continue;
+          }
+        }
+
+        // A general purchase buys the cheapest snack you can afford.
+        if (snackId === "auto" && command.action === "buy") {
+          const affordable = SNACKS
+            .filter((snack) => snack.cost <= s.gold)
+            .sort((a, b) => a.cost - b.cost);
+
+          if (!affordable.length) {
+            replies.push("You do not have enough gold to buy any snack.");
+            continue;
+          }
+
+          snackId = affordable[0].id;
+        }
+
+        const snack = SNACKS.find(
+          (entry) => entry.id === snackId
+        );
+
+        if (!snack) {
+          replies.push("I could not find that snack.");
+          continue;
+        }
+
+        if (command.action === "buy") {
+          const oldGold = s.gold;
+          const oldCount = s.snacks[snackId] || 0;
+
+          buySnack(snackId);
+
+          if (
+            (s.snacks[snackId] || 0) > oldCount &&
+            s.gold < oldGold
+          ) {
+            completed.push(`buying ${snack.name}`);
+          } else {
+            replies.push(
+              `I could not buy ${snack.name}. You need ${snack.cost} gold.`
+            );
+          }
+
+        } else if (command.action === "use") {
+          const oldCount = s.snacks[snackId] || 0;
+
+          useSnack(snackId);
+
+          if ((s.snacks[snackId] || 0) < oldCount) {
+            completed.push(`using ${snack.name}`);
+          } else {
+            replies.push(
+              `I could not use ${snack.name}. Check that you have one, your party is available, and the snack can be used right now.`
+            );
+          }
         }
       }
     }
 
     if (completed.length) {
       replies.unshift(
-        `Done. ${completed.join(" and ")} ${
-          completed.length === 1
-            ? "command is"
-            : "commands are"
-        } complete.`
+        `Done. ${completed.join(" and ")} ${completed.length === 1 ? "command is" : "commands are"} complete.`
       );
     }
 
-    queueSageReply(
-      replies.join(" ") || "Command complete."
-    );
+    queueSageReply(replies.join(" ") || "Command complete.");
   }
 
   function handleRecognitionResult(event) {
