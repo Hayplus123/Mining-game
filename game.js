@@ -3530,6 +3530,16 @@
   function handleVoiceCommand(rawText) {
     const text = normalizeVoiceText(stripWakePhrase(rawText));
 
+        // Respond politely when the player says thanks.
+    if (
+      /^(?:thanks|thank you|thanks a lot|thanks so much|thank you so much|thank you very much|many thanks)$/.test(text)
+    ) {
+      queueSageReply(
+        "I'm happy to help you. If you need anything, please let me know."
+      );
+      return;
+    }
+
     // Exit command mode.
     if (
       /\bnever mind\b|\bnothing\b/.test(text) ||
@@ -3783,6 +3793,22 @@
       // "Never mind" and "nothing" cancel speech and leave command mode.
       if (commandModeActive && exitPhrase) {
         handleVoiceCommand(text);
+        continue;
+      }
+
+            // Let gratitude interrupt Sage's current reply.
+      if (
+        commandModeActive &&
+        speechBusy &&
+        /^(?:thanks|thank you|thanks a lot|thanks so much|thank you so much|thank you very much|many thanks)$/.test(text)
+      ) {
+        cancelSageSpeech(true);
+        ignoreRecognitionUntil = 0;
+
+        if (result.isFinal) {
+          handleVoiceCommand(text);
+        }
+
         continue;
       }
 
