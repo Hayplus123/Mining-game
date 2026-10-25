@@ -1848,7 +1848,7 @@
         toast("KINGDOM AUTOPILOT UNLOCKED!");
         log("Kingdom Autopilot unlocked after defeating The Silent Arbiter.");
       }
-      
+
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
         s.caveCrystalProgress = 0;
@@ -2454,11 +2454,16 @@
       return;
     }
 
-    if (!rewardId || !HEROES[rewardId]) {
+        if (!rewardId || !HEROES[rewardId]) {
       next.innerHTML = `
-        <div class="reward-kicker">FINAL CAVE · AUTOPILOT KEY</div>
-        <b>The Silent Arbiter</b>
-        <small>Defeat this guardian to unlock Kingdom Autopilot, allowing Great Sage to manage upgrades, supplies, and mining.</small>
+        <div class="reward-kicker">CAVE GUARDIAN</div>
+        <b>${esc(region().boss)}</b>
+        <small>${esc(region().desc)}</small>
+        <small>
+          ${s.autoPilotUnlocked
+            ? "Kingdom Autopilot is unlocked."
+            : "Defeat The Silent Arbiter in Cave 6 to unlock Kingdom Autopilot."}
+        </small>
       `;
       return;
     }
