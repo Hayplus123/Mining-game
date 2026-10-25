@@ -1836,6 +1836,19 @@
         toast("Guardian defeated! Cave cleared.");
       }
 
+            // Kingdom Autopilot unlocks when Cave 6 is cleared,
+      // even though the journey continues into Cave 7.
+      if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+        s.autoPilotUnlocked = true;
+
+        announce(
+          "Kingdom Autopilot unlocked! Say Great Sage, activate autopilot to let me manage your kingdom."
+        );
+
+        toast("KINGDOM AUTOPILOT UNLOCKED!");
+        log("Kingdom Autopilot unlocked after defeating The Silent Arbiter.");
+      }
+      
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
         s.caveCrystalProgress = 0;
