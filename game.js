@@ -4227,6 +4227,37 @@ function partyWiped() {
   }
 
   window.gemMinerReady = true;
+  
+    // Check every 5 seconds for a stuck hospital state.
+  window.setInterval(() => {
+    if (!s.needsHospital) return;
+
+    const standingHeroes = livingHeroes();
+
+    // If any hero is standing, restore normal gameplay.
+    if (standingHeroes.length > 0) {
+      s.needsHospital = false;
+      s.hospitalFee = 0;
+      s.healingUntil = 0;
+
+      if (currentPrompt && currentPrompt.type === "hospital") {
+        currentPrompt = null;
+      }
+
+      log(
+        `Hospital state cleared. ${standingHeroes.length} hero(es) are standing.`
+      );
+
+      toast("A hero is standing! Normal gameplay restored.");
+
+      render();
+      save();
+
+      if (!s.enemy && !battleLocked()) {
+        scheduleExplore();
+      }
+    }
+  }, 5000);
 
   window.setInterval(() => {
     tick();
