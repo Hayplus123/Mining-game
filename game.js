@@ -72,8 +72,7 @@
       portrait: "assets/elowen.svg",
       maxHp: 116,
       damage: 12,
-      tagline: "While she stands, Elowen can revive one fallen ally once every 60 seconds."
-    }
+      tagline: "Elowen revives one fallen ally every 30 seconds. If she falls, she revives herself after 60 seconds."    }
   };
 
   // ==========================================
@@ -357,6 +356,7 @@
     bossDefeated: [],
     caveCrystalProgress: 0,
     elowenNextReviveAt: 0,
+    elowenSelfReviveAt: 0,
 
     enemy: null,
     bossMode: false,
@@ -474,6 +474,11 @@
     state.elowenNextReviveAt = Math.max(
       0,
       Number(state.elowenNextReviveAt) || 0
+    );
+
+    state.elowenSelfReviveAt = Math.max(
+      0,
+      Number(state.elowenSelfReviveAt) || 0
     );
 
     if (state.needsHospital) {
@@ -1509,7 +1514,7 @@
 
     clearTimeout(exploreTimer);
 
-    if (Math.random() < 0.68) {
+    if (Math.random() < 0.1) {
       spawn(false);
     } else {
       const bonus = s.recruits.includes("luna") ? 1.2 : 1;
@@ -1704,7 +1709,44 @@
 
   function partyWiped() {
     if (s.needsHospital || isRecovering()) return;
+          // If Elowen has fallen, let her self-revival timer run
+    // instead of sending the entire party to the hospital.
+    if (
+      s.heroes.includes("elowen") &&
+      (s.heroHp.elowen || 0) <= 0
+    ) {
+      if (!s.elowenSelfReviveAt) {
+        s.elowenSelfReviveAt = Date.now() + 60000;
+      }
 
+      const secondsLeft = Math.max(
+        1,
+        Math.ceil((s.elowenSelfReviveAt - Date.now()) / 1000)
+      );
+
+      s.enemy = null;
+      s.bossMode = false;
+
+      partyClock = 0;
+      enemyClock = 0;
+      supportClock = 0;
+
+      clearTimeout(exploreTimer);
+
+      currentPrompt = null;
+
+      log(
+        `The party has fallen. Elowen will revive herself in ${secondsLeft} seconds.`
+      );
+
+      announce(
+        `Notice: The party has fallen. Elowen will revive herself in ${secondsLeft} seconds.`
+      );
+
+      render();
+      save();
+      return;
+    }
     const fallenEnemy = s.enemy ? s.enemy.name : "the enemy";
 
     s.enemy = null;
@@ -2934,35 +2976,93 @@
       finishHealing();
     }
 
-    // Elowen's passive: while she is alive, she revives one fallen ally
-    // every 60 seconds, but only if at least one party member is still standing.
-    if (
-      s.heroes.includes("elowen") &&
-      livingHeroes().includes("elowen") &&
-      livingHeroes().length > 0 &&
-      s.heroes.some((id) => (s.heroHp[id] || 0) <= 0) &&
-      now >= (s.elowenNextReviveAt || 0) &&
-      !battleLocked()
-    ) {
-      const fallenId = s.heroes.find((id) => (s.heroHp[id] || 0) <= 0);
+    // ELOWEN'S SELF-REVIVAL AND ALLY-REVIVAL PASSIVES
 
-      if (fallenId) {
-        s.heroHp[fallenId] = Math.ceil(HEROES[fallenId].maxHp * 0.3);
-        s.elowenNextReviveAt = now + 60000;
+    if (s.heroes.includes("elowen")) {
+      const elowenAlive = (s.heroHp.elowen || 0) > 0;
 
-        showDamage("REVIVED", "party", true);
+      // If Elowen has been revived by another method,
+      // clear her pending self-revival timer.
+      if (elowenAlive) {
+        s.elowenSelfReviveAt = 0;
+      } else {
+        // Start the one-minute self-revival timer when she falls.
+        if (!s.elowenSelfReviveAt) {
+          s.elowenSelfReviveAt = now + 60000;
 
-        announce(
-          `Notice: Elowen revived ${HEROES[fallenId].name} with spirit magic.`
+          log("Elowen has fallen. Her spirit will return in 60 seconds.");
+          save();
+        }
+
+        // After 60 seconds, Elowen revives herself at 30% HP.
+        if (now >= s.elowenSelfReviveAt) {
+          s.heroHp.elowen = Math.ceil(
+            HEROES.elowen.maxHp * 0.3
+          );
+
+          s.elowenSelfReviveAt = 0;
+
+          // Her next ally revival will be available in 30 seconds.
+          s.elowenNextReviveAt = now + 30000;
+
+          // Self-revival rescues the party from a total wipe.
+          s.needsHospital = false;
+          s.healingUntil = 0;
+          s.hospitalFee = 0;
+
+          showDamage("REVIVED", "party", true);
+
+          announce(
+            "Notice: Elowen has revived herself with spirit magic."
+          );
+
+          log(
+            "Elowen revived herself at 30% HP after one minute."
+          );
+
+          render();
+          save();
+
+          if (!s.enemy) {
+            scheduleExplore();
+          }
+        }
+      }
+
+      // While alive, Elowen can revive one fallen ally every 30 seconds.
+      if (
+        (s.heroHp.elowen || 0) > 0 &&
+        livingHeroes().length > 0 &&
+        s.heroes.some(
+          (id) => id !== "elowen" && (s.heroHp[id] || 0) <= 0
+        ) &&
+        now >= (s.elowenNextReviveAt || 0) &&
+        !battleLocked()
+      ) {
+        const fallenId = s.heroes.find(
+          (id) => id !== "elowen" && (s.heroHp[id] || 0) <= 0
         );
 
-        log(
-          `Elowen revived ${HEROES[fallenId].name} at 30% HP. ` +
-          "Her next revival is ready in 60 seconds."
-        );
+        if (fallenId) {
+          s.heroHp[fallenId] = Math.ceil(
+            HEROES[fallenId].maxHp * 0.3
+          );
 
-        render();
-        save();
+          s.elowenNextReviveAt = now + 30000;
+
+          showDamage("REVIVED", "party", true);
+
+          announce(
+            `Notice: Elowen revived ${HEROES[fallenId].name} with spirit magic.`
+          );
+
+          log(
+            `Elowen revived ${HEROES[fallenId].name} at 30% HP. Her next ally revival is ready in 30 seconds.`
+          );
+
+          render();
+          save();
+        }
       }
     }
 
