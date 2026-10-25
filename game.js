@@ -536,6 +536,7 @@
   let sageEnabled = true;
   let currentUtterance = null;
   let speechGeneration = 0;
+  let returnToIdleAfterSpeech = false;
 
   // Wake-word assistant: listens for "Great Sage" while idle.
   const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -3534,9 +3535,11 @@
     if (
       /^(?:thanks|thank you|thanks a lot|thanks so much|thank you so much|thank you very much|many thanks)$/.test(text)
     ) {
-      queueSageReply(
-        "I'm happy to help you. If you need anything, please let me know."
-      );
+      returnToIdleAfterSpeech = true;
+
+        queueSageReply(
+            "I'm happy to help you. If you need anything, please let me know."
+        );
       return;
     }
 
@@ -4063,16 +4066,19 @@
       refreshSagePanel();
 
       setTimeout(() => {
-        if (speechQueue.length) {
-          processSpeechQueue();
-        } else {
-          if (commandModeActive) {
-            armCommandIdleTimer();
-          }
+  if (speechQueue.length) {
+    processSpeechQueue();
+  } else {
+    if (returnToIdleAfterSpeech) {
+      returnToIdleAfterSpeech = false;
+      leaveCommandMode();
+    } else if (commandModeActive) {
+      armCommandIdleTimer();
+    }
 
-          scheduleRecognitionRestart(100);
-        }
-      }, 150);
+    scheduleRecognitionRestart(100);
+  }
+}, 150);
     }
 
     utterance.onend = finishUtterance;
