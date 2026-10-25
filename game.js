@@ -1716,50 +1716,7 @@
   // PARTY WIPE AND HOSPITAL
   // ==========================================
 
-  function partyWiped() {
-  const now = Date.now();
-
-  // SPECIAL CASE: Elowen can revive herself.
-  // Do this BEFORE the normal hospital logic.
-  const elowenDown =
-    s.heroes.includes("elowen") &&
-    (Number(s.heroHp.elowen) || 0) <= 0;
-
-  if (elowenDown) {
-    // Start a fresh 60-second timer if one is missing
-    // or an old timer has already expired.
-    const reviveAt = Number(s.elowenSelfReviveAt) || 0;
-
-    if (!reviveAt || reviveAt <= now || s.needsHospital) {
-      s.elowenSelfReviveAt = now + 60000;
-    }
-
-    // Stop the battle and clear the hospital state.
-    s.enemy = null;
-    s.bossMode = false;
-
-    partyClock = 0;
-    enemyClock = 0;
-    supportClock = 0;
-
-    clearTimeout(exploreTimer);
-
-    s.needsHospital = false;
-    s.hospitalFee = 0;
-    s.healingUntil = 0;
-
-    log("The party has fallen. Elowen will revive herself after her timer finishes.");
-    announce("Notice: Elowen is preparing to revive herself. No hospital fee is required.");
-
-    toast("Party fallen — Elowen's revival timer is active.");
-
-    render();
-    save();
-    return;
-  }
-
-  // NORMAL HOSPITAL LOGIC: everyone is down and
-  // Elowen cannot perform her self-revival.
+function partyWiped() {
   if (s.needsHospital || isRecovering()) return;
 
   const fallenEnemy = s.enemy ? s.enemy.name : "the enemy";
@@ -1771,6 +1728,8 @@
   enemyClock = 0;
   supportClock = 0;
 
+  // The hospital fee is required whenever the party is wiped.
+  // Elowen's passive must not bypass this requirement.
   s.needsHospital = true;
   s.healingUntil = 0;
 
@@ -1787,7 +1746,7 @@
   );
 
   announce(
-    "Notice: All party members are down. Pay the hospital fee to begin recovery."
+    "Notice: The party has fallen. Pay the hospital fee to recover."
   );
 
   showHospitalPrompt();
@@ -1796,7 +1755,6 @@
   render();
   save();
 }
-
   // ==========================================
   // VICTORY AND NEW HEROES
   // ==========================================
