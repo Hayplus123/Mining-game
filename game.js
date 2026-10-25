@@ -3336,13 +3336,45 @@
     refreshSagePanel();
   }
 
-  function normalizeVoiceText(text) {
-    return String(text || "")
+    function normalizeVoiceText(text) {
+    let normalized = String(text || "")
       .toLowerCase()
       .replace(/[’']/g, " ")
       .replace(/[^a-z0-9\s-]/g, " ")
       .replace(/\s+/g, " ")
       .trim();
+
+    // Translate likely speech-recognition errors to known commands.
+    const speechAliases = [
+      // Trail Rations: casual pronunciation or common transcription errors.
+      [/\b(?:tral|trale|trail|trial|treyl)\s+(?:rations?|raitions?|ratons?|ratios|ratings|raytions?)\b/g, "trail rations"],
+      [/\b(?:trail|tral|trale|trial)\s+(?:ration|raition|raton)\b/g, "trail rations"],
+
+      // Snack names that may be split or slightly misheard.
+      [/\bmoon\s+berries\b/g, "moonberries"],
+      [/\bmoonberry\b/g, "moonberries"],
+      [/\bether\s+berries\b/g, "etherberries"],
+      [/\bether\s+berry\b/g, "etherberries"],
+      [/\betherberry\b/g, "etherberries"],
+      [/\b(?:astral|astro)\s+tea\b/g, "astral tea"],
+      [/\bcrystal\s+cake\b/g, "crystal cake"],
+      [/\b(?:revive|revived)\s+snack\b/g, "revive snack"],
+
+      // Common skill and command mishearings.
+      [/\bhealing\s+(?:way|weigh|wavey)\b/g, "healing wave"],
+      [/\b(?:pick\s+axe|pick ax)\b/g, "pickaxe"],
+      [/\bmind\s+crystals?\b/g, "mine crystals"],
+      [/\bmine\s+crystal\b/g, "mine crystals"],
+
+      // Common wake-phrase mishearings.
+      [/\b(?:great\s+stage|grate\s+sage|gray\s+sage|grey\s+sage|great\s+sayj)\b/g, "great sage"]
+    ];
+
+    for (const [pattern, replacement] of speechAliases) {
+      normalized = normalized.replace(pattern, replacement);
+    }
+
+    return normalized.replace(/\s+/g, " ").trim();
   }
 
   function stripWakePhrase(text) {
