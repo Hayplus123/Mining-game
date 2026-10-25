@@ -1788,6 +1788,7 @@ if (!targetId) {
   partyWiped();
   return;
 }
+]
 
 const target = HEROES[targetId];
     // Routine enemy attacks are silent; major events trigger the alert chime.
