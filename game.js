@@ -1717,40 +1717,24 @@
   // ==========================================
 
   function partyWiped() {
-    if (s.needsHospital || isRecovering()) return;
+  const now = Date.now();
 
-    // If Elowen has fallen, let her one-minute self-revival finish instead
-    // of forcing a hospital recovery. The tick loop handles the timer.
-    if (
-      s.heroes.includes("elowen") &&
-      (s.heroHp.elowen || 0) <= 0
-    ) {
-      if (!s.elowenSelfReviveAt) {
-        s.elowenSelfReviveAt = Date.now() + 60000;
-      }
+  // SPECIAL CASE: Elowen can revive herself.
+  // Do this BEFORE the normal hospital logic.
+  const elowenDown =
+    s.heroes.includes("elowen") &&
+    (Number(s.heroHp.elowen) || 0) <= 0;
 
-      const secondsLeft = Math.max(
-        1,
-        Math.ceil((s.elowenSelfReviveAt - Date.now()) / 1000)
-      );
+  if (elowenDown) {
+    // Start a fresh 60-second timer if one is missing
+    // or an old timer has already expired.
+    const reviveAt = Number(s.elowenSelfReviveAt) || 0;
 
-      s.enemy = null;
-      s.bossMode = false;
-      partyClock = 0;
-      enemyClock = 0;
-      supportClock = 0;
-      clearTimeout(exploreTimer);
-      currentPrompt = null;
-
-      log(`The party has fallen. Elowen will revive herself in ${secondsLeft} seconds.`);
-      announce(`Notice: The party has fallen. Elowen will revive herself in ${secondsLeft} seconds.`);
-      render();
-      save();
-      return;
+    if (!reviveAt || reviveAt <= now || s.needsHospital) {
+      s.elowenSelfReviveAt = now + 60000;
     }
 
-    const fallenEnemy = s.enemy ? s.enemy.name : "the enemy";
-
+    // Stop the battle and clear the hospital state.
     s.enemy = null;
     s.bossMode = false;
 
@@ -1758,38 +1742,60 @@
     enemyClock = 0;
     supportClock = 0;
 
-    s.needsHospital = true;
-    s.healingUntil = 0;
-
-    if (battleAutoPilot && !kingdomAutoPilot) {
-      battleAutoPilot = false;      pendingSnackApproval = null;
-      standDownAfterReply = true;
-      announce("The party has fallen. Battle Autopilot is standing down for hospital recovery.");
-    }
-
-    s.hospitalFee = Math.floor(
-      1500 + s.region * 1200 + Math.floor(s.defeated / 5) * 500
-    );
-
-    playImportantSound();
     clearTimeout(exploreTimer);
 
-    log(
-      `Every hero has fallen against ${fallenEnemy}. ` +
-      `The hospital requires ${s.hospitalFee} gold.`
-    );
+    s.needsHospital = false;
+    s.hospitalFee = 0;
+    s.healingUntil = 0;
 
-    announce(
-      "Notice: All party members are down. Pay the hospital fee to begin recovery."
-    );
+    log("The party has fallen. Elowen will revive herself after her timer finishes.");
+    announce("Notice: Elowen is preparing to revive herself. No hospital fee is required.");
 
-    showHospitalPrompt();
-
-    toast("Party wiped! Pay the hospital fee to recover.");
+    toast("Party fallen — Elowen's revival timer is active.");
 
     render();
     save();
+    return;
   }
+
+  // NORMAL HOSPITAL LOGIC: everyone is down and
+  // Elowen cannot perform her self-revival.
+  if (s.needsHospital || isRecovering()) return;
+
+  const fallenEnemy = s.enemy ? s.enemy.name : "the enemy";
+
+  s.enemy = null;
+  s.bossMode = false;
+
+  partyClock = 0;
+  enemyClock = 0;
+  supportClock = 0;
+
+  s.needsHospital = true;
+  s.healingUntil = 0;
+
+  s.hospitalFee = Math.floor(
+    400 + s.region * 300 + Math.floor(s.defeated / 10) * 100
+  );
+
+  playImportantSound();
+  clearTimeout(exploreTimer);
+
+  log(
+    `Every hero has fallen against ${fallenEnemy}. ` +
+    `The hospital requires ${s.hospitalFee} gold.`
+  );
+
+  announce(
+    "Notice: All party members are down. Pay the hospital fee to begin recovery."
+  );
+
+  showHospitalPrompt();
+  toast("Party wiped! Pay the hospital fee to recover.");
+
+  render();
+  save();
+}
 
   // ==========================================
   // VICTORY AND NEW HEROES
