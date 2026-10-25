@@ -1778,24 +1778,18 @@ function launchSwordSlash() {
     if (!s.enemy || battleLocked()) return;
 
     const targetOrder = [
-     const targetId = HERO_TARGET_ORDER.find(
+    const targetId = HERO_TARGET_ORDER.find(
   (id) =>
     s.heroes.includes(id) &&
     (Number(s.heroHp[id]) || 0) > 0
 );
-    ];
 
-    const targetId = targetOrder.find(
-      (id) => s.heroes.includes(id) && (s.heroHp[id] || 0) > 0
-    );
+if (!targetId) {
+  partyWiped();
+  return;
+}
 
-    if (!targetId) {
-      partyWiped();
-      return;
-    }
-
-    const target = HEROES[targetId];
-
+const target = HEROES[targetId];
     // Routine enemy attacks are silent; major events trigger the alert chime.
 
     let amount = Math.max(
