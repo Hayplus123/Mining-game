@@ -393,27 +393,81 @@ button:focus-visible {
 .party img {
   height: 115px;
   width: 67px;
+  flex: 0 0 auto;
   object-fit: contain;
   filter: drop-shadow(0 7px 4px #07071788);
   animation: idleFloat 2.8s ease-in-out infinite;
+  transition: width .28s ease, height .28s ease, filter .2s ease, opacity .2s ease;
 }
 
-.party img:nth-child(2) {
-  height: 135px;
-  margin-left: -9px;
-  z-index: 2;
-  animation-delay: .3s;
+/* Front-line formation: rank 1 is nearest to the enemy on the right. */
+.party .battle-hero {
+  position: relative;
+  margin-left: -12px;
+  transform-origin: 50% 80%;
 }
 
-.party img:nth-child(3) {
-  height: 110px;
-  margin-left: -9px;
-  animation-delay: .6s;
+.party .battle-hero:first-child {
+  margin-left: 0;
 }
 
-.battle-hero.fallen {
+.party .battle-hero.front-rank-1 {
+  height: 138px;
+  width: 74px;
+  z-index: 20;
+}
+
+.party .battle-hero.front-rank-2 {
+  height: 126px;
+  width: 68px;
+  z-index: 18;
+}
+
+.party .battle-hero.front-rank-3 {
+  height: 116px;
+  width: 63px;
+  z-index: 16;
+}
+
+.party .battle-hero.front-rank-4 {
+  height: 107px;
+  width: 59px;
+  z-index: 14;
+}
+
+.party .battle-hero.front-rank-5 {
+  height: 100px;
+  width: 55px;
+  z-index: 12;
+}
+
+.party .battle-hero.front-rank-6 {
+  height: 93px;
+  width: 52px;
+  z-index: 10;
+}
+
+.party .battle-hero.front-rank-7 {
+  height: 87px;
+  width: 49px;
+  z-index: 8;
+}
+
+.party .battle-hero.front-rank-8 {
+  height: 81px;
+  width: 46px;
+  z-index: 6;
+}
+
+/* Fallen heroes stay gray and tilt sideways behind the living formation. */
+.party .battle-hero.fallen {
+  height: 70px;
+  width: 51px;
+  margin-left: -5px;
+  z-index: 1;
   filter: grayscale(1) brightness(.5);
   opacity: .7;
+  animation: fallTilt .36s ease-out forwards;
 }
 
 .enemy {
@@ -1140,6 +1194,60 @@ footer {
   animation: hitMove .3s ease;
 }
 
+/* Hero-specific basic attack motion. */
+.party .battle-hero.attack-bow {
+  animation: bowDraw .34s ease-out both;
+}
+
+.party .battle-hero.attack-sword {
+  animation: swordLunge .32s ease-out both;
+}
+
+.party .battle-hero.attack-cast {
+  animation: casterAttack .34s ease-out both;
+}
+
+/* Projectile effects are positioned in the battle scene by game.js. */
+.attack-projectile {
+  position: absolute;
+  z-index: 4;
+  pointer-events: none;
+}
+
+.arrow-projectile {
+  width: 24px;
+  height: 3px;
+  border-radius: 99px;
+  transform-origin: left center;
+  background: linear-gradient(90deg, #9b7049, #f5e4b7 68%, #ffffff);
+  box-shadow: 0 0 7px #ffe6a0b8;
+  animation: arrowFly .4s ease-out forwards;
+}
+
+.arrow-projectile::after {
+  content: "";
+  position: absolute;
+  right: -2px;
+  top: -3px;
+  width: 0;
+  height: 0;
+  border-top: 4px solid transparent;
+  border-bottom: 4px solid transparent;
+  border-left: 8px solid #fff0c5;
+}
+
+.sword-slash {
+  width: 54px;
+  height: 54px;
+  border: 4px solid transparent;
+  border-top-color: #f5f2ff;
+  border-right-color: #9beaf1;
+  border-radius: 50%;
+  filter: drop-shadow(0 0 5px #c2aaff);
+  transform-origin: center;
+  animation: swordSlash .32s ease-out forwards;
+}
+
 .damage {
   position: absolute;
   z-index: 5;
@@ -1152,48 +1260,182 @@ footer {
 }
 
 @keyframes idleFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-4px); }
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-4px);
+  }
 }
 
 @keyframes enemyFloat {
-  0%, 100% { transform: translateY(0) rotate(-1deg); }
-  50% { transform: translateY(-7px) rotate(1deg); }
+  0%, 100% {
+    transform: translateY(0) rotate(-1deg);
+  }
+
+  50% {
+    transform: translateY(-7px) rotate(1deg);
+  }
 }
 
 @keyframes heroFloat {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-7px); }
+  0%, 100% {
+    transform: translateY(0);
+  }
+
+  50% {
+    transform: translateY(-7px);
+  }
 }
 
 @keyframes starDrift {
-  to { background-position: 75px 70px, 0 0; }
+  to {
+    background-position: 75px 70px, 0 0;
+  }
 }
 
 @keyframes attackMove {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(20px); }
+  0%, 100% {
+    transform: translateX(0);
+  }
+
+  50% {
+    transform: translateX(20px);
+  }
 }
 
 @keyframes hitMove {
-  0%, 100% { transform: translateX(0); filter: brightness(1); }
-  25%, 75% { transform: translateX(5px); filter: brightness(2); }
-  50% { transform: translateX(-5px); }
+  0%, 100% {
+    transform: translateX(0);
+    filter: brightness(1);
+  }
+
+  25%, 75% {
+    transform: translateX(5px);
+    filter: brightness(2);
+  }
+
+  50% {
+    transform: translateX(-5px);
+  }
+}
+
+@keyframes bowDraw {
+  0%, 100% {
+    transform: translateX(0) scale(1);
+  }
+
+  35% {
+    transform: translateX(-5px) scaleX(.95);
+  }
+
+  65% {
+    transform: translateX(8px) scaleX(1.02);
+  }
+}
+
+@keyframes swordLunge {
+  0%, 100% {
+    transform: translateX(0) translateY(0);
+  }
+
+  45% {
+    transform: translateX(15px) translateY(-3px) scale(1.03);
+  }
+}
+
+@keyframes casterAttack {
+  0%, 100% {
+    transform: translateY(0) scale(1);
+    filter: drop-shadow(0 7px 4px #07071788);
+  }
+
+  45% {
+    transform: translateY(-7px) scale(1.07);
+    filter: drop-shadow(0 0 12px #a4edc0);
+  }
+}
+
+@keyframes arrowFly {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(var(--angle)) scaleX(.45);
+  }
+
+  12% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform:
+      translate(var(--travel-x), var(--travel-y))
+      rotate(var(--angle))
+      scaleX(1);
+  }
+}
+
+@keyframes swordSlash {
+  0% {
+    opacity: 0;
+    transform: rotate(-55deg) scale(.18);
+  }
+
+  25% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: rotate(28deg) scale(1.25);
+  }
+}
+
+@keyframes fallTilt {
+  0% {
+    transform: rotate(0deg) scale(1);
+  }
+
+  70% {
+    transform: rotate(92deg) translateY(5px) scale(.78);
+  }
+
+  100% {
+    transform: rotate(82deg) translateY(5px) scale(.78);
+  }
 }
 
 @keyframes floatDamage {
-  0% { opacity: 0; transform: translateY(7px) scale(.8); }
-  15% { opacity: 1; }
-  100% { opacity: 0; transform: translateY(-42px) scale(1.15); }
+  0% {
+    opacity: 0;
+    transform: translateY(7px) scale(.8);
+  }
+
+  15% {
+    opacity: 1;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-42px) scale(1.15);
+  }
 }
 
-/* Floating Great Sage assistant */
+/* ==========================================
+   FLOATING GREAT SAGE ASSISTANT
+   ========================================== */
+
 .sage-dock {
   position: fixed;
   top: 14px;
   right: 16px;
   z-index: 100000;
   pointer-events: none;
+}
+
+.sage-dock.is-hidden {
+  display: none !important;
 }
 
 .sage-orb {
@@ -1232,6 +1474,14 @@ footer {
   box-shadow:
     0 0 18px #8ce7efbb,
     0 0 34px #b58aff77,
+    inset 0 0 12px #ffffff88;
+}
+
+.sage-orb.is-listening {
+  animation: sageListeningSpin 8s linear infinite;
+  box-shadow:
+    0 0 16px #8ce7efaa,
+    0 0 28px #b58aff55,
     inset 0 0 12px #ffffff88;
 }
 
@@ -1348,8 +1598,23 @@ footer {
 }
 
 @keyframes sageVoicePulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.09); }
+  0%, 100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.09);
+  }
+}
+
+@keyframes sageListeningSpin {
+  from {
+    transform: rotate(0deg);
+  }
+
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 @keyframes sageVoiceRing {
@@ -1357,6 +1622,7 @@ footer {
     transform: scale(.9);
     opacity: .8;
   }
+
   100% {
     transform: scale(1.35);
     opacity: 0;
@@ -1364,8 +1630,13 @@ footer {
 }
 
 @keyframes sageWordPulse {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.15); }
+  0%, 100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.15);
+  }
 }
 
 @keyframes sagePanelAppear {
@@ -1373,13 +1644,17 @@ footer {
     opacity: 0;
     transform: translateY(-5px);
   }
+
   to {
     opacity: 1;
     transform: translateY(0);
   }
 }
 
-/* Responsive layout */
+/* ==========================================
+   RESPONSIVE LAYOUT
+   ========================================== */
+
 @media (max-width: 1120px) {
   .layout {
     grid-template-columns: minmax(0, 1.3fr) minmax(270px, 1fr);
@@ -1576,6 +1851,7 @@ footer {
 @media (prefers-reduced-motion: reduce) {
   .sage-orb.is-speaking,
   .sage-orb.is-speaking::after,
+  .sage-orb.is-listening,
   .sage-orb.word-pulse,
   .hero,
   .party img,
@@ -1686,282 +1962,37 @@ footer {
     margin-left: auto;
   }
 }
-/* ==========================================
-   GREAT SAGE MICROPHONE STATUS
-   ========================================== */
 
-.sage-listen-status {
-  position: fixed;
-  right: 16px;
-  bottom: 16px;
-  z-index: 99998;
-
-  display: flex;
-  align-items: center;
-  gap: 9px;
-
-  max-width: calc(100vw - 24px);
-  padding: 10px 14px;
-
-  border: 1px solid #8ce7ef44;
-  border-radius: 999px;
-
-  background: rgba(23, 21, 45, 0.96);
-  color: #e6e0fa;
-
-  font: 500 10px 'DM Sans', sans-serif;
-  letter-spacing: 0.025em;
-
-  box-shadow:
-    0 8px 24px #0005,
-    0 0 14px #8ce7ef12;
-
-  pointer-events: none;
-}
-
-.sage-status-light {
-  width: 9px;
-  height: 9px;
-  flex-shrink: 0;
-
-  border-radius: 50%;
-  background: #f5d48d;
-
-  box-shadow: 0 0 8px currentColor;
-}
-
-.sage-listen-status[data-state="wake"] {
-  border-color: #8ce7ef55;
-}
-
-.sage-listen-status[data-state="wake"] .sage-status-light {
-  background: #8ce7ef;
-  color: #8ce7ef;
-  animation: sageMicPulse 2s ease-in-out infinite;
-}
-
-.sage-listen-status[data-state="command"] {
-  border-color: #b58aff99;
-  color: #e3d1ff;
-}
-
-.sage-listen-status[data-state="command"] .sage-status-light {
-  background: #b58aff;
-  color: #b58aff;
-  animation: sageMicPulse 0.9s ease-in-out infinite;
-}
-
-.sage-listen-status[data-state="speaking"] .sage-status-light {
-  background: #a4edc0;
-  color: #a4edc0;
-  animation: sageMicPulse 0.6s ease-in-out infinite;
-}
-
-.sage-listen-status[data-state="error"] {
-  border-color: #ff8eaa88;
-  color: #ffc5d0;
-}
-
-.sage-listen-status[data-state="error"] .sage-status-light {
-  background: #ff8eaa;
-  color: #ff8eaa;
-  animation: none;
-}
-
-.sage-listen-status[data-state="starting"] .sage-status-light {
-  background: #f5d48d;
-  color: #f5d48d;
-  animation: sageMicPulse 1.5s ease-in-out infinite;
-}
-
-@keyframes sageMicPulse {
-  0%, 100% {
-    opacity: 0.55;
-    transform: scale(0.85);
-  }
-
-  50% {
-    opacity: 1;
-    transform: scale(1.15);
-  }
-}
-
-@media (max-width: 480px) {
-  .sage-listen-status {
-    right: 12px;
-    bottom: 12px;
-    font-size: 9px;
-    padding: 9px 11px;
-  }
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .sage-status-light {
-    animation: none !important;
-  }
-}
-/* ==========================================
-   GREAT SAGE AUTOPILOT STATUS
-   ========================================== */
-
-.sage-autopilot-status {
-  margin: 12px 0;
-  padding: 11px;
-  border: 1px solid #ffffff18;
-  border-radius: 10px;
-  background: linear-gradient(
-    145deg,
-    #ffffff08,
-    #080b191c
-  );
-}
-
-.sage-autopilot-heading {
-  margin: 0 0 10px;
-  color: #a9a2c5;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.15em;
-}
-
-.sage-autopilot-row {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  padding: 8px 0;
-}
-
-.sage-autopilot-row + .sage-autopilot-row {
-  border-top: 1px solid #ffffff10;
-}
-
-.sage-autopilot-name {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  color: #e8e3f5;
-  font-size: 10px;
-  font-weight: 600;
-}
-
-.sage-mode-dot {
-  flex: 0 0 auto;
-  width: 8px;
-  height: 8px;
-  border-radius: 50%;
-  background: #77738d;
-  box-shadow: 0 0 5px #77738d55;
-}
-
-.sage-mode-state {
-  flex: 0 0 auto;
-  padding: 5px 7px;
-  border: 1px solid #ffffff1b;
-  border-radius: 6px;
-  color: #aaa4c3;
-  background: #ffffff06;
-  font-size: 8px;
-  font-weight: 700;
-  letter-spacing: 0.08em;
-}
-
-/* Mode is off */
-.sage-mode-state[data-state="off"] {
-  color: #aaa4c3;
-}
-
-/* Battle Autopilot is running */
-.sage-mode-state[data-state="active"] {
-  color: #ff9da6;
-  border-color: #ff465866;
-  background: #ff354514;
-}
-
-.sage-autopilot-row:has(
-  #sageBattleAutoStatus[data-state="active"]
-) .sage-mode-dot {
-  background: #ff4658;
-  box-shadow: 0 0 9px #ff3545bb;
-}
-
-/* Kingdom Autopilot is unlocked but inactive */
-.sage-mode-state[data-state="ready"] {
-  color: #a4edc0;
-  border-color: #8ee7bd35;
-  background: #8ee7bd0c;
-}
-
-/* Kingdom Autopilot is locked */
-.sage-mode-state[data-state="locked"] {
-  color: #aaa4c3;
-  border-color: #ffffff16;
-  background: #ffffff05;
-}
-
-/* Kingdom Autopilot is running */
-#sageKingdomAutoStatus[data-state="active"] {
-  color: #ff9da6;
-  border-color: #ff465866;
-  background: #ff354514;
-}
-
-.sage-autopilot-row:has(
-  #sageKingdomAutoStatus[data-state="active"]
-) .sage-mode-dot {
-  background: #ff4658;
-  box-shadow: 0 0 9px #ff3545bb;
-}
-
-.sage-autopilot-help {
-  margin: 8px 0 0;
-  color: #9f99b9;
-  font-size: 9px;
-  line-height: 1.55;
-}
-
-/* Red appearance while Battle Autopilot runs */
+/* Great Sage autonomous modes */
 .sage-orb.is-battle-auto {
   color: #fff4f4;
   border-color: #ff555d;
-  background: radial-gradient(
-    circle at 35% 30%,
-    #fff1f1,
-    #ff535b 22%,
-    #8b1624 60%,
-    #2a0b15 83%
-  );
-  box-shadow:
-    0 0 14px #ff384d99,
-    0 0 28px #e92d3d55,
-    inset 0 0 12px #ffffff55;
+  background: radial-gradient(circle at 35% 30%, #fff1f1, #ff535b 22%, #8b1624 60%, #2a0b15 83%);
+  box-shadow: 0 0 14px #ff384d99, 0 0 28px #e92d3d55, inset 0 0 12px #ffffff55;
 }
 
-/* Red appearance while Kingdom Autopilot runs */
 .sage-orb.is-kingdom-auto {
   color: #fff4f4;
   border-color: #ff454f;
-  background: radial-gradient(
-    circle at 35% 30%,
-    #fff1f1,
-    #ff414b 22%,
-    #8b1624 60%,
-    #2a0b15 83%
-  );
-  box-shadow:
-    0 0 18px #ff344dba,
-    0 0 34px #e92d3d77,
-    inset 0 0 12px #ffffff77;
+  background: radial-gradient(circle at 35% 30%, #fff1f1, #ff414b 22%, #8b1624 60%, #2a0b15 83%);
+  box-shadow: 0 0 18px #ff344dba, 0 0 34px #e92d3d77, inset 0 0 12px #ffffff77;
+  animation: sageKingdomPilotSpin 12s linear infinite;
 }
 
-/* Spin the symbol slowly, not the entire button */
 .sage-orb.is-kingdom-auto .sage-symbol {
-  display: inline-block;
-  animation: sageKingdomAutopilotSpin 12s linear infinite;
   text-shadow: 0 0 12px #fff, 0 0 22px #ff5763;
 }
 
-@keyframes sageKingdomAutopilotSpin {
+.sage-mode-help {
+  max-width: 330px;
+  margin: 0 0 8px;
+  color: #9f99b9;
+  font-size: 9px;
+  line-height: 1.5;
+  letter-spacing: 0;
+}
+
+@keyframes sageKingdomPilotSpin {
   from {
     transform: rotate(0deg);
   }
@@ -1971,22 +2002,20 @@ footer {
   }
 }
 
-@media (max-width: 480px) {
-  .sage-autopilot-status {
-    padding: 9px;
-  }
-
-  .sage-autopilot-name {
-    font-size: 9px;
-  }
-
-  .sage-mode-state {
-    font-size: 7px;
+@media (prefers-reduced-motion: reduce) {
+  .sage-orb.is-kingdom-auto {
+    animation: none;
   }
 }
 
+/* Respect users who prefer less motion. */
 @media (prefers-reduced-motion: reduce) {
-  .sage-orb.is-kingdom-auto .sage-symbol {
-    animation: none;
+  .party .battle-hero.attack-bow,
+  .party .battle-hero.attack-sword,
+  .party .battle-hero.attack-cast,
+  .party .battle-hero.fallen,
+  .arrow-projectile,
+  .sword-slash {
+    animation: none !important;
   }
 }

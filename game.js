@@ -76,6 +76,18 @@
     }
   };
 
+  // Shared order for enemy targeting and front-line formation.
+// The first living hero stands closest to the enemy.
+const HERO_TARGET_ORDER = [
+  "aiden",
+  "ragnar",
+  "kael_rogue",
+  "seraphine",
+  "liria",
+  "celeste",
+  "sage",
+  "elowen"
+];
   // ==========================================
   // REGIONS AND GUARDIANS
   // ==========================================
@@ -1396,39 +1408,147 @@
   }
 
   function enemyHitEffect() {
-    const enemy = $("enemyVisual");
-    const party = $("battleParty");
+    function enemyHitEffect() {
+  const enemy = $("enemyVisual");
 
-    if (enemy) {
-      enemy.classList.remove("hit");
-      void enemy.offsetWidth;
-      enemy.classList.add("hit");
-    }
-
-    if (party) {
-      party.classList.remove("attacking");
-      void party.offsetWidth;
-      party.classList.add("attacking");
-    }
+  if (enemy) {
+    enemy.classList.remove("hit");
+    void enemy.offsetWidth;
+    enemy.classList.add("hit");
   }
-    function canStartBattle() {
-    if (battleLocked()) {
-      toast(
-        s.needsHospital
-          ? "Pay the hospital fee before battles can resume."
-          : "The party is recovering; battles are paused."
-      );
+}
 
-      return false;
-    }
+function animateHeroAttack(id) {
+  const party = $("battleParty");
+  const hero = party &&
+    party.querySelector(`[data-hero="${id}"]`);
 
-    if (!livingHeroes().length) {
-      toast("Your party needs treatment before continuing.");
-      return false;
-    }
+  if (!hero || hero.classList.contains("fallen")) return;
 
-    return true;
+  const usesBow = id === "liria";
+  const usesSword = [
+    "aiden",
+    "ragnar",
+    "kael_rogue"
+  ].includes(id);
+
+  const animationClass = usesBow
+    ? "attack-bow"
+    : usesSword
+      ? "attack-sword"
+      : "attack-cast";
+
+  hero.classList.remove(
+    "attack-bow",
+    "attack-sword",
+    "attack-cast"
+  );
+
+  // Restart the animation even if the hero attacked recently.
+  void hero.offsetWidth;
+  hero.classList.add(animationClass);
+
+  window.setTimeout(() => {
+    hero.classList.remove(animationClass);
+  }, 500);
+
+  if (usesBow) {
+    launchArrow(hero);
   }
+
+  if (usesSword) {
+    launchSwordSlash();
+  }
+}
+
+function launchArrow(hero) {
+  const scene = $("scene");
+  const enemy = $("enemyVisual");
+
+  if (
+    !scene ||
+    !enemy ||
+    enemy.classList.contains("hidden")
+  ) {
+    return;
+  }
+
+  const sceneRect = scene.getBoundingClientRect();
+  const heroRect = hero.getBoundingClientRect();
+  const enemyRect = enemy.getBoundingClientRect();
+
+  // Starting point near the archer, ending point near the enemy.
+  const startX =
+    heroRect.left + heroRect.width * 0.72 - sceneRect.left;
+  const startY =
+    heroRect.top + heroRect.height * 0.38 - sceneRect.top;
+
+  const endX =
+    enemyRect.left + enemyRect.width * 0.24 - sceneRect.left;
+  const endY =
+    enemyRect.top + enemyRect.height * 0.42 - sceneRect.top;
+
+  const arrow = document.createElement("span");
+
+  arrow.className = "attack-projectile arrow-projectile";
+
+  arrow.style.left = `${startX}px`;
+  arrow.style.top = `${startY}px`;
+
+  arrow.style.setProperty(
+    "--travel-x",
+    `${endX - startX}px`
+  );
+
+  arrow.style.setProperty(
+    "--travel-y",
+    `${endY - startY}px`
+  );
+
+  arrow.style.setProperty(
+    "--angle",
+    `${Math.atan2(
+      endY - startY,
+      endX - startX
+    ) * 180 / Math.PI}deg`
+  );
+
+  scene.appendChild(arrow);
+
+  window.setTimeout(() => arrow.remove(), 520);
+}
+
+function launchSwordSlash() {
+  const scene = $("scene");
+  const enemy = $("enemyVisual");
+
+  if (
+    !scene ||
+    !enemy ||
+    enemy.classList.contains("hidden")
+  ) {
+    return;
+  }
+
+  const sceneRect = scene.getBoundingClientRect();
+  const enemyRect = enemy.getBoundingClientRect();
+
+  const slash = document.createElement("span");
+
+  slash.className = "attack-projectile sword-slash";
+
+  slash.style.left =
+    `${enemyRect.left - sceneRect.left +
+      enemyRect.width * 0.18 - 25}px`;
+
+  slash.style.top =
+    `${enemyRect.top - sceneRect.top +
+      enemyRect.height * 0.38 - 25}px`;
+
+  scene.appendChild(slash);
+
+  window.setTimeout(() => slash.remove(), 420);
+}
 
   // ==========================================
   // AUTOMATIC EXPLORATION
@@ -1581,60 +1701,74 @@
   // ==========================================
 
   function partyAttack() {
-    if (!s.enemy || battleLocked()) return;
+  if (!s.enemy || battleLocked()) return;
 
-    const active = livingHeroes();
+  const rankOf = (id) => {
+    const rank = HERO_TARGET_ORDER.indexOf(id);
+    return rank < 0 ? 999 : rank;
+  };
 
-    if (!active.length) {
-      partyWiped();
-      return;
-    }
+  const active = livingHeroes().slice().sort(
+    (a, b) => rankOf(a) - rankOf(b)
+  );
 
-    for (const id of active) {
-      if (!s.enemy) break;
-
-      const h = HEROES[id];
-
-      let amount =
-        h.damage +
-        (s.pickaxe - 1) * 2 +
-        s.damageLevel * 4 +
-        (s.recruits.includes("darius") ? 6 : 0);
-
-      if (s.partyBuffUntil > Date.now()) amount *= 1.25;
-      if (s.recruits.includes("silas")) amount *= 1.15;
-
-      const chance = Math.min(
-        0.5,
-        s.critLevel * 0.05 +
-        (id === "kael_rogue" ? 0.15 : 0)
-      );
-
-      const critical = Math.random() < chance;
-
-      amount = Math.max(
-        1,
-        Math.floor(amount * (critical ? 1.8 : 1) * (0.88 + Math.random() * 0.24))
-      );
-
-      s.enemy.hp -= amount;
-
-      showDamage(
-        (critical ? "CRIT " : "") + "-" + amount,
-        "enemy"
-      );
-
-      enemyHitEffect();
-
-      if (s.enemy.hp <= 0) {
-        defeatEnemy();
-        break;
-      }
-    }
-
-    render();
-    save();
+  if (!active.length) {
+    partyWiped();
+    return;
   }
+
+  for (const id of active) {
+    if (!s.enemy) break;
+
+    const h = HEROES[id];
+
+    // Play the correct basic attack for this hero.
+    animateHeroAttack(id);
+
+    let amount =
+      h.damage +
+      (s.pickaxe - 1) * 2 +
+      s.damageLevel * 4 +
+      (s.recruits.includes("darius") ? 6 : 0);
+
+    if (s.partyBuffUntil > Date.now()) amount *= 1.25;
+    if (s.recruits.includes("silas")) amount *= 1.15;
+
+    const chance = Math.min(
+      0.5,
+      s.critLevel * 0.05 +
+      (id === "kael_rogue" ? 0.15 : 0)
+    );
+
+    const critical = Math.random() < chance;
+
+    amount = Math.max(
+      1,
+      Math.floor(
+        amount *
+        (critical ? 1.8 : 1) *
+        (0.88 + Math.random() * 0.24)
+      )
+    );
+
+    s.enemy.hp -= amount;
+
+    showDamage(
+      (critical ? "CRIT " : "") + "-" + amount,
+      "enemy"
+    );
+
+    if (s.enemy.hp <= 0) {
+      defeatEnemy();
+      break;
+    }
+  }
+
+  if (s.enemy) enemyHitEffect();
+
+  render();
+  save();
+}
 
   // ==========================================
   // ENEMY ATTACKS
@@ -1644,13 +1778,11 @@
     if (!s.enemy || battleLocked()) return;
 
     const targetOrder = [
-      "aiden",
-      "ragnar",
-      "kael_rogue",
-      "seraphine",
-      "liria",
-      "celeste",
-      "sage"
+     const targetId = HERO_TARGET_ORDER.find(
+  (id) =>
+    s.heroes.includes(id) &&
+    (Number(s.heroHp[id]) || 0) > 0
+);
     ];
 
     const targetId = targetOrder.find(
@@ -2360,19 +2492,80 @@ function partyWiped() {
   // ==========================================
 
   function renderParty() {
-    $("battleParty").innerHTML = s.heroes.map((id) => {
-      const h = HEROES[id];
-      const hp = s.heroHp[id] || 0;
+    const battleParty = $("battleParty");
 
-      return `
-        <img
-          class="battle-hero ${hp <= 0 ? "fallen" : ""}"
-          src="${h.portrait}"
-          alt="${esc(h.name)}"
-          title="${esc(h.name)} · ${Math.floor(hp)}/${h.maxHp} HP"
-        >
-      `;
-    }).join("");
+const rankOf = (id) => {
+  const rank = HERO_TARGET_ORDER.indexOf(id);
+  return rank < 0 ? 999 : rank;
+};
+
+// Living heroes sorted from first targeted to last targeted.
+const livingIds = s.heroes
+  .filter((id) => (Number(s.heroHp[id]) || 0) > 0)
+  .sort((a, b) => rankOf(a) - rankOf(b));
+
+// Fallen heroes go behind the living formation.
+const fallenIds = s.heroes
+  .filter((id) => (Number(s.heroHp[id]) || 0) <= 0)
+  .sort((a, b) => rankOf(b) - rankOf(a));
+
+// HTML flows left to right. Reverse the living order so the
+// first target is on the right, closest to the enemy.
+const displayIds = [
+  ...fallenIds,
+  ...livingIds.slice().sort(
+    (a, b) => rankOf(b) - rankOf(a)
+  )
+];
+
+// Living rank 1 becomes the front-most hero.
+const frontRank = new Map(
+  livingIds.map((id, index) => [id, index + 1])
+);
+
+// IMPORTANT: don't recreate every sprite on every game tick.
+// Otherwise the attack animations would keep restarting.
+const lineupKey = displayIds.map((id) =>
+  `${id}:${(Number(s.heroHp[id]) || 0) <= 0
+    ? "down"
+    : "up"}:${frontRank.get(id) || 0}`
+).join("|");
+
+if (battleParty.dataset.lineupKey !== lineupKey) {
+  battleParty.innerHTML = displayIds.map((id) => {
+    const h = HEROES[id];
+    const hp = Number(s.heroHp[id]) || 0;
+    const down = hp <= 0;
+
+    const rankClass = frontRank.has(id)
+      ? `front-rank-${frontRank.get(id)}`
+      : "";
+
+    return `
+      <img
+        class="battle-hero ${down ? "fallen" : ""} ${rankClass}"
+        data-hero="${id}"
+        src="${h.portrait}"
+        alt="${esc(h.name)}"
+        title="${esc(h.name)} · ${Math.floor(hp)}/${h.maxHp} HP"
+      >
+    `;
+  }).join("");
+
+  battleParty.dataset.lineupKey = lineupKey;
+}
+
+// Update HP information without interrupting animations.
+s.heroes.forEach((id) => {
+  const img = battleParty.querySelector(`[data-hero="${id}"]`);
+
+  if (img) {
+    const hp = Number(s.heroHp[id]) || 0;
+
+    img.title =
+      `${HEROES[id].name} · ${Math.floor(hp)}/${HEROES[id].maxHp} HP`;
+  }
+});
 
     $("companions").innerHTML = s.heroes.map((id) => {
       const h = HEROES[id];
@@ -4227,7 +4420,7 @@ function partyWiped() {
   }
 
   window.gemMinerReady = true;
-  
+
     // Check every 5 seconds for a stuck hospital state.
   window.setInterval(() => {
     if (!s.needsHospital) return;
