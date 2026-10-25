@@ -156,7 +156,7 @@
       desc: "A forgotten guardian protects the last living crystal heart.",
       rewardHero: "elowen"
     },
-    {
+        {
       name: "The Sage's Crucible",
       enemy: "Clockwork Shade",
       type: "ANCIENT AUTOMATON",
@@ -169,6 +169,21 @@
       bossHp: 11500,
       bossDamage: 68,
       desc: "A forgotten sentinel tests the keeper of the kingdom. Defeat it to unlock Kingdom Autopilot.",
+      rewardHero: null
+    },
+    {
+      name: "The Astral Foundry",
+      enemy: "Aetherbound Sentinel",
+      type: "ARCANE AUTOMATON",
+      hp: 850,
+      damage: 37,
+      gold: 165,
+      crystals: 62,
+      sprite: "assets/boss.svg",
+      boss: "The Astral Sovereign",
+      bossHp: 17500,
+      bossDamage: 82,
+      desc: "Beyond the Crucible, an ancient star forge awaits its final challenger.",
       rewardHero: null
     }
   ];
