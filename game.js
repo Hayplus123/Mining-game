@@ -181,8 +181,8 @@
       crystals: 62,
       sprite: "assets/boss.svg",
       boss: "The Astral Sovereign",
-      bossHp: 17500,
-      bossDamage: 82,
+      bossHp: 13500,
+      bossDamage: 72,
       desc: "Beyond the Crucible, an ancient star forge awaits its final challenger.",
       rewardHero: null
     }
