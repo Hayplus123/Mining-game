@@ -665,6 +665,10 @@ const HERO_TARGET_ORDER = [
   const battleLocked = () =>
     s.needsHospital || isRecovering();
 
+  // Check whether the party is allowed to start an encounter.
+const canStartBattle = () =>
+  !battleLocked() && livingHeroes().length > 0;
+
   const maxMana = () =>
     100 + (s.recruits.includes("iris") ? 25 : 0);
 
