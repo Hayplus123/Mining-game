@@ -3815,7 +3815,11 @@ function stripWakePhrase(text) {
     const health = living.length
       ? `${living.length} heroes standing${fallen.length ? ` and ${fallen.length} fallen` : ""}`
       : "no heroes standing";
-    const pilot = kingdomAutoPilot ? "Kingdom Autopilot active" : battleAutoPilot ? "Battle Autopilot active" : "Autopilot off";
+const pilot = kingdomAutoPilot
+  ? "I am managing the kingdom"
+  : battleAutoPilot
+    ? "I am handling the current battle"
+    : "I am standing by";
     return `Status report. Cave ${s.region + 1}, ${region().name}. ${health}. Mana ${Math.floor(s.mana)} of ${maxMana()}. ${enemy}. ${fmt(s.gold)} gold, ${fmt(s.crystals)} crystals, and ${fmt(s.ore)} ore. ${pilot}.`;
   }
 
@@ -3906,7 +3910,9 @@ function stripWakePhrase(text) {
 
   function startKingdomAutopilot() {
     if (!s.autoPilotUnlocked) {
-      queueSageReply("Kingdom Autopilot is locked. Defeat the guardian in the Sage's Crucible to unlock it.");
+  queueSageReply(
+  "I cannot manage the kingdom yet. Defeat the guardian in the Sage's Crucible to unlock my kingdom-management mode."
+);
       return;
     }
     kingdomAutoPilot = true;
@@ -3919,7 +3925,12 @@ function stripWakePhrase(text) {
     pendingSnackApproval = null;
     cancelSageSpeech(true);
     standDownAfterReply = false;
-    announce("Kingdom Autopilot activated. I will manage urgent healing, revive responsibly, buy necessary supplies, upgrade the kingdom, and mine when safe. Say Great Sage, stand down to stop me.");
+announce(
+  `I am managing your kingdom now. I will handle urgent healing, ` +
+  `revive fallen heroes responsibly, buy necessary supplies, ` +
+  `improve our equipment, and mine when it is safe. ` +
+  `Say ${assistantWakeName()}, stand down to stop me.`
+);
     log("Kingdom Autopilot activated by the player.");
     refreshSagePanel();
     save();
@@ -4285,7 +4296,7 @@ function stripWakePhrase(text) {
       const choice = possible.find((item) => item.level < item.max && item.funds >= item.cost);
       if (choice) {
         upgrade(choice.key);
-        announce(`Kingdom Autopilot upgraded ${choice.key === "crit" ? "critical strikes" : choice.key}.`);
+        announce(`I upgraded ${choice.key === "crit" ? "critical strikes" : choice.key}.`);
         return;
       }
     }
@@ -4299,7 +4310,7 @@ function stripWakePhrase(text) {
         .find((item) => item && !s.recruits.includes(item.id) && s.gold >= item.cost);
       if (recruit) {
         hireRecruit(recruit.id);
-        announce(`Kingdom Autopilot hired ${recruit.name} to help the expedition.`);
+        announce(`I hired ${recruit.name} to help the expedition.`);
         return;
       }
     }
@@ -4577,15 +4588,19 @@ function announce(message) {
       kingdomStatus.dataset.state = state;
     }
 
-    if (help) {
-      help.textContent = kingdomAutoPilot
-        ? "Kingdom Autopilot is managing supplies, upgrades, and mining. Say “Great Sage, stand down” to stop."
-        : battleAutoPilot
-          ? "Battle Autopilot is handling the current fight. Say “Great Sage, stand down” to stop."
-          : s.autoPilotUnlocked
-            ? "Battle Autopilot is always available. Kingdom Autopilot is unlocked and can be started by voice."
-            : "Battle Autopilot is ready when you need it. Kingdom Autopilot unlocks after defeating the final cave guardian.";
-    }
+ if (help) {
+  const wakeName = assistantWakeName();
+
+  help.textContent = kingdomAutoPilot
+    ? `I am managing supplies, upgrades, and mining. ` +
+      `Say “${wakeName}, stand down” to stop me.`
+    : battleAutoPilot
+      ? `I am handling the current fight. ` +
+        `Say “${wakeName}, stand down” to stop me.`
+      : s.autoPilotUnlocked
+        ? "I am always ready for battle, and my kingdom-management mode is unlocked for voice activation."
+        : "I am ready for battle. My kingdom-management mode unlocks after defeating the final cave guardian.";
+}
   }
 
   // ==========================================
@@ -4647,7 +4662,7 @@ function triggerRaphaelEvolution() {
     if (title) title.textContent = "RAPHAEL HAS AWAKENED";
     if (text) {
       text.textContent =
-        "Great Sage has evolved. A new level of wisdom and power is unlocked.";
+  "I have evolved into Raphael. You can now wake me by saying Raphael.";
     }
 
     overlay.classList.add("is-evolved");
