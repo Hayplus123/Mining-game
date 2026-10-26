@@ -2048,35 +2048,28 @@ function partyWiped() {
         toast("Guardian defeated! Cave cleared.");
       }
 
-            // Kingdom Autopilot unlocks when Cave 6 is cleared,
+      // Kingdom Autopilot unlocks when Cave 6 is cleared,
       // even though the journey continues into Cave 7.
-if (clearedRegion === 5) {
-  if (!s.autoPilotUnlocked) {
-    s.autoPilotUnlocked = true;
+      if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+        s.autoPilotUnlocked = true;
 
-    toast("KINGDOM AUTOPILOT UNLOCKED!");
-    log(
-      "Kingdom Autopilot unlocked after defeating The Silent Arbiter."
-    );
-  }
+        toast("KINGDOM AUTOPILOT UNLOCKED!");
+        log(
+          "Kingdom Autopilot unlocked after defeating The Silent Arbiter."
+        );
 
-  // Evolve once, even if Autopilot was unlocked in an older save.
-  triggerRaphaelEvolution();
-}
-
- queueUnlockReveal({
-  category: "NEW FEATURE",
-  title: "Kingdom Autopilot",
-  symbol: "◈",
-  description:
-    "Great Sage can help manage upgrades, supplies, resources, and mining while your kingdom grows.",
-  speech:
-    "New feature unlocked: Kingdom Autopilot. " +
-    "Say Great Sage, activate autopilot to let me manage your kingdom."
-});
-        log("Kingdom Autopilot unlocked after defeating The Silent Arbiter.");
+        queueUnlockReveal({
+          category: "NEW FEATURE",
+          title: "Kingdom Autopilot",
+          symbol: "◈",
+          description:
+            "Great Sage can help manage upgrades, supplies, resources, and mining while your kingdom grows.",
+          speech:
+            "New feature unlocked: Kingdom Autopilot. " +
+            "Say Great Sage, activate autopilot to let me manage your kingdom."
+        });
       }
-
+      
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
         s.caveCrystalProgress = 0;
@@ -4710,4 +4703,4 @@ if (s.autoPilotUnlocked && !s.raphaelEvolved) {
     tick();
     updateAutopilotStatusIndicators();
   }, 200);
-)();
+})();
