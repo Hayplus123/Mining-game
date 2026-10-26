@@ -2123,7 +2123,8 @@ queueUnlockReveal({
           toast("KINGDOM AUTOPILOT UNLOCKED!");
         }
       }
-    } else {
+    } 
+    else {
       log(
         `${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`
       );
