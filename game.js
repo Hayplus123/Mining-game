@@ -1303,7 +1303,7 @@ function ensureUnlockRevealOverlay() {
       <p class="unlock-reveal-description" id="unlockRevealDescription"></p>
 
       <div class="unlock-reveal-footer">
-        <small>Click anywhere to continue · Auto-closes in 5 seconds</small>
+        <small>Click anywhere to continue · Auto-closes in 10 seconds</small>
         <button type="button" class="unlock-reveal-button">
           Continue ✦
         </button>
@@ -1320,8 +1320,16 @@ function ensureUnlockRevealOverlay() {
 
 function showNextUnlockReveal() {
   if (!unlockRevealQueue.length) {
-    unlockRevealActive = false;
-    refreshSagePanel();
+  unlockRevealActive = false;
+
+  // Evolve only after every queued unlock card has finished.
+  if (s.region >= 6 && s.autoPilotUnlocked && !s.raphaelEvolved) {
+    triggerRaphaelEvolution();
+    return;
+  }
+
+  refreshSagePanel();
+}
     return;
   }
 
@@ -1367,7 +1375,7 @@ function showNextUnlockReveal() {
 
   unlockRevealTimer = setTimeout(() => {
     dismissUnlockReveal();
-  }, 5000);
+  }, 10000);
 }
 
 function dismissUnlockReveal() {
@@ -2010,151 +2018,156 @@ function partyWiped() {
   // VICTORY AND NEW HEROES
   // ==========================================
 
-  function defeatEnemy() {
-    const e = s.enemy;
-    if (!e) return;
+function defeatEnemy() {
+  const e = s.enemy;
+  if (!e) return;
 
-    s.gold += e.gold;
-    s.crystals += e.crystals;
-    addCaveCrystalProgress(e.crystals);
-    s.ore += e.boss ? 8 : 1 + Math.floor(Math.random() * 3);
-    s.defeated += 1;
+  s.gold += e.gold;
+  s.crystals += e.crystals;
+  addCaveCrystalProgress(e.crystals);
+  s.ore += e.boss ? 8 : 1 + Math.floor(Math.random() * 3);
+  s.defeated += 1;
 
-    if (e.boss) {
-      const clearedRegion = s.region;
+  if (e.boss) {
+    const clearedRegion = s.region;
 
-      if (!s.bossDefeated.includes(clearedRegion)) {
-        s.bossDefeated.push(clearedRegion);
-      }
+    if (!s.bossDefeated.includes(clearedRegion)) {
+      s.bossDefeated.push(clearedRegion);
+    }
 
-      log(
-        `Guardian defeated! +${e.gold} gold, ` +
-        `+${e.crystals} crystals, +8 ore.`
-      );
+    log(
+      `Guardian defeated! +${e.gold} gold, ` +
+      `+${e.crystals} crystals, +8 ore.`
+    );
 
-      const rewardId = regions[clearedRegion].rewardHero;
+    const rewardId = regions[clearedRegion].rewardHero;
 
-      if (rewardId && !s.heroes.includes(rewardId)) {
-        s.heroes.push(rewardId);
-        s.heroHp[rewardId] = HEROES[rewardId].maxHp;
+    if (rewardId && !s.heroes.includes(rewardId)) {
+      s.heroes.push(rewardId);
+      s.heroHp[rewardId] = HEROES[rewardId].maxHp;
 
-        const newHero = HEROES[rewardId];
+      const newHero = HEROES[rewardId];
+      log(`${newHero.name} joined the party after the cave clear!`);
 
-        log(`${newHero.name} joined the party after the cave clear!`);
+      queueUnlockReveal({
+        category: "NEW HERO",
+        title: `${newHero.name} Joins the Party`,
+        imageSrc: newHero.portrait,
+        description: `${newHero.role}. ${newHero.tagline}`,
+        speech:
+          `New hero unlocked: ${newHero.name}. ` +
+          `${newHero.role}. ${newHero.tagline}`
+      });
+    } else {
+      toast("Guardian defeated! Cave cleared.");
+    }
 
+    // Unlock Kingdom Autopilot after Cave 6.
+    // Raphael evolves after all queued unlock cards finish.
+    if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+      s.autoPilotUnlocked = true;
+
+      toast("KINGDOM AUTOPILOT UNLOCKED!");
+      log("Kingdom Autopilot unlocked after defeating The Silent Arbiter.");
+
+      queueUnlockReveal({
+        category: "NEW FEATURE",
+        title: "Kingdom Autopilot",
+        symbol: "◈",
+        description:
+          "I can manage upgrades, supplies, resources, and mining while your kingdom grows.",
+        speech:
+          "You've unlocked my kingdom-management mode. " +
+          `Say ${assistantWakeName()}, activate autopilot, and I'll manage your kingdom.`
+      });
+    }
+
+    if (clearedRegion < regions.length - 1) {
+      s.region = clearedRegion + 1;
+      s.caveCrystalProgress = 0;
+
+      log(`Unlocked cave ${s.region + 1}: ${region().name}.`);
+
+      queueUnlockReveal({
+        category: "NEW CAVE",
+        title: region().name,
+        symbol: "⛰",
+        description: region().desc,
+        speech: `New cave unlocked: ${region().name}. ${region().desc}`
+      });
+
+      if (s.region === 1) {
         queueUnlockReveal({
-  category: "NEW HERO",
-  title: `${newHero.name} Joins the Party`,
-  imageSrc: newHero.portrait,
-  description: `${newHero.role}. ${newHero.tagline}`,
-  speech:
-    `New hero unlocked: ${newHero.name}. ` +
-    `${newHero.role}. ${newHero.tagline}`
-});
-      } else {
-        toast("Guardian defeated! Cave cleared.");
+          category: "NEW SKILL",
+          title: "Healing Wave",
+          symbol: "✧",
+          description:
+            "A wave of restorative magic heals every living ally.",
+          speech:
+            "New skill unlocked: Healing Wave. " +
+            "Use it to restore health to your living allies."
+        });
+      } else if (s.region === 2) {
+        queueUnlockReveal({
+          category: "NEW SKILL",
+          title: "Phoenix Blessing",
+          symbol: "♨",
+          description:
+            "Revive one fallen hero with 40 percent of their maximum health.",
+          speech:
+            "New skill unlocked: Phoenix Blessing. " +
+            "Use it to return one fallen hero to battle."
+        });
       }
+    } else {
+      log("All cave guardians have fallen. The kingdom is saved!");
 
-      // Kingdom Autopilot unlocks when Cave 6 is cleared,
-      // even though the journey continues into Cave 7.
-      if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+      // Safety net for older saves missing the feature unlock.
+      if (!s.autoPilotUnlocked) {
         s.autoPilotUnlocked = true;
-
         toast("KINGDOM AUTOPILOT UNLOCKED!");
-        log(
-          "Kingdom Autopilot unlocked after defeating The Silent Arbiter."
-        );
 
         queueUnlockReveal({
           category: "NEW FEATURE",
           title: "Kingdom Autopilot",
           symbol: "◈",
           description:
-            "Great Sage can help manage upgrades, supplies, resources, and mining while your kingdom grows.",
+            "I can manage upgrades, supplies, resources, and mining while your kingdom grows.",
           speech:
-            "New feature unlocked: Kingdom Autopilot. " +
-            "Say Great Sage, activate autopilot to let me manage your kingdom."
+            "You've unlocked my kingdom-management mode. " +
+            `Say ${assistantWakeName()}, activate autopilot, and I'll manage your kingdom.`
         });
       }
-
-      if (clearedRegion < regions.length - 1) {
-        s.region = clearedRegion + 1;
-        s.caveCrystalProgress = 0;
-
-        log(`Unlocked cave ${s.region + 1}: ${region().name}.`);
-
-        queueUnlockReveal({
-  category: "NEW CAVE",
-  title: region().name,
-  symbol: "⛰",
-  description: region().desc,
-  speech: `New cave unlocked: ${region().name}. ${region().desc}`
-});
-
-        if (s.region === 1) {
-queueUnlockReveal({
-  category: "NEW SKILL",
-  title: "Healing Wave",
-  symbol: "✧",
-  description:
-    "A wave of restorative magic heals every living ally.",
-  speech:
-    "New skill unlocked: Healing Wave. " +
-    "Use it to restore health to your living allies."
-});
-        } else if (s.region === 2) {
-queueUnlockReveal({
-  category: "NEW SKILL",
-  title: "Phoenix Blessing",
-  symbol: "♨",
-  description:
-    "Revive one fallen hero with 40 percent of their maximum health.",
-  speech:
-    "New skill unlocked: Phoenix Blessing. " +
-    "Use it to return one fallen hero to battle."
-});
-        }
-      } else {
-        log("All cave guardians have fallen. The kingdom is saved!");
-
-        if (!s.autoPilotUnlocked) {
-          s.autoPilotUnlocked = true;
-          announce("New feature unlocked: Kingdom Autopilot. Say Great Sage, activate autopilot to let me manage your kingdom.");
-          toast("KINGDOM AUTOPILOT UNLOCKED!");
-        }
-      }
-    } 
-    else {
-      log(
-        `${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`
-      );
-
-      toast(`Victory! +${e.gold} gold · +${e.crystals} crystals`);
     }
+  } else {
+    log(
+      `${e.name} defeated. +${e.gold} gold and +${e.crystals} crystals.`
+    );
 
-    s.enemy = null;
-    s.bossMode = false;
-
-    partyClock = 0;
-    enemyClock = 0;
-
-    livingHeroes().forEach((id) => {
-      s.heroHp[id] = Math.min(
-        HEROES[id].maxHp,
-        s.heroHp[id] + 7
-      );
-    });
-
-    render();
-    save();
-    scheduleExplore();
-
-    // The combat-only mode ends at the first victory. The full Kingdom mode,
-    // if active, stays on and continues managing the expedition.
-    if (battleAutoPilot && !kingdomAutoPilot) {
-      finishBattleAutopilot();
-    }
+    toast(`Victory! +${e.gold} gold · +${e.crystals} crystals`);
   }
+
+  s.enemy = null;
+  s.bossMode = false;
+
+  partyClock = 0;
+  enemyClock = 0;
+
+  livingHeroes().forEach((id) => {
+    s.heroHp[id] = Math.min(
+      HEROES[id].maxHp,
+      s.heroHp[id] + 7
+    );
+  });
+
+  render();
+  save();
+  scheduleExplore();
+
+  if (battleAutoPilot && !kingdomAutoPilot) {
+    finishBattleAutopilot();
+  }
+}
 
   // ==========================================
   // SKILLS AND MANA
@@ -3646,6 +3659,8 @@ if (dock) {
     // Common speech-to-text variants. These convert likely mishearings
     // into the exact item/command names used by the game.
     const speechAliases = [
+
+      [/\b(?:rafael|rafayel|raffel|raphaell|raphiel)\b/g, "raphael"],
       // "Trail Rations" said casually as "tral rations", or transcribed
       // as "trail ratios", "trail ratings", etc.
       [/\b(?:tral|trale|trail|trial|treyl)\s+(?:rations?|raitions?|ratons?|ratios|ratings|raytions?)\b/g, "trail rations"],
@@ -3679,9 +3694,24 @@ if (dock) {
     return normalized.replace(/\s+/g, " ").trim();
   }
 
-  function stripWakePhrase(text) {
-    return normalizeVoiceText(text).replace(/^.*?\bgreat\s+sage\b/, "").trim();
-  }
+ function assistantWakeName() {
+  return s.raphaelEvolved ? "Raphael" : "Great Sage";
+}
+
+function assistantWakePattern() {
+  return s.raphaelEvolved
+    ? /\braphael\b/i
+    : /\bgreat\s+sage\b/i;
+}
+
+function stripWakePhrase(text) {
+  const normalized = normalizeVoiceText(text);
+  const pattern = assistantWakePattern();
+
+  return normalized
+    .replace(new RegExp(`^.*?${pattern.source}`, pattern.flags), "")
+    .trim();
+}
 
   function queueSageReply(message) {
     if (message) announce(message);
@@ -4288,7 +4318,7 @@ if (dock) {
       if (!rawText.trim()) continue;
 
       const text = normalizeVoiceText(rawText);
-      const wake = /\bgreat\s+sage\b/i.exec(text);
+      const wake = assistantWakePattern().exec(text);
       const exitPhrase = /\bnever mind\b|\bnothing\b|\bgo idle\b|\bstop listening\b/i.test(text);
       const yesNo = /^(?:yes|yeah|yep|sure|okay|ok|do it|go ahead|affirmative|no|nope|not now|negative)$/.test(text);
       const thanks = /^(?:thanks|thank you|thanks a lot|thanks so much|thank you so much|thank you very much|many thanks)$/.test(text);
