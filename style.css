@@ -2266,3 +2266,189 @@ footer {
     animation: none !important;
   }
 }
+
+/* ==========================================
+   RAPHAEL EVOLUTION
+   ========================================== */
+
+.raphael-evolution-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 300000;
+
+  display: grid;
+  place-items: center;
+  padding: 20px;
+
+  cursor: pointer;
+
+  background:
+    radial-gradient(ellipse at center, #f5d48d33, transparent 58%),
+    #080711f5;
+
+  backdrop-filter: blur(10px);
+
+  animation: raphaelBackdropIn .5s ease-out both;
+}
+
+.raphael-evolution-stage {
+  width: min(600px, 100%);
+  text-align: center;
+  color: #fff2bc;
+}
+
+.raphael-evolution-caption {
+  font-size: 10px;
+  letter-spacing: .35em;
+  font-weight: 800;
+  color: #f8e3a1;
+}
+
+.raphael-evolution-emblem {
+  width: clamp(130px, 27vw, 210px);
+  height: clamp(130px, 27vw, 210px);
+
+  display: grid;
+  place-items: center;
+
+  margin: 30px auto;
+  border: 3px solid #d7c9ff;
+  border-radius: 50%;
+
+  color: #e2d8ff;
+  font: clamp(85px, 17vw, 140px)/1 Georgia, serif;
+
+  background:
+    radial-gradient(circle at 32% 25%, #ffffff66, transparent 42%),
+    radial-gradient(circle, #7166ab, #241a4c 75%);
+
+  box-shadow:
+    0 0 20px #c1adff99,
+    0 0 55px #a58bff77,
+    inset 0 0 25px #ffffff33;
+
+  animation: raphaelEmblemAscend 2.3s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.raphael-evolution-stage h1 {
+  margin: 15px 0 10px;
+  font: clamp(25px, 5vw, 42px)/1.15 "Marcellus", Georgia, serif;
+  letter-spacing: .06em;
+
+  color: #fff0b0;
+  text-shadow: 0 0 25px #e9bc5d88;
+}
+
+.raphael-evolution-stage p {
+  max-width: 440px;
+  margin: 0 auto 22px;
+
+  color: #e7d8ac;
+  font-size: 13px;
+  line-height: 1.8;
+}
+
+.raphael-evolution-stage small {
+  display: block;
+  color: #a99b75;
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+.raphael-evolution-overlay.is-evolved .raphael-evolution-emblem {
+  color: #fff4bd;
+  border-color: #fff0a2;
+
+  background:
+    radial-gradient(circle at 33% 22%, #fffde7, transparent 43%),
+    radial-gradient(circle, #ffe9a0, #b77c25 72%);
+
+  box-shadow:
+    0 0 28px #ffe9a5,
+    0 0 70px #f2c45e99,
+    0 0 130px #f4bd4866,
+    inset 0 0 30px #fff9df;
+
+  animation: raphaelAwaken .8s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+/* Keep the evolved Great Sage permanently golden. */
+.sage-orb.is-raphael,
+.sage-orb.is-raphael.is-battle-auto,
+.sage-orb.is-raphael.is-kingdom-auto {
+  color: #fff1b0 !important;
+  border-color: #ffe7a1 !important;
+
+  background:
+    radial-gradient(circle at 34% 25%, #fffde6, #f7d775 22%, #bd852f 58%, #503019 83%) !important;
+
+  box-shadow:
+    0 0 16px #ffdc77cc,
+    0 0 34px #e7ae4d77,
+    inset 0 0 12px #ffffff99 !important;
+}
+
+.sage-orb.is-raphael .sage-symbol {
+  color: #fff5bd;
+  text-shadow:
+    0 0 7px #fff,
+    0 0 16px #ffe48c,
+    0 0 28px #ffc24d;
+}
+
+/* Keep the Kingdom Autopilot spin without reverting to red. */
+.sage-orb.is-raphael.is-kingdom-auto {
+  animation: sageKingdomPilotSpin 12s linear infinite;
+}
+
+@keyframes raphaelBackdropIn {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes raphaelEmblemAscend {
+  0% {
+    opacity: 0;
+    transform: translateY(80px) scale(.2) rotate(0deg);
+  }
+
+  25% {
+    opacity: 1;
+    transform: translateY(0) scale(1.1) rotate(360deg);
+  }
+
+  65% {
+    transform: scale(1.22) rotate(900deg);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(1080deg);
+  }
+}
+
+@keyframes raphaelAwaken {
+  0% {
+    transform: scale(.7) rotateY(0deg);
+    filter: brightness(1);
+  }
+
+  60% {
+    transform: scale(1.2) rotateY(180deg);
+    filter: brightness(1.9);
+  }
+
+  100% {
+    transform: scale(1) rotateY(360deg);
+    filter: brightness(1);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .raphael-evolution-overlay,
+  .raphael-evolution-emblem,
+  .raphael-evolution-overlay.is-evolved .raphael-evolution-emblem,
+  .sage-orb.is-raphael.is-kingdom-auto {
+    animation: none !important;
+  }
+}

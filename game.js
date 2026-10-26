@@ -401,6 +401,7 @@ const HERO_TARGET_ORDER = [
     elowenNextReviveAt: 0,
     elowenSelfReviveAt: 0,
     autoPilotUnlocked: false,
+    raphaelEvolved: false,
 
     enemy: null,
     bossMode: false,
@@ -523,6 +524,7 @@ const HERO_TARGET_ORDER = [
       Number(state.elowenSelfReviveAt) || 0
     );
     state.autoPilotUnlocked = Boolean(state.autoPilotUnlocked);
+    state.raphaelEvolved = Boolean(state.raphaelEvolved);
 
     // Existing saves keep their progress, but the infirmary is now always
     // more expensive than the rare Revive Snack.
@@ -2048,8 +2050,19 @@ function partyWiped() {
 
             // Kingdom Autopilot unlocks when Cave 6 is cleared,
       // even though the journey continues into Cave 7.
-      if (clearedRegion === 5 && !s.autoPilotUnlocked) {
-        s.autoPilotUnlocked = true;
+if (clearedRegion === 5) {
+  if (!s.autoPilotUnlocked) {
+    s.autoPilotUnlocked = true;
+
+    toast("KINGDOM AUTOPILOT UNLOCKED!");
+    log(
+      "Kingdom Autopilot unlocked after defeating The Silent Arbiter."
+    );
+  }
+
+  // Evolve once, even if Autopilot was unlocked in an older save.
+  triggerRaphaelEvolution();
+}
 
  queueUnlockReveal({
   category: "NEW FEATURE",
@@ -3536,7 +3549,12 @@ s.heroes.forEach((id) => {
     const dock = $("sageDock");
     const shouldShow = sagePanelVisible();
 
-    if (dock) dock.classList.toggle("is-hidden", !shouldShow);
+if (dock) {
+  dock.classList.toggle(
+    "is-hidden",
+    !(shouldShow || s.raphaelEvolved)
+  );
+}
     if (panel) panel.hidden = !shouldShow;
 
     if (orb) {
@@ -3545,6 +3563,7 @@ s.heroes.forEach((id) => {
       orb.classList.toggle("is-muted", !sageEnabled);
       orb.classList.toggle("is-battle-auto", battleAutoPilot && !kingdomAutoPilot);
       orb.classList.toggle("is-kingdom-auto", kingdomAutoPilot);
+      orb.classList.toggle("is-raphael", Boolean(s.raphaelEvolved));
       orb.setAttribute("aria-label", kingdomAutoPilot
         ? "Great Sage Kingdom Autopilot is active. Say Great Sage, stand down to stop."
         : battleAutoPilot
@@ -4538,6 +4557,91 @@ function announce(message) {
     }
   }
 
+  // ==========================================
+// GREAT SAGE -> RAPHAEL EVOLUTION
+// ==========================================
+
+function triggerRaphaelEvolution() {
+  if (s.raphaelEvolved) return;
+
+  // Save the transformation so it remains permanent.
+  s.raphaelEvolved = true;
+  s.autoPilotUnlocked = true;
+
+  // Interrupt any old speech or queued announcements.
+  cancelSageSpeech(true);
+  currentPrompt = null;
+
+  updateSageMessage("Evolution sequence initiated.");
+  save();
+
+  // Create the full-screen evolution scene.
+  const overlay = document.createElement("div");
+  overlay.className = "raphael-evolution-overlay";
+
+  overlay.innerHTML = `
+    <div class="raphael-evolution-stage">
+      <div class="raphael-evolution-caption">
+        GREAT SAGE · EVOLUTION
+      </div>
+
+      <div class="raphael-evolution-emblem" id="raphaelEmblem">
+        ◈
+      </div>
+
+      <h1 id="raphaelEvolutionTitle">
+        EVOLUTION INITIATED
+      </h1>
+
+      <p id="raphaelEvolutionText">
+        An unprecedented evolution is beginning...
+      </p>
+
+      <small>Click to continue · Auto-closes in 5 seconds</small>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  // Make the permanent orb gold as soon as evolution begins.
+  refreshSagePanel();
+
+  // After the spinning sequence, reveal Raphael.
+  overlay._evolutionTimer = window.setTimeout(() => {
+    const emblem = overlay.querySelector("#raphaelEmblem");
+    const title = overlay.querySelector("#raphaelEvolutionTitle");
+    const text = overlay.querySelector("#raphaelEvolutionText");
+
+    if (emblem) emblem.textContent = "R";
+    if (title) title.textContent = "RAPHAEL HAS AWAKENED";
+    if (text) {
+      text.textContent =
+        "Great Sage has evolved. A new level of wisdom and power is unlocked.";
+    }
+
+    overlay.classList.add("is-evolved");
+
+    // The regular Great Sage speech queue was cleared above.
+    announce(
+      "Evolution complete. I am Raphael, the evolved form of Great Sage."
+    );
+
+    updateAutopilotStatusIndicators();
+    refreshSagePanel();
+    save();
+  }, 2300);
+
+  // Clicking anywhere dismisses the scene.
+  overlay.addEventListener("click", () => {
+    clearTimeout(overlay._closeTimer);
+    overlay.remove();
+  });
+
+  // Give the whole sequence time to finish, then close automatically.
+  overlay._closeTimer = window.setTimeout(() => {
+    overlay.remove();
+  }, 5000);
+}
   // Repair older saves with an enemy missing max HP.
   if (s.enemy && !s.enemy.maxHp) {
     s.enemy.maxHp = s.enemy.hp;
@@ -4553,6 +4657,10 @@ function announce(message) {
   setupWakeRecognition();
   refreshSagePanel();
   updateAutopilotStatusIndicators();
+  // Finish the evolution for saves that already unlocked Cave 7.
+if (s.autoPilotUnlocked && !s.raphaelEvolved) {
+  window.setTimeout(triggerRaphaelEvolution, 600);
+}
 
   if (!s.enemy && !battleLocked()) {
     scheduleExplore();
