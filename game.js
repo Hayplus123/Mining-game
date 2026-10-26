@@ -1763,21 +1763,19 @@ const HERO_TARGET_ORDER = [
   function enemyAttack() {
     if (!s.enemy || battleLocked()) return;
 
-    const targetOrder = [
+    // Target the first living hero in the shared priority order.
     const targetId = HERO_TARGET_ORDER.find(
-  (id) =>
-    s.heroes.includes(id) &&
-    (Number(s.heroHp[id]) || 0) > 0
-);
+      (id) =>
+        s.heroes.includes(id) &&
+        (Number(s.heroHp[id]) || 0) > 0
+    );
 
-if (!targetId) {
-  partyWiped();
-  return;
-}
-]
+    if (!targetId) {
+      partyWiped();
+      return;
+    }
 
-const target = HEROES[targetId];
-    // Routine enemy attacks are silent; major events trigger the alert chime.
+    const target = HEROES[targetId];
 
     let amount = Math.max(
       1,
@@ -1813,6 +1811,7 @@ const target = HEROES[targetId];
             ? `Notice: ${target.name} is down. Would you like to use Phoenix Blessing?`
             : `Notice: ${target.name} is down. Phoenix Blessing unlocks in Cave 3. Use a Revive Snack if you have one.`
         );
+
         showPhoenixPrompt(targetId);
       }
     }
