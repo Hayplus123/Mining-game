@@ -589,6 +589,9 @@ const HERO_TARGET_ORDER = [
 
   const speechQueue = [];
   const MAX_SPEECH_QUEUE = 5;
+  let unlockRevealQueue = [];
+  let unlockRevealActive = false;
+  let unlockRevealTimer = null;
   let speechBusy = false;
   let sageEnabled = true;
   let currentUtterance = null;
@@ -1260,6 +1263,129 @@ const canStartBattle = () =>
 
     refreshSagePanel();
   }
+  // ==========================================
+// GOLDEN UNLOCK REVEAL
+// ==========================================
+
+function queueUnlockReveal(item) {
+  unlockRevealQueue.push(item);
+
+  if (!unlockRevealActive) {
+    showNextUnlockReveal();
+  }
+}
+
+function ensureUnlockRevealOverlay() {
+  let overlay = $("unlockRevealOverlay");
+  if (overlay) return overlay;
+
+  overlay = document.createElement("div");
+  overlay.id = "unlockRevealOverlay";
+  overlay.className = "unlock-reveal-overlay";
+  overlay.hidden = true;
+
+  overlay.innerHTML = `
+    <section class="unlock-reveal-card" role="dialog" aria-modal="true">
+      <div class="unlock-reveal-kicker">✦ NEW UNLOCK ✦</div>
+
+      <div class="unlock-reveal-medallion" id="unlockRevealMedallion">
+        ✦
+      </div>
+
+      <div class="unlock-reveal-category" id="unlockRevealCategory">
+        NEW DISCOVERY
+      </div>
+
+      <h2 id="unlockRevealTitle">Something New</h2>
+
+      <p class="unlock-reveal-description" id="unlockRevealDescription"></p>
+
+      <div class="unlock-reveal-footer">
+        <small>Click anywhere to continue · Auto-closes in 5 seconds</small>
+        <button type="button" class="unlock-reveal-button">
+          Continue ✦
+        </button>
+      </div>
+    </section>
+  `;
+
+  // Clicking anywhere on the overlay or card dismisses it.
+  overlay.addEventListener("click", dismissUnlockReveal);
+
+  document.body.appendChild(overlay);
+  return overlay;
+}
+
+function showNextUnlockReveal() {
+  if (!unlockRevealQueue.length) {
+    unlockRevealActive = false;
+    refreshSagePanel();
+    return;
+  }
+
+  unlockRevealActive = true;
+
+  const item = unlockRevealQueue.shift();
+
+  // Interrupt current speech and discard every old queued announcement.
+  cancelSageSpeech(true);
+
+  const overlay = ensureUnlockRevealOverlay();
+  const medallion = $("unlockRevealMedallion");
+
+  medallion.replaceChildren();
+
+  if (item.imageSrc) {
+    const image = document.createElement("img");
+    image.src = item.imageSrc;
+    image.alt = item.title;
+    medallion.appendChild(image);
+  } else {
+    medallion.textContent = item.symbol || "✦";
+  }
+
+  $("unlockRevealCategory").textContent =
+    item.category || "NEW DISCOVERY";
+
+  $("unlockRevealTitle").textContent = item.title;
+  $("unlockRevealDescription").textContent = item.description || "";
+
+  overlay.hidden = false;
+
+  // Give the Great Sage queue only this unlock announcement.
+  updateSageMessage(item.speech || item.title);
+
+  if (sageEnabled && item.speech) {
+    speechQueue.length = 0;
+    speechQueue.push(item.speech);
+    processSpeechQueue();
+  }
+
+  clearTimeout(unlockRevealTimer);
+
+  unlockRevealTimer = setTimeout(() => {
+    dismissUnlockReveal();
+  }, 5000);
+}
+
+function dismissUnlockReveal() {
+  if (!unlockRevealActive) return;
+
+  clearTimeout(unlockRevealTimer);
+  unlockRevealTimer = null;
+
+  const overlay = $("unlockRevealOverlay");
+  if (overlay) overlay.hidden = true;
+
+  // If another unlock happened during this reveal, show it next.
+  if (unlockRevealQueue.length) {
+    showNextUnlockReveal();
+    return;
+  }
+
+  unlockRevealActive = false;
+  refreshSagePanel();
+}
 
   function toggleSage() {
     if (!("speechSynthesis" in window)) {
@@ -1907,11 +2033,15 @@ function partyWiped() {
 
         log(`${newHero.name} joined the party after the cave clear!`);
 
-        announce(
-          `Notice: ${newHero.name} has joined your team.`
-        );
-
-        toast(`NEW HERO JOINED: ${newHero.name}!`);
+        queueUnlockReveal({
+  category: "NEW HERO",
+  title: `${newHero.name} Joins the Party`,
+  imageSrc: newHero.portrait,
+  description: `${newHero.role}. ${newHero.tagline}`,
+  speech:
+    `New hero unlocked: ${newHero.name}. ` +
+    `${newHero.role}. ${newHero.tagline}`
+});
       } else {
         toast("Guardian defeated! Cave cleared.");
       }
@@ -1921,11 +2051,16 @@ function partyWiped() {
       if (clearedRegion === 5 && !s.autoPilotUnlocked) {
         s.autoPilotUnlocked = true;
 
-        announce(
-          "Kingdom Autopilot unlocked! Say Great Sage, activate autopilot to let me manage your kingdom."
-        );
-
-        toast("KINGDOM AUTOPILOT UNLOCKED!");
+ queueUnlockReveal({
+  category: "NEW FEATURE",
+  title: "Kingdom Autopilot",
+  symbol: "◈",
+  description:
+    "Great Sage can help manage upgrades, supplies, resources, and mining while your kingdom grows.",
+  speech:
+    "New feature unlocked: Kingdom Autopilot. " +
+    "Say Great Sage, activate autopilot to let me manage your kingdom."
+});
         log("Kingdom Autopilot unlocked after defeating The Silent Arbiter.");
       }
 
@@ -1935,10 +2070,36 @@ function partyWiped() {
 
         log(`Unlocked cave ${s.region + 1}: ${region().name}.`);
 
+        queueUnlockReveal({
+  category: "NEW CAVE",
+  title: region().name,
+  symbol: "⛰",
+  description: region().desc,
+  speech: `New cave unlocked: ${region().name}. ${region().desc}`
+});
+
         if (s.region === 1) {
-          announce("New skill unlocked: Healing Wave.");
+queueUnlockReveal({
+  category: "NEW SKILL",
+  title: "Healing Wave",
+  symbol: "✧",
+  description:
+    "A wave of restorative magic heals every living ally.",
+  speech:
+    "New skill unlocked: Healing Wave. " +
+    "Use it to restore health to your living allies."
+});
         } else if (s.region === 2) {
-          announce("New skill unlocked: Phoenix Blessing.");
+queueUnlockReveal({
+  category: "NEW SKILL",
+  title: "Phoenix Blessing",
+  symbol: "♨",
+  description:
+    "Revive one fallen hero with 40 percent of their maximum health.",
+  speech:
+    "New skill unlocked: Phoenix Blessing. " +
+    "Use it to return one fallen hero to battle."
+});
         }
       } else {
         log("All cave guardians have fallen. The kingdom is saved!");
@@ -4312,8 +4473,8 @@ s.heroes.forEach((id) => {
     window.speechSynthesis.speak(utterance);
   }
 
-  function announce(message) {
-    if (!sageEnabled) return;
+function announce(message) {
+  if (!sageEnabled || unlockRevealActive) return;
 
     // These are useful in the log, but should not interrupt gameplay aloud.
     if (/party.?s health is low|great sage online|your party.?s health is low/i.test(message)) {

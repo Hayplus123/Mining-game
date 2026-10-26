@@ -2019,3 +2019,250 @@ footer {
     animation: none !important;
   }
 }
+
+/* ==========================================
+   GOLDEN UNLOCK REVEAL
+   ========================================== */
+
+.unlock-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 200000;
+
+  display: grid;
+  place-items: center;
+  padding: 20px;
+
+  overflow: auto;
+  cursor: pointer;
+
+  background:
+    radial-gradient(ellipse at 50% 42%, #f5d48d26, transparent 47%),
+    #080711ed;
+
+  -webkit-backdrop-filter: blur(7px);
+  backdrop-filter: blur(7px);
+
+  animation: unlockBackdropIn .28s ease-out both;
+}
+
+.unlock-reveal-overlay[hidden] {
+  display: none !important;
+}
+
+.unlock-reveal-card {
+  position: relative;
+  isolation: isolate;
+
+  width: min(520px, 100%);
+  padding: 32px 28px 24px;
+  overflow: hidden;
+
+  text-align: center;
+  cursor: pointer;
+
+  color: #412a12;
+
+  border: 2px solid #ffe9a4;
+  border-radius: 18px;
+
+  background:
+    radial-gradient(ellipse at 50% 18%, #fffbe4, transparent 55%),
+    linear-gradient(145deg, #fff1b8, #dca747 42%, #f8d982 72%, #b87a2c);
+
+  box-shadow:
+    0 0 0 1px #9b6829,
+    0 0 35px #f6ce6d77,
+    0 0 100px #d79d3855,
+    inset 0 0 28px #fff6cc;
+
+  animation: unlockCardAppear .55s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.unlock-reveal-card::before {
+  content: "";
+  position: absolute;
+  inset: 8px;
+  z-index: -1;
+
+  border: 1px solid #94601f80;
+  border-radius: 11px;
+  pointer-events: none;
+}
+
+.unlock-reveal-kicker {
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .34em;
+  color: #855318;
+  text-shadow: 0 1px #fff5c2;
+}
+
+.unlock-reveal-medallion {
+  width: clamp(145px, 28vw, 205px);
+  height: clamp(145px, 28vw, 205px);
+
+  display: grid;
+  place-items: center;
+
+  margin: 24px auto 20px;
+  overflow: hidden;
+
+  color: #805016;
+  font-family: Georgia, serif;
+  font-size: clamp(74px, 13vw, 112px);
+  line-height: 1;
+
+  border: 4px ridge #fff0b5;
+  border-radius: 24px;
+
+  background:
+    radial-gradient(circle at 33% 25%, #fffce9, transparent 44%),
+    linear-gradient(145deg, #f9e3a0, #c58c36 53%, #ffe7a0);
+
+  box-shadow:
+    0 0 0 2px #a66e23,
+    0 0 32px #fff2b8b0,
+    inset 0 0 20px #fff8d0;
+
+  transform-style: preserve-3d;
+
+  animation: unlockMedallionSpin 1s cubic-bezier(.2, .7, .2, 1) both;
+}
+
+.unlock-reveal-medallion img {
+  display: block;
+  width: 78%;
+  height: 78%;
+  object-fit: contain;
+
+  filter: drop-shadow(0 5px 5px #67451e6b);
+}
+
+.unlock-reveal-category {
+  margin-top: 4px;
+
+  color: #825319;
+  font-size: 9px;
+  font-weight: 800;
+  letter-spacing: .24em;
+}
+
+.unlock-reveal-card h2 {
+  margin: 9px 0 0;
+
+  color: #39230f;
+  font: clamp(25px, 5vw, 36px)/1.15 "Marcellus", Georgia, serif;
+
+  text-shadow: 0 1px #fff1bc;
+}
+
+.unlock-reveal-description {
+  max-width: 400px;
+  margin: 14px auto 0;
+  padding-top: 14px;
+
+  border-top: 1px solid #94601f55;
+
+  color: #573c1d;
+  font-size: 12px;
+  line-height: 1.7;
+}
+
+.unlock-reveal-footer {
+  margin-top: 22px;
+
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+}
+
+.unlock-reveal-footer small {
+  color: #6c4c25;
+  font-size: 9px;
+  letter-spacing: .04em;
+}
+
+.unlock-reveal-button {
+  min-width: 155px;
+  padding: 12px 20px;
+
+  color: #fff3cb;
+  border: 1px solid #ffe5a0;
+  border-radius: 9px;
+
+  background: linear-gradient(135deg, #80501f, #503016);
+  box-shadow: 0 4px 12px #5c3d1e44;
+
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: .08em;
+}
+
+.unlock-reveal-button:hover {
+  background: linear-gradient(135deg, #98642b, #623c1a);
+  border-color: #fff4c5;
+}
+
+@keyframes unlockBackdropIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes unlockCardAppear {
+  0% {
+    opacity: 0;
+    transform: translateY(28px) scale(.78);
+  }
+
+  70% {
+    opacity: 1;
+    transform: translateY(-4px) scale(1.025);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes unlockMedallionSpin {
+  0% {
+    opacity: 0;
+    transform: perspective(800px) rotateY(0deg) scale(.15);
+  }
+
+  50% {
+    opacity: 1;
+    transform: perspective(800px) rotateY(180deg) scale(1.12);
+  }
+
+  100% {
+    opacity: 1;
+    transform: perspective(800px) rotateY(360deg) scale(1);
+  }
+}
+
+@media (max-width: 480px) {
+  .unlock-reveal-card {
+    padding: 25px 18px 20px;
+  }
+
+  .unlock-reveal-medallion {
+    margin-top: 20px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .unlock-reveal-overlay,
+  .unlock-reveal-card,
+  .unlock-reveal-medallion {
+    animation: none !important;
+  }
+}
