@@ -2432,7 +2432,6 @@ function defeatEnemy() {
             "New skill unlocked: Phoenix Blessing. " +
             "Use it to return one fallen hero to battle."
         });
-      }
       } else if (s.region === 6) {
         queueUnlockReveal({
           category: "NEW ABILITY",
@@ -2440,8 +2439,8 @@ function defeatEnemy() {
           symbol: "◈",
           description:
             "Raphael studies bosses and identifies unique attacks, revealing their effects and how to respond.",
-         speech:
-          "I can analyze a boss's unique attacks and explain their effects."
+          speech:
+            "I can analyze a boss's unique attacks and explain their effects."
         });
       }
     } else {
