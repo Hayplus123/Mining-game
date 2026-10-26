@@ -3555,6 +3555,13 @@ s.heroes.forEach((id) => {
     const panel = $("sagePanel");
     const orb = $("sageOrb");
     const dock = $("sageDock");
+    const name = $("sageName");
+
+if (name) {
+  name.textContent = s.raphaelEvolved
+    ? "RAPHAEL"
+    : "GREAT SAGE";
+}
     const shouldShow = sagePanelVisible();
 
 if (dock) {
