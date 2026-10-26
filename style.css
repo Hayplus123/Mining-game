@@ -2452,3 +2452,208 @@ footer {
     animation: none !important;
   }
 }
+
+/* ==========================================
+   RAPHAEL ANALIST: FULL-SCREEN BATTLE PAUSE
+   ========================================== */
+
+body.analist-paused * {
+  animation-play-state: paused !important;
+}
+
+/* The analysis scene itself must continue animating. */
+body.analist-paused .analist-overlay,
+body.analist-paused .analist-overlay * {
+  animation-play-state: running !important;
+}
+
+.analist-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  padding: 22px;
+  overflow-y: auto;
+
+  color: #fff6df;
+  background:
+    radial-gradient(circle at 50% 35%, #665026dd, #171326f5 58%, #080713 100%);
+  backdrop-filter: blur(12px);
+
+  animation: analistOverlayIn 0.45s ease-out both;
+}
+
+.analist-stage {
+  width: min(720px, 100%);
+  padding: 28px 22px;
+  text-align: center;
+
+  border: 1px solid #f5d48d70;
+  border-radius: 24px;
+
+  background:
+    linear-gradient(155deg, #332943f2, #141225fa 65%, #211b32fa);
+
+  box-shadow:
+    0 0 45px #f5d48d35,
+    0 0 110px #b58aff20,
+    inset 0 0 28px #f5d48d0a;
+}
+
+.analist-eyebrow {
+  color: #f5d48d;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.24em;
+}
+
+.analist-emblem {
+  display: grid;
+  place-items: center;
+
+  width: min(260px, 58vw);
+  height: min(260px, 58vw);
+  margin: 16px auto;
+
+  color: #fff0bb;
+  font-size: clamp(110px, 27vw, 220px);
+  line-height: 1;
+
+  text-shadow:
+    0 0 12px #fff6d5,
+    0 0 32px #f5d48d,
+    0 0 70px #e5a83f99;
+
+  animation: analistEmblemScan 1.8s ease-in-out both;
+}
+
+.analist-phase {
+  color: #aeeaf2;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+}
+
+.analist-stage h1 {
+  margin: 14px 0;
+  color: #ffe5a6;
+  font-size: clamp(25px, 5vw, 42px);
+  line-height: 1.15;
+  font-family: 'Marcellus', serif;
+  text-shadow: 0 0 20px #f5d48d38;
+}
+
+.analist-stage p {
+  max-width: 580px;
+  margin: 14px auto;
+  color: #e9e3f7;
+  font-size: 14px;
+  line-height: 1.8;
+}
+
+.analist-caption {
+  margin: 20px auto;
+  padding: 11px 12px;
+
+  color: #f5d48d;
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1.7;
+  letter-spacing: 0.12em;
+
+  border-top: 1px solid #f5d48d45;
+  border-bottom: 1px solid #f5d48d45;
+}
+
+.analist-resume {
+  min-width: 180px;
+  margin-top: 6px;
+  padding: 12px 20px;
+
+  color: #25192d;
+  background: linear-gradient(135deg, #fff1bf, #e8b75d);
+  border: 1px solid #fff0be;
+
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.analist-resume:hover:not(:disabled) {
+  background: linear-gradient(135deg, #fff9df, #f5d48d);
+}
+
+.analist-footer {
+  display: block;
+  margin-top: 14px;
+  color: #b8afcf;
+  font-size: 10px;
+  line-height: 1.7;
+}
+
+.analist-overlay.analysis-complete .analist-emblem {
+  color: #fff8d9;
+  text-shadow:
+    0 0 18px #fff,
+    0 0 38px #f5d48d,
+    0 0 80px #f5d48d99;
+}
+
+.analist-overlay.analysis-complete .analist-phase {
+  color: #b5f2cf;
+}
+
+@keyframes analistOverlayIn {
+  from {
+    opacity: 0;
+    backdrop-filter: blur(0);
+  }
+  to {
+    opacity: 1;
+    backdrop-filter: blur(12px);
+  }
+}
+
+@keyframes analistEmblemScan {
+  0% {
+    opacity: 0;
+    transform: scale(0.12) rotate(-180deg);
+    filter: brightness(0.4);
+  }
+
+  60% {
+    opacity: 1;
+    transform: scale(1.12) rotate(25deg);
+    filter: brightness(1.7);
+  }
+
+  100% {
+    opacity: 1;
+    transform: scale(1) rotate(0deg);
+    filter: brightness(1);
+  }
+}
+
+@media (max-width: 520px) {
+  .analist-stage {
+    padding: 23px 15px;
+  }
+
+  .analist-stage p {
+    font-size: 12px;
+  }
+
+  .analist-caption {
+    font-size: 9px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .analist-overlay,
+  .analist-emblem {
+    animation-duration: 0.01ms;
+  }
+}

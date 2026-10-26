@@ -197,6 +197,21 @@ const HERO_TARGET_ORDER = [
       bossDamage: 72,
       desc: "Beyond the Crucible, an ancient star forge awaits its final challenger.",
       rewardHero: null
+    },
+    {
+      name: "The Null Sanctum",
+      enemy: "Nullbound Wraith",
+      type: "VOID ENTITY",
+      hp: 1300,
+      damage: 48,
+      gold: 280,
+      crystals: 95,
+      sprite: "assets/wisp.svg",
+      boss: "The Null Magistrate",
+      bossHp: 26000,
+      bossDamage: 92,
+      desc: "A sovereign of the void raises an Anti-Magic Barrier ten seconds into battle.",
+      rewardHero: null
     }
   ];
 
@@ -613,7 +628,16 @@ const HERO_TARGET_ORDER = [
   const MUSIC_DUCK_FACTOR = 0.06;
 
   let currentPrompt = null;
-  let lowHealthWarning = false;
+
+let pendingAnalistApproval = false;
+let analysisActive = false;
+let analistOverlay = null;
+let analistRevealTimer = null;
+let analistAutoCloseTimer = null;
+let analysisPausedAt = 0;
+let analysisMusicWasPlaying = false;
+
+let lowHealthWarning = false;
   let importantAudioContext = null;
   let lastImportantSound = 0;
 
@@ -669,6 +693,12 @@ const HERO_TARGET_ORDER = [
 
   const battleLocked = () =>
     s.needsHospital || isRecovering();
+
+  const isAntiMagicBarrierActive = () =>
+  Boolean(s.enemy && s.enemy.antiMagicBarrierActive);
+
+const isAnalistUnlocked = () =>
+  Boolean(s.raphaelEvolved && s.region >= 6);
 
   // Check whether the party is allowed to start an encounter.
 const canStartBattle = () =>
@@ -1067,6 +1097,7 @@ const canStartBattle = () =>
 
   function canUseSkill(key) {
     if (!(key in SKILL_MANA_COST)) return false;
+    if (isAntiMagicBarrierActive()) return false;
     if (!isSkillUnlocked(key)) return false;
     if (battleLocked()) return false;
     if (!livingHeroes().length) return false;
@@ -1106,7 +1137,21 @@ const canStartBattle = () =>
 
     let html = "";
 
-    if (currentPrompt.type === "phoenix") {
+    if (currentPrompt.type === "analist") {
+      html = `
+        <button
+          class="sage-primary"
+          data-sage-action="analistYes"
+        >Yes, use Analist</button>
+
+        <button
+          class="sage-dismiss"
+          data-sage-action="analistNo"
+        >No, not now</button>
+
+        <small>Or say “yes” or “no” aloud.</small>
+      `;
+    } else if (currentPrompt.type === "phoenix") {
       const ready = canUseSkill("phoenix");
 
       html = `
@@ -1697,6 +1742,275 @@ function dismissUnlockReveal() {
     }, delay);
   }
 
+  function activateAntiMagicBarrier() {
+  const enemy = s.enemy;
+
+  if (
+    !enemy ||
+    !enemy.boss ||
+    enemy.uniqueAttack !== "antiMagicBarrier" ||
+    enemy.antiMagicBarrierTriggered
+  ) return;
+
+  enemy.antiMagicBarrierTriggered = true;
+  enemy.antiMagicBarrierActive = true;
+
+  pendingAnalistApproval = true;
+  currentPrompt = { type: "analist" };
+
+  cancelSageSpeech(true);
+
+  const prompt =
+    "Notice: New threat: Anti-Magic Barrier. " +
+    "Would you like me to use Analist? " +
+    "Say yes or no, or choose below.";
+
+  updateSageMessage(prompt);
+  updateSageStatus("NEW THREAT DETECTED");
+
+  log(
+    "The Null Magistrate activated its Anti-Magic Barrier. " +
+    "Combat skills are sealed; snacks remain usable."
+  );
+
+  toast("ANTI-MAGIC BARRIER ACTIVE");
+
+  refreshSagePanel();
+  announce(prompt);
+  render();
+  save();
+}
+
+function answerAnalistPrompt(accepted) {
+  if (!pendingAnalistApproval) return;
+
+  pendingAnalistApproval = false;
+  currentPrompt = null;
+
+  cancelSageSpeech(true);
+
+  if (accepted) {
+    startAnalistAnalysis();
+    return;
+  }
+
+  const reply =
+    "Understood. I will hold my analysis. " +
+    "The Anti-Magic Barrier remains active, combat skills are sealed, " +
+    "and snacks still work.";
+
+  updateSageMessage(reply);
+  announce(reply);
+
+  refreshSagePanel();
+  render();
+  save();
+}
+
+function startAnalistAnalysis() {
+  if (analysisActive) return;
+
+  if (!isAnalistUnlocked()) {
+    toast("Analist unlocks when Raphael reaches Cave 7.");
+    return;
+  }
+
+  const enemy = s.enemy;
+
+  if (!enemy || !(enemy.boss || enemy.uniqueAttack)) {
+    toast("There is no boss or unique attack to analyze right now.");
+    return;
+  }
+
+  pendingAnalistApproval = false;
+  currentPrompt = null;
+
+  clearTimeout(commandIdleTimer);
+  commandIdleTimer = null;
+  commandModeActive = false;
+
+  cancelSageSpeech(true);
+
+  analysisActive = true;
+  analysisPausedAt = Date.now();
+
+  const audio = $("backgroundMusic");
+
+  analysisMusicWasPlaying = Boolean(audio && !audio.paused);
+
+  if (audio) audio.pause();
+
+  document.body.classList.add("analist-paused");
+
+  const barrierDetected =
+    enemy.uniqueAttack === "antiMagicBarrier";
+
+  const titleText = barrierDetected
+    ? "ANTI-MAGIC BARRIER"
+    : `${enemy.name.toUpperCase()} · ATTACK ANALYSIS`;
+
+  const resultText = barrierDetected
+    ? "The Anti-Magic Barrier prevents all combat skills. " +
+      "It weakens magical effects, including the health restored " +
+      "by healer abilities and revival abilities. Snacks are not affected."
+    : `I have scanned ${enemy.name}. Keep watching for its unique ` +
+      "attack pattern; I will identify any special ability that appears.";
+
+  const captionText = barrierDetected
+    ? "THREAT IDENTIFIED · SKILLS SEALED · SNACKS UNAFFECTED"
+    : "BOSS SCAN COMPLETE · OBSERVING UNIQUE ATTACKS";
+
+  const overlay = document.createElement("div");
+
+  overlay.className = "analist-overlay";
+  overlay.setAttribute("role", "dialog");
+  overlay.setAttribute("aria-modal", "true");
+  overlay.setAttribute(
+    "aria-label",
+    "Raphael Analist attack analysis"
+  );
+
+  overlay.innerHTML = `
+    <div class="analist-stage">
+      <div class="analist-eyebrow">
+        RAPHAEL · SPECIAL ABILITY
+      </div>
+
+      <div class="analist-emblem" aria-hidden="true">◈</div>
+
+      <div class="analist-phase" id="analistPhase">
+        ANALIST ACTIVATED
+      </div>
+
+      <h1 id="analistTitle"></h1>
+
+      <p id="analistReadout">
+        Scanning the enemy's unique attack pattern…
+      </p>
+
+      <div class="analist-caption" id="analistCaption"></div>
+
+      <button type="button" class="analist-resume">
+        Resume battle
+      </button>
+
+      <small class="analist-footer">
+        The battle is paused during analysis ·
+        Auto-resumes in 14 seconds
+      </small>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  analistOverlay = overlay;
+
+  overlay.querySelector("#analistTitle").textContent =
+    titleText;
+
+  overlay.querySelector("#analistCaption").textContent =
+    captionText;
+
+  overlay.querySelector(".analist-resume")
+    .addEventListener("click", finishAnalistAnalysis);
+
+  overlay.addEventListener("click", (event) => {
+    if (event.target === overlay) {
+      finishAnalistAnalysis();
+    }
+  });
+
+  updateSageStatus("ANALIST ACTIVE");
+
+  updateSageMessage(
+    "I am analyzing the enemy's unique attack. The battle is paused."
+  );
+
+  refreshSagePanel();
+
+  // Allow the symbol animation to play before revealing the result.
+  analistRevealTimer = window.setTimeout(() => {
+    if (!analysisActive || !analistOverlay) return;
+
+    analistOverlay.classList.add("analysis-complete");
+
+    const phase =
+      analistOverlay.querySelector("#analistPhase");
+
+    const readout =
+      analistOverlay.querySelector("#analistReadout");
+
+    if (phase) phase.textContent = "ANALYSIS COMPLETE";
+    if (readout) readout.textContent = resultText;
+
+    updateSageMessage(resultText);
+
+    if (sageEnabled) {
+      speechQueue.length = 0;
+      speechQueue.push(resultText);
+      processSpeechQueue();
+    }
+  }, 1800);
+
+  analistAutoCloseTimer =
+    window.setTimeout(finishAnalistAnalysis, 14000);
+}
+
+function finishAnalistAnalysis() {
+  if (!analysisActive) return;
+
+  clearTimeout(analistRevealTimer);
+  clearTimeout(analistAutoCloseTimer);
+
+  analistRevealTimer = null;
+  analistAutoCloseTimer = null;
+
+  // Preserve remaining buffs and recovery timers during the pause.
+  const pausedFor = Math.max(
+    0,
+    Date.now() - analysisPausedAt
+  );
+
+  for (const key of [
+    "manaBuffUntil",
+    "partyBuffUntil",
+    "frostUntil",
+    "healingUntil",
+    "elowenSelfReviveAt",
+    "elowenNextReviveAt"
+  ]) {
+    if (Number(s[key]) > analysisPausedAt) {
+      s[key] += pausedFor;
+    }
+  }
+
+  analysisPausedAt = 0;
+  analysisActive = false;
+
+  document.body.classList.remove("analist-paused");
+
+  if (analistOverlay) analistOverlay.remove();
+  analistOverlay = null;
+
+  cancelSageSpeech(true);
+
+  lastTick = performance.now();
+
+  const audio = $("backgroundMusic");
+
+  if (audio && analysisMusicWasPlaying && musicEnabled) {
+    audio.play().catch(() => {});
+  }
+
+  analysisMusicWasPlaying = false;
+
+  updateSageStatus("WAKE WORD READY");
+  updateSageMessage("Analysis complete. The battle has resumed.");
+
+  refreshSagePanel();
+  render();
+  save();
+}
+
   function spawn(boss = false) {
     if (!canStartBattle() || s.enemy) return;
 
@@ -1723,7 +2037,13 @@ function dismissUnlockReveal() {
         gold: Math.floor(90 + s.region * 45),
         crystals: Math.floor(35 + s.region * 20),
         sprite: "assets/boss.svg",
-        boss: true
+        boss: true,
+        bossElapsed: 0,
+        uniqueAttack: s.region === 7
+          ? "antiMagicBarrier"
+          : null,
+        antiMagicBarrierTriggered: false,
+        antiMagicBarrierActive: false
       };
     } else {
       const hp = Math.floor(
@@ -2113,7 +2433,18 @@ function defeatEnemy() {
             "Use it to return one fallen hero to battle."
         });
       }
-    } else {
+      } else if (s.region === 6) {
+        queueUnlockReveal({
+          category: "NEW ABILITY",
+          title: "Analist",
+          symbol: "◈",
+          description:
+            "Raphael studies bosses and identifies unique attacks, revealing their effects and how to respond.",
+          speech:
+            "New ability unlocked: Analist. " +
+            "I can analyze a boss's unique attacks and explain their effects."
+        });
+      }
       log("All cave guardians have fallen. The kingdom is saved!");
 
       // Safety net for older saves missing the feature unlock.
@@ -2168,7 +2499,36 @@ function defeatEnemy() {
   // ==========================================
 
   function skill(key) {
+    if (analysisActive) return;
+
+    // Analist is Raphael's special analysis ability.
+    if (key === "analist") {
+      if (!isAnalistUnlocked()) {
+        return toast("Analist unlocks when Raphael reaches Cave 7.");
+      }
+
+      if (!s.enemy || !(s.enemy.boss || s.enemy.uniqueAttack)) {
+        return toast(
+          "Analist can study a boss or an enemy with a unique attack."
+        );
+      }
+
+      if (pendingAnalistApproval) {
+        answerAnalistPrompt(true);
+      } else {
+        startAnalistAnalysis();
+      }
+
+      return;
+    }
+
     if (!(key in SKILL_MANA_COST)) return;
+
+    if (isAntiMagicBarrierActive()) {
+      return toast(
+        "The Anti-Magic Barrier seals combat skills. Snacks are not affected."
+      );
+    }
 
     if (!isSkillUnlocked(key)) {
       const caveNumber = skillUnlockRegion(key) + 1;
@@ -2621,6 +2981,16 @@ function defeatEnemy() {
 
     if (!action) return false;
 
+        if (action === "analistYes") {
+      answerAnalistPrompt(true);
+      return true;
+    }
+
+    if (action === "analistNo") {
+      answerAnalistPrompt(false);
+      return true;
+    }
+
     if (action === "dismiss") {
       dismissPrompt();
       return true;
@@ -3026,11 +3396,15 @@ s.heroes.forEach((id) => {
       $("enemySprite").src = s.enemy.sprite;
       $("enemySprite").alt = s.enemy.name;
 
-      $("caption").textContent = s.enemy.boss
-        ? "A guardian's ancient power surges…"
-        : "The party fights together!";
+      $("caption").textContent = s.enemy.antiMagicBarrierActive
+        ? "ANTI-MAGIC BARRIER: Combat skills are sealed. Snacks still work."
+        : s.enemy.boss
+          ? "A guardian's ancient power surges…"
+          : "The party fights together!";
 
-      $("status").textContent = "● IN COMBAT";
+      $("status").textContent = s.enemy.antiMagicBarrierActive
+        ? "● ANTI-MAGIC BARRIER"
+        : "● IN COMBAT";
 
       $("hint").textContent =
         "Your party fights automatically. Great Sage speaks up when a hero needs help or a major event occurs.";
@@ -3083,8 +3457,10 @@ s.heroes.forEach((id) => {
       const targetRequired =
         ["slash", "burst", "meteor", "frost"].includes(key);
 
-      if (label) {
-        if (skillLocked || healerRequired) {
+       if (label) {
+        if (isAntiMagicBarrierActive()) {
+          label.textContent = "SEALED";
+        } else if (skillLocked || healerRequired) {
           label.textContent = "LOCKED";
         } else if (s.cooldowns[key] > 0) {
           label.textContent = `${Math.ceil(s.cooldowns[key])}s`;
@@ -3110,6 +3486,42 @@ s.heroes.forEach((id) => {
           s.cooldowns[key] > 0 ||
           s.mana < cost;
       }
+            if (button) {
+        button.disabled =
+          analysisActive ||
+          isAntiMagicBarrierActive() ||
+          battleLocked() ||
+          !livingHeroes().length ||
+          skillLocked ||
+          healerRequired ||
+          (targetRequired && !s.enemy) ||
+          s.cooldowns[key] > 0 ||
+          s.mana < cost;
+      }
+    }
+
+    const analistButton = $("analistBtn");
+    const analistLabel = $("cd-analist");
+
+    const canAnalyzeTarget = Boolean(
+      s.enemy && (s.enemy.boss || s.enemy.uniqueAttack)
+    );
+
+    if (analistButton) {
+      analistButton.hidden = !isAnalistUnlocked();
+
+      analistButton.disabled =
+        analysisActive ||
+        !isAnalistUnlocked() ||
+        !canAnalyzeTarget;
+    }
+
+    if (analistLabel) {
+      analistLabel.textContent = !isAnalistUnlocked()
+        ? "LOCKED"
+        : canAnalyzeTarget
+          ? "READY"
+          : "WAITING";
     }
 
     if (kingdomAutoPilot) {
@@ -3313,9 +3725,15 @@ s.heroes.forEach((id) => {
       r: "heal",
       t: "meteor",
       y: "frost",
-      u: "phoenix"
+      u: "phoenix",
+      i: "analist"
     };
-
+        if (analysisActive) {
+      if (event.key === "Escape") {
+        finishAnalistAnalysis();
+      }
+      return;
+    }
     const key = shortcuts[event.key.toLowerCase()];
 
     if (key) skill(key);
@@ -3328,6 +3746,11 @@ s.heroes.forEach((id) => {
   function tick() {
     const now = Date.now();
     const currentTime = performance.now();
+
+        if (analysisActive) {
+      lastTick = performance.now();
+      return;
+    }
 
     const dt = Math.min(
       0.5,
@@ -3355,7 +3778,12 @@ s.heroes.forEach((id) => {
 }
 
         if (now >= s.elowenSelfReviveAt) {
-          s.heroHp.elowen = Math.ceil(HEROES.elowen.maxHp * 0.3);
+          const selfReviveRatio =
+            isAntiMagicBarrierActive() ? 0.15 : 0.3;
+
+          s.heroHp.elowen = Math.ceil(
+            HEROES.elowen.maxHp * selfReviveRatio
+          );
           s.elowenSelfReviveAt = 0;
           s.elowenNextReviveAt = now + 30000;
           s.needsHospital = false;
@@ -3363,7 +3791,9 @@ s.heroes.forEach((id) => {
           s.hospitalFee = 0;
           showDamage("REVIVED", "party", true);
           announce("Notice: Elowen has revived herself with spirit magic.");
-          log("Elowen revived herself at 30% HP after one minute.");
+          log(
+            `Elowen revived herself at ${Math.round(selfReviveRatio * 100)}% HP after one minute.`
+          );
           render();
           save();
           if (!s.enemy && !battleLocked()) scheduleExplore();
@@ -3382,11 +3812,20 @@ s.heroes.forEach((id) => {
         now >= (s.elowenNextReviveAt || 0) &&
         !battleLocked()
       ) {
-        s.heroHp[fallenAlly] = Math.ceil(HEROES[fallenAlly].maxHp * 0.3);
+        const allyReviveRatio =
+          isAntiMagicBarrierActive() ? 0.15 : 0.3;
+
+        s.heroHp[fallenAlly] = Math.ceil(
+          HEROES[fallenAlly].maxHp * allyReviveRatio
+        );
         s.elowenNextReviveAt = now + 30000;
         showDamage("REVIVED", "party", true);
         announce(`Notice: Elowen revived ${HEROES[fallenAlly].name} with spirit magic.`);
-        log(`Elowen revived ${HEROES[fallenAlly].name} at 30% HP. Her next ally revival is ready in 30 seconds.`);
+        log(
+          `Elowen revived ${HEROES[fallenAlly].name} at ` +
+          `${Math.round(allyReviveRatio * 100)}% HP. ` +
+          "Her next ally revival is ready in 30 seconds."
+        );
         render();
         save();
       }
@@ -3443,6 +3882,22 @@ s.heroes.forEach((id) => {
 
       // Combat timers run only while an enemy exists.
       if (s.enemy) {
+        // Cave 8 boss: activate the Anti-Magic Barrier
+        // ten seconds into the actual fight.
+        if (
+          s.region === 7 &&
+          s.enemy.boss &&
+          s.enemy.uniqueAttack === "antiMagicBarrier" &&
+          !s.enemy.antiMagicBarrierTriggered
+        ) {
+          s.enemy.bossElapsed =
+            (Number(s.enemy.bossElapsed) || 0) + dt;
+
+          if (s.enemy.bossElapsed >= 10) {
+            activateAntiMagicBarrier();
+          }
+        }
+
         partyClock += dt;
         enemyClock += dt;
 
@@ -3473,8 +3928,10 @@ s.heroes.forEach((id) => {
         if (supportClock >= 10) {
           supportClock -= 10;
 
-          const amount =
-            7 + (s.recruits.includes("elise") ? 4 : 0);
+          const amount = Math.floor(
+            (7 + (s.recruits.includes("elise") ? 4 : 0)) *
+            (isAntiMagicBarrierActive() ? 0.5 : 1)
+          );
 
           let healedAnyone = false;
 
@@ -3662,6 +4119,7 @@ if (dock) {
     const speechAliases = [
 
       [/\b(?:rafael|rafayel|raffel|raphaell|raphiel)\b/g, "raphael"],
+      [/\b(?:anilist|analyst)\b/g, "analist"],
       // "Trail Rations" said casually as "tral rations", or transcribed
       // as "trail ratios", "trail ratings", etc.
       [/\b(?:tral|trale|trail|trial|treyl)\s+(?:rations?|raitions?|ratons?|ratios|ratings|raytions?)\b/g, "trail rations"],
@@ -3731,6 +4189,9 @@ function stripWakePhrase(text) {
   }
 
   function voiceSkillUnavailableReason(key) {
+        if (isAntiMagicBarrierActive()) {
+      return "The Anti-Magic Barrier seals combat skills. Snacks are not affected.";
+    }
     if (!isSkillUnlocked(key)) return `${skillVoiceLabel(key)} unlocks in Cave ${skillUnlockRegion(key) + 1}.`;
     if (s.needsHospital) return "The party needs hospital treatment first.";
     if (isRecovering()) return "The party is still recovering.";
@@ -4003,7 +4464,35 @@ announce(
       return;
     }
 
+    if (
+      pendingAnalistApproval &&
+      /^(?:yes|yeah|yep|sure|okay|ok|do it|go ahead|affirmative)$/.test(text)
+    ) {
+      answerAnalistPrompt(true);
+      return;
+    }
+
+    if (
+      pendingAnalistApproval &&
+      /^(?:no|nope|not now|don.t|do not|negative)$/.test(text)
+    ) {
+      answerAnalistPrompt(false);
+      return;
+    }
+
     if (pendingSnackApproval && handleSnackYesNo(text)) return;
+
+    // Manually request an Analist scan by voice.
+    if (
+      /\b(?:use|run|activate|start)\s+(?:the\s+)?analist\b/.test(text)
+    ) {
+      if (pendingAnalistApproval) {
+        answerAnalistPrompt(true);
+      } else {
+        startAnalistAnalysis();
+      }
+      return;
+    }
 
     // Battle Autopilot is always available.
     if (/\b(?:annihilate|anihalate|annihalate|eliminate)\b.*\b(?:enemy|enemies|monster|monsters|them|it)\b/.test(text) || /^annihilate(?: the)? enemy$/.test(text)) {
@@ -4351,6 +4840,24 @@ announce(
         cancelSageSpeech(true);
         ignoreRecognitionUntil = 0;
         handleVoiceCommand(text);
+        continue;
+      }
+
+            if (pendingAnalistApproval && yesNo && result.isFinal) {
+        cancelSageSpeech(true);
+        ignoreRecognitionUntil = 0;
+        handleVoiceCommand(text);
+        continue;
+      }
+
+      // While the analysis scene is active, ignore other voice commands.
+      if (analysisActive) {
+        if (
+          result.isFinal &&
+          /\b(?:resume|continue|close analysis|done)\b/i.test(text)
+        ) {
+          finishAnalistAnalysis();
+        }
         continue;
       }
 
