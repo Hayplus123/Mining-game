@@ -2440,11 +2440,11 @@ function defeatEnemy() {
           symbol: "◈",
           description:
             "Raphael studies bosses and identifies unique attacks, revealing their effects and how to respond.",
-          speech:
-            "New ability unlocked: Analist. " +
-            "I can analyze a boss's unique attacks and explain their effects."
+         speech:
+          "I can analyze a boss's unique attacks and explain their effects."
         });
       }
+    } else {
       log("All cave guardians have fallen. The kingdom is saved!");
 
       // Safety net for older saves missing the feature unlock.
