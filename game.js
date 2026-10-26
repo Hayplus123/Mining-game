@@ -4710,4 +4710,4 @@ if (s.autoPilotUnlocked && !s.raphaelEvolved) {
     tick();
     updateAutopilotStatusIndicators();
   }, 200);
-})();
+)();
