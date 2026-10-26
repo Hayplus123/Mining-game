@@ -1386,6 +1386,13 @@ function dismissUnlockReveal() {
   }
 
   unlockRevealActive = false;
+
+  // Start Raphael's evolution after all queued unlocks finish.
+  if (s.region >= 6 && s.autoPilotUnlocked && !s.raphaelEvolved) {
+    triggerRaphaelEvolution();
+    return;
+  }
+
   refreshSagePanel();
 }
 
@@ -2069,7 +2076,7 @@ function partyWiped() {
             "Say Great Sage, activate autopilot to let me manage your kingdom."
         });
       }
-      
+
       if (clearedRegion < regions.length - 1) {
         s.region = clearedRegion + 1;
         s.caveCrystalProgress = 0;
