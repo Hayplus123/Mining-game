@@ -1320,16 +1320,8 @@ function ensureUnlockRevealOverlay() {
 
 function showNextUnlockReveal() {
   if (!unlockRevealQueue.length) {
-  unlockRevealActive = false;
-
-  // Evolve only after every queued unlock card has finished.
-  if (s.region >= 6 && s.autoPilotUnlocked && !s.raphaelEvolved) {
-    triggerRaphaelEvolution();
-    return;
-  }
-
-  refreshSagePanel();
-}
+    unlockRevealActive = false;
+    refreshSagePanel();
     return;
   }
 
@@ -1337,7 +1329,7 @@ function showNextUnlockReveal() {
 
   const item = unlockRevealQueue.shift();
 
-  // Interrupt current speech and discard every old queued announcement.
+  // Interrupt old speech and discard queued announcements.
   cancelSageSpeech(true);
 
   const overlay = ensureUnlockRevealOverlay();
@@ -1358,11 +1350,12 @@ function showNextUnlockReveal() {
     item.category || "NEW DISCOVERY";
 
   $("unlockRevealTitle").textContent = item.title;
-  $("unlockRevealDescription").textContent = item.description || "";
+  $("unlockRevealDescription").textContent =
+    item.description || "";
 
   overlay.hidden = false;
 
-  // Give the Great Sage queue only this unlock announcement.
+  // Speak only the current unlock announcement.
   updateSageMessage(item.speech || item.title);
 
   if (sageEnabled && item.speech) {
@@ -1373,6 +1366,7 @@ function showNextUnlockReveal() {
 
   clearTimeout(unlockRevealTimer);
 
+  // Unlock cards stay visible for 10 seconds.
   unlockRevealTimer = setTimeout(() => {
     dismissUnlockReveal();
   }, 10000);
