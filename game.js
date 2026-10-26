@@ -1408,147 +1408,133 @@ const HERO_TARGET_ORDER = [
   }
 
   function enemyHitEffect() {
-    function enemyHitEffect() {
-  const enemy = $("enemyVisual");
+    const enemy = $("enemyVisual");
 
-  if (enemy) {
-    enemy.classList.remove("hit");
-    void enemy.offsetWidth;
-    enemy.classList.add("hit");
-  }
-}
-
-function animateHeroAttack(id) {
-  const party = $("battleParty");
-  const hero = party &&
-    party.querySelector(`[data-hero="${id}"]`);
-
-  if (!hero || hero.classList.contains("fallen")) return;
-
-  const usesBow = id === "liria";
-  const usesSword = [
-    "aiden",
-    "ragnar",
-    "kael_rogue"
-  ].includes(id);
-
-  const animationClass = usesBow
-    ? "attack-bow"
-    : usesSword
-      ? "attack-sword"
-      : "attack-cast";
-
-  hero.classList.remove(
-    "attack-bow",
-    "attack-sword",
-    "attack-cast"
-  );
-
-  // Restart the animation even if the hero attacked recently.
-  void hero.offsetWidth;
-  hero.classList.add(animationClass);
-
-  window.setTimeout(() => {
-    hero.classList.remove(animationClass);
-  }, 500);
-
-  if (usesBow) {
-    launchArrow(hero);
+    if (enemy) {
+      enemy.classList.remove("hit");
+      void enemy.offsetWidth;
+      enemy.classList.add("hit");
+    }
   }
 
-  if (usesSword) {
-    launchSwordSlash();
-  }
-}
+  function animateHeroAttack(id) {
+    const party = $("battleParty");
+    const hero = party &&
+      party.querySelector(`[data-hero="${id}"]`);
 
-function launchArrow(hero) {
-  const scene = $("scene");
-  const enemy = $("enemyVisual");
+    if (!hero || hero.classList.contains("fallen")) return;
 
-  if (
-    !scene ||
-    !enemy ||
-    enemy.classList.contains("hidden")
-  ) {
-    return;
-  }
+    const usesBow = id === "liria";
+    const usesSword = [
+      "aiden",
+      "ragnar",
+      "kael_rogue"
+    ].includes(id);
 
-  const sceneRect = scene.getBoundingClientRect();
-  const heroRect = hero.getBoundingClientRect();
-  const enemyRect = enemy.getBoundingClientRect();
+    const animationClass = usesBow
+      ? "attack-bow"
+      : usesSword
+        ? "attack-sword"
+        : "attack-cast";
 
-  // Starting point near the archer, ending point near the enemy.
-  const startX =
-    heroRect.left + heroRect.width * 0.72 - sceneRect.left;
-  const startY =
-    heroRect.top + heroRect.height * 0.38 - sceneRect.top;
+    hero.classList.remove(
+      "attack-bow",
+      "attack-sword",
+      "attack-cast"
+    );
 
-  const endX =
-    enemyRect.left + enemyRect.width * 0.24 - sceneRect.left;
-  const endY =
-    enemyRect.top + enemyRect.height * 0.42 - sceneRect.top;
+    void hero.offsetWidth;
+    hero.classList.add(animationClass);
 
-  const arrow = document.createElement("span");
+    window.setTimeout(() => {
+      hero.classList.remove(animationClass);
+    }, 500);
 
-  arrow.className = "attack-projectile arrow-projectile";
-
-  arrow.style.left = `${startX}px`;
-  arrow.style.top = `${startY}px`;
-
-  arrow.style.setProperty(
-    "--travel-x",
-    `${endX - startX}px`
-  );
-
-  arrow.style.setProperty(
-    "--travel-y",
-    `${endY - startY}px`
-  );
-
-  arrow.style.setProperty(
-    "--angle",
-    `${Math.atan2(
-      endY - startY,
-      endX - startX
-    ) * 180 / Math.PI}deg`
-  );
-
-  scene.appendChild(arrow);
-
-  window.setTimeout(() => arrow.remove(), 520);
-}
-
-function launchSwordSlash() {
-  const scene = $("scene");
-  const enemy = $("enemyVisual");
-
-  if (
-    !scene ||
-    !enemy ||
-    enemy.classList.contains("hidden")
-  ) {
-    return;
+    if (usesBow) launchArrow(hero);
+    if (usesSword) launchSwordSlash();
   }
 
-  const sceneRect = scene.getBoundingClientRect();
-  const enemyRect = enemy.getBoundingClientRect();
+  function launchArrow(hero) {
+    const scene = $("scene");
+    const enemy = $("enemyVisual");
 
-  const slash = document.createElement("span");
+    if (
+      !scene ||
+      !enemy ||
+      enemy.classList.contains("hidden")
+    ) return;
 
-  slash.className = "attack-projectile sword-slash";
+    const sceneRect = scene.getBoundingClientRect();
+    const heroRect = hero.getBoundingClientRect();
+    const enemyRect = enemy.getBoundingClientRect();
 
-  slash.style.left =
-    `${enemyRect.left - sceneRect.left +
-      enemyRect.width * 0.18 - 25}px`;
+    const startX =
+      heroRect.left + heroRect.width * 0.72 - sceneRect.left;
+    const startY =
+      heroRect.top + heroRect.height * 0.38 - sceneRect.top;
 
-  slash.style.top =
-    `${enemyRect.top - sceneRect.top +
-      enemyRect.height * 0.38 - 25}px`;
+    const endX =
+      enemyRect.left + enemyRect.width * 0.24 - sceneRect.left;
+    const endY =
+      enemyRect.top + enemyRect.height * 0.42 - sceneRect.top;
 
-  scene.appendChild(slash);
+    const arrow = document.createElement("span");
+    arrow.className = "attack-projectile arrow-projectile";
 
-  window.setTimeout(() => slash.remove(), 420);
-}
+    arrow.style.left = `${startX}px`;
+    arrow.style.top = `${startY}px`;
+
+    arrow.style.setProperty(
+      "--travel-x",
+      `${endX - startX}px`
+    );
+
+    arrow.style.setProperty(
+      "--travel-y",
+      `${endY - startY}px`
+    );
+
+    arrow.style.setProperty(
+      "--angle",
+      `${Math.atan2(
+        endY - startY,
+        endX - startX
+      ) * 180 / Math.PI}deg`
+    );
+
+    scene.appendChild(arrow);
+
+    window.setTimeout(() => arrow.remove(), 520);
+  }
+
+  function launchSwordSlash() {
+    const scene = $("scene");
+    const enemy = $("enemyVisual");
+
+    if (
+      !scene ||
+      !enemy ||
+      enemy.classList.contains("hidden")
+    ) return;
+
+    const sceneRect = scene.getBoundingClientRect();
+    const enemyRect = enemy.getBoundingClientRect();
+
+    const slash = document.createElement("span");
+    slash.className = "attack-projectile sword-slash";
+
+    slash.style.left =
+      `${enemyRect.left - sceneRect.left +
+        enemyRect.width * 0.18 - 25}px`;
+
+    slash.style.top =
+      `${enemyRect.top - sceneRect.top +
+        enemyRect.height * 0.38 - 25}px`;
+
+    scene.appendChild(slash);
+
+    window.setTimeout(() => slash.remove(), 420);
+  }
 
   // ==========================================
   // AUTOMATIC EXPLORATION
