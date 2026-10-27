@@ -656,9 +656,9 @@
   let lastImportantSound = 0;
 
   const MUSIC_TRACKS = {
-    exploring: { src: "assets/exploring.wav", label: "Exploration theme" },
-    fighting: { src: "assets/fighting.wav", label: "Battle theme" },
-    intense: { src: "assets/intense.wav", label: "Boss theme" }
+    exploring: { src: "assets/exploring.mp3", label: "Exploration theme" },
+    fighting: { src: "assets/fighting.mp3", label: "Battle theme" },
+    intense: { src: "assets/intense.mp3", label: "Boss theme" }
   };
 
   let currentMusicKey = null;
