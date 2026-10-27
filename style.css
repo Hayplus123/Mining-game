@@ -198,7 +198,6 @@ button:focus-visible {
   font: 38px/1.12 'Marcellus', serif;
   margin: 0;
 }
-
 .banner h1 em {
   font-style: normal;
   color: #d2adff;
@@ -399,6 +398,7 @@ button:focus-visible {
   animation: idleFloat 2.8s ease-in-out infinite;
   transition: width .28s ease, height .28s ease, filter .2s ease, opacity .2s ease;
 }
+}
 
 /* Front-line formation: rank 1 is nearest to the enemy on the right. */
 .party .battle-hero {
@@ -597,7 +597,6 @@ button:focus-visible {
   min-width: 0;
   flex: 1;
 }
-
 .portrait {
   width: 61px;
   height: 76px;
@@ -798,7 +797,7 @@ button:focus-visible {
 }
 
 .skill strong {
-  font-size: 8px;
+    font-size: 8px;
   color: #a4edc0;
   white-space: nowrap;
 }
@@ -998,7 +997,7 @@ button:focus-visible {
 
 .hospital-pill {
   color: #ffb8c2;
-  border-color: #ff8eaa38;
+    border-color: #ff8eaa38;
   background: #ff8eaa0d;
 }
 
@@ -1198,7 +1197,6 @@ footer {
 .party .battle-hero.attack-bow {
   animation: bowDraw .34s ease-out both;
 }
-
 .party .battle-hero.attack-sword {
   animation: swordLunge .32s ease-out both;
 }
@@ -1398,7 +1396,7 @@ footer {
   }
 
   70% {
-    transform: rotate(92deg) translateY(5px) scale(.78);
+        transform: rotate(92deg) translateY(5px) scale(.78);
   }
 
   100% {
@@ -1598,7 +1596,7 @@ footer {
 }
 
 @keyframes sageVoicePulse {
-  0%, 100% {
+    0%, 100% {
     transform: scale(1);
   }
 
@@ -1798,7 +1796,7 @@ footer {
 
   .party img,
   .party img:nth-child(2),
-  .party img:nth-child(3) {
+    .party img:nth-child(3) {
     width: 45px;
     height: 76px;
     margin-left: -7px;
@@ -1998,7 +1996,7 @@ footer {
   }
 
   to {
-    transform: rotate(360deg);
+        transform: rotate(360deg);
   }
 }
 
@@ -2198,7 +2196,7 @@ footer {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
-}
+  }
 
 .unlock-reveal-button:hover {
   background: linear-gradient(135deg, #98642b, #623c1a);
@@ -2398,7 +2396,7 @@ footer {
 
 /* Keep the Kingdom Autopilot spin without reverting to red. */
 .sage-orb.is-raphael.is-kingdom-auto {
-  animation: sageKingdomPilotSpin 12s linear infinite;
+    animation: sageKingdomPilotSpin 12s linear infinite;
 }
 
 @keyframes raphaelBackdropIn {
@@ -2598,7 +2596,7 @@ body.analist-paused .analist-overlay * {
   color: #fff8d9;
   text-shadow:
     0 0 18px #fff,
-    0 0 38px #f5d48d,
+        0 0 38px #f5d48d,
     0 0 80px #f5d48d99;
 }
 
@@ -2656,4 +2654,127 @@ body.analist-paused .analist-overlay * {
   .analist-emblem {
     animation-duration: 0.01ms;
   }
+}
+
+/* RAPHAEL ANALIST + RESIST OVERLAYS */
+.gameplay-paused { cursor: default; }
+.analist-overlay,
+.resist-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 100000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  color: #fff7df;
+  background: radial-gradient(circle at 50% 40%, rgba(40,57,100,.96), rgba(5,8,22,.985) 70%);
+  backdrop-filter: blur(10px);
+}
+.analist-overlay[hidden],
+.resist-overlay[hidden] { display: none !important; }
+.analist-stage,
+.resist-stage {
+  width: min(760px, 94vw);
+  text-align: center;
+  padding: clamp(24px, 5vw, 52px);
+  border: 1px solid rgba(228,197,131,.45);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(24,34,61,.95), rgba(12,16,35,.97));
+  box-shadow: 0 30px 100px rgba(0,0,0,.6), 0 0 50px rgba(102,160,255,.12);
+  overflow: hidden;
+}
+.analist-kicker,
+.resist-kicker { letter-spacing: .24em; color: #dfc586; font-size: .78rem; font-weight: 800; }
+.analist-emblem {
+  width: clamp(128px, 22vw, 220px);
+  height: clamp(128px, 22vw, 220px);
+  margin: 18px auto 24px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  font-size: clamp(84px, 15vw, 144px);
+  color: #ffe3a2;
+  text-shadow: 0 0 22px #d3b2ff, 0 0 55px #75b6ff;
+  background: radial-gradient(circle, rgba(143,175,255,.32), rgba(74,64,139,.13) 58%, transparent 70%);
+  animation: analistPulse 2s ease-in-out infinite;
+}
+.analist-stage h1,
+.resist-stage h1 { margin: 10px 0; font-size: clamp(1.55rem, 4vw, 2.7rem); letter-spacing: .06em; }
+.analist-stage p,
+.resist-stage p { max-width: 590px; margin: 12px auto; color: #e5e9f7; line-height: 1.6; }
+.analist-readout,
+.resist-readout {
+  margin: 24px auto 8px;
+  padding: 18px;
+  border: 1px solid rgba(151,178,245,.3);
+  border-radius: 16px;
+  background: rgba(6,10,25,.55);
+  text-align: left;
+  line-height: 1.7;
+}
+.analist-readout strong,
+.resist-readout strong { color: #f1d89d; }
+.resist-shield {
+  position: relative;
+  width: 150px;
+  height: 170px;
+  margin: 22px auto 18px;
+  display: grid;
+  place-items: center;
+  clip-path: polygon(50% 0, 92% 18%, 86% 65%, 50% 100%, 14% 65%, 8% 18%);
+  background: linear-gradient(145deg, #d9f7ff, #719de8 44%, #a68bfa);
+  color: #111e3b;
+  font-size: 72px;
+  filter: drop-shadow(0 0 20px #87cbff);
+  animation: shieldCharge 1.5s ease-in-out infinite;
+}
+.resist-shield.burst { animation: shieldBurst 1.05s ease-out forwards; }
+.resist-fragment {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 12px;
+  height: 22px;
+  background: #d9f7ff;
+  border-radius: 3px;
+  box-shadow: 0 0 12px #8ed9ff;
+  animation: shieldFragment .9s ease-out forwards;
+}
+.resist-buttons { margin-top: 20px; }
+.resist-continue {
+  border: 1px solid #dec58b;
+  background: linear-gradient(135deg, #e7d19b, #a78b52);
+  color: #19203a;
+  border-radius: 999px;
+  padding: 11px 26px;
+  font-weight: 800;
+  cursor: pointer;
+}
+.resist-continue[hidden] { display: none; }
+.barrier-active { outline: 2px solid rgba(185,139,255,.85); box-shadow: 0 0 24px rgba(147,111,255,.35); }
+.cataclysm-flash { animation: cataclysmFlash .8s ease-out; }
+.analist-skill { border-color: rgba(207,174,255,.45) !important; }
+.resist-skill { border-color: rgba(139,210,255,.42) !important; }
+.skill[hidden] { display: none !important; }
+@keyframes analistPulse {
+  0%, 100% { transform: scale(.96); filter: brightness(.9); }
+  50% { transform: scale(1.04); filter: brightness(1.35); }
+}
+@keyframes shieldCharge {
+  0%, 100% { transform: scale(.94); filter: brightness(.9); }
+  50% { transform: scale(1.06); filter: brightness(1.4); }
+}
+@keyframes shieldBurst {
+  0% { transform: scale(1); opacity: 1; }
+  45% { transform: scale(1.25); filter: brightness(2); }
+  100% { transform: scale(.3); opacity: 0; }
+}
+@keyframes shieldFragment {
+  to { transform: translate(var(--fx), var(--fy)) rotate(var(--fr)); opacity: 0; }
+}
+@keyframes cataclysmFlash {
+  0% { filter: brightness(1); }
+  20% { filter: brightness(2.5) saturate(1.7); }
+  100% { filter: brightness(1); }
 }

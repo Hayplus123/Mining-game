@@ -49,7 +49,7 @@
       <h1>Rise of the <em>Crystal</em><br>Kingdom</h1>
       <p>
         Explore forgotten caves, defeat their guardians,
-        and welcome a new hero after every cave clear.
+        and discover what lies beyond each seal.
       </p>
 
       <div class="region">
@@ -224,7 +224,7 @@
             <p class="eyebrow">TACTICAL ARTS</p>
             <h2>Skills</h2>
           </div>
-<span class="muted">Q · W · E · R · T · Y · U · I</span>
+          <span class="muted" id="skillShortcutHint">Q · W · E · R · T · Y · U · I</span>
         </div>
 
         <div class="skill-grid">
@@ -246,7 +246,7 @@
             <strong id="cd-guard">READY</strong>
           </button>
 
-          <button class="skill" data-skill="heal">
+          <button class="skill" data-skill="heal" hidden>
             <span class="skillicon green">✚</span>
             <span><b>Healing Wave</b><small>Restore health to living heroes</small></span>
             <strong id="cd-heal">LOCKED</strong>
@@ -264,21 +264,21 @@
             <strong id="cd-frost">READY</strong>
           </button>
 
-          <button class="skill" data-skill="phoenix">
+          <button class="skill" data-skill="phoenix" hidden>
             <span class="skillicon gold">✧</span>
             <span><b>Phoenix Blessing</b><small>Revive one fallen hero</small></span>
             <strong id="cd-phoenix">LOCKED</strong>
           </button>
 
           <button class="skill analist-skill" data-skill="analist"
-  id="analistBtn" hidden>
-  <span class="skillicon gold">◈</span>
-  <span>
-    <b>Analist</b>
-    <small>Analyze a boss's unique attack</small>
-  </span>
-  <strong id="cd-analist">LOCKED</strong>
-</button>
+            id="analistBtn" hidden>
+            <span class="skillicon gold">◈</span>
+            <span>
+              <b>Analist</b>
+              <small>Analyze a boss's unique attack</small>
+            </span>
+            <strong id="cd-analist">LOCKED</strong>
+          </button>
         </div>
 
         <p class="hint">Skills consume mana. Mana regenerates automatically.</p>
@@ -362,7 +362,7 @@
     </div>
 
     <p id="sageMessage">Standing by.</p>
-        <!-- Great Sage Autopilot Status -->
+    <!-- Great Sage Autopilot Status -->
     <section class="sage-autopilot-status" aria-label="Autopilot modes">
       <p class="sage-autopilot-heading">AUTOPILOT MODES</p>
 
@@ -394,7 +394,7 @@
 
       <p class="sage-autopilot-help" id="sageAutopilotHelp">
         Battle Autopilot is ready when you need it.
-        Kingdom Autopilot unlocks after defeating the new cave guardian.
+        Further management features may become available as you explore.
       </p>
     </section>
     <div class="sage-actions" id="sageActions" hidden></div>
