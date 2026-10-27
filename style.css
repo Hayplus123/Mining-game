@@ -398,7 +398,6 @@ button:focus-visible {
   animation: idleFloat 2.8s ease-in-out infinite;
   transition: width .28s ease, height .28s ease, filter .2s ease, opacity .2s ease;
 }
-}
 
 /* Front-line formation: rank 1 is nearest to the enemy on the right. */
 .party .battle-hero {
