@@ -73,15 +73,51 @@
       maxHp: 116,
       damage: 12,
       tagline: "Elowen revives one fallen ally every 30 seconds. If she falls, she revives herself after 60 seconds."
+    },
+    brann: {
+      name: "Brann",
+      role: "Guardian · Front-line defender",
+      portrait: "assets/brann.svg",
+      maxHp: 176,
+      damage: 16,
+      tagline: "A steadfast shield who can take a hit and keep the front line standing."
+    },
+    nyx: {
+      name: "Nyx",
+      role: "Void Arcanist · Magic DPS",
+      portrait: "assets/nyx.svg",
+      maxHp: 110,
+      damage: 25,
+      tagline: "Bends the quiet power of the void into precise magical strikes."
+    },
+    orion: {
+      name: "Orion",
+      role: "Star Ranger · Ranged DPS",
+      portrait: "assets/orion.svg",
+      maxHp: 122,
+      damage: 23,
+      tagline: "A sharp-eyed explorer whose star shots rarely miss their mark."
+    },
+    vespera: {
+      name: "Vespera",
+      role: "Rift Champion · Heavy DPS",
+      portrait: "assets/vespera.svg",
+      maxHp: 162,
+      damage: 28,
+      tagline: "A final-cave champion who strikes with the force of a collapsing rift."
     }
   };
 
   // Shared order for enemy targeting and front-line formation.
   const HERO_TARGET_ORDER = [
     "aiden",
+    "brann",
     "ragnar",
+    "vespera",
     "kael_rogue",
+    "orion",
     "seraphine",
+    "nyx",
     "liria",
     "celeste",
     "sage",
@@ -181,7 +217,7 @@
       bossHp: 11500,
       bossDamage: 68,
       desc: "A quiet sentinel waits inside a chamber of forgotten mechanisms.",
-      rewardHero: null
+      rewardHero: "brann"
     },
     {
       name: "The Astral Foundry",
@@ -196,7 +232,7 @@
       bossHp: 13500,
       bossDamage: 72,
       desc: "Beyond the Crucible, an ancient star forge awaits its challenger.",
-      rewardHero: null
+      rewardHero: "nyx"
     },
     {
       name: "The Null Sanctum",
@@ -211,7 +247,7 @@
       bossHp: 24000,
       bossDamage: 88,
       desc: "A silent sovereign waits beyond a sealed passage.",
-      rewardHero: null
+      rewardHero: "orion"
     },
     {
       name: "The Shattered Crown",
@@ -226,7 +262,7 @@
       bossHp: 33000,
       bossDamage: 106,
       desc: "A broken throne casts a long shadow across the final reaches.",
-      rewardHero: null
+      rewardHero: "vespera"
     }
   ];
 
@@ -317,7 +353,7 @@
     }
   ];
 
-    const SNACKS = [
+  const SNACKS = [
     {
       id: "rations",
       name: "Trail Rations",
@@ -498,6 +534,14 @@
       if (reward && !state.heroes.includes(reward)) state.heroes.push(reward);
     });
 
+    // Backfill health for heroes newly granted by this update when an older save
+    // already recorded a cleared cave but never had a reward hero for it.
+    state.heroes.forEach((id) => {
+      if (state.heroHp[id] === undefined || state.heroHp[id] === null) {
+        state.heroHp[id] = HEROES[id].maxHp;
+      }
+    });
+
     state.region = Math.max(
       0,
       Math.min(regions.length - 1, Number(state.region) || 0)
@@ -612,9 +656,9 @@
   let lastImportantSound = 0;
 
   const MUSIC_TRACKS = {
-    exploring: { src: "assets/exploring.mp3", label: "Exploration theme" },
-    fighting: { src: "assets/fighting.mp3", label: "Battle theme" },
-    intense: { src: "assets/intense.mp3", label: "Boss theme" }
+    exploring: { src: "assets/exploring.wav", label: "Exploration theme" },
+    fighting: { src: "assets/fighting.wav", label: "Battle theme" },
+    intense: { src: "assets/intense.wav", label: "Boss theme" }
   };
 
   let currentMusicKey = null;
@@ -848,7 +892,8 @@
       currentMusicKey = key;
       audio.src = track.src;
       audio.load();
-            if (musicEnabled) startBackgroundMusic();
+
+      if (musicEnabled) startBackgroundMusic();
     }
 
     updateMusicControl();
@@ -1020,7 +1065,7 @@
     for (const pattern of preferredPatterns) {
       const matches = english.filter((voice) => pattern.test(voice.name));
       if (matches.length) {
-        const natural = matches.find((voice) => /natural/i.test(voice.name));
+const natural = matches.find((voice) => /natural/i.test(voice.name));
         return natural || matches[0];
       }
     }
@@ -1096,7 +1141,8 @@
       updateSageStatus(commandModeActive ? "LISTENING" : "WAKE WORD READY");
       updateMusicControl();
       refreshSagePanel();
-            setTimeout(() => {
+
+      setTimeout(() => {
         if (speechQueue.length) {
           processSpeechQueue();
         } else if (returnToIdleAfterSpeech || standDownAfterReply) {
@@ -1366,7 +1412,8 @@
 
     if (box.innerHTML !== html) box.innerHTML = html;
   }
-    function showPhoenixPrompt(heroId) {
+
+  function showPhoenixPrompt(heroId) {
     if (!livingHeroes().length || autopilotActive() || isGameplayPaused()) return;
 
     const accepted = showPrompt({ type: "phoenix", heroId });
@@ -1592,7 +1639,8 @@
     scene.appendChild(slash);
     setTimeout(() => slash.remove(), 420);
   }
-    function scheduleExplore(delay = 10000 + Math.random() * 10000) {
+
+  function scheduleExplore(delay = 10000 + Math.random() * 10000) {
     clearTimeout(exploreTimer);
 
     if (isGameplayPaused() || s.enemy || battleLocked() || !livingHeroes().length) return;
@@ -1810,7 +1858,8 @@
   function getBarrierDelaySeconds() {
     return s.region >= 8 ? 5 : 10;
   }
-    function activateAntiMagicBarrier() {
+
+  function activateAntiMagicBarrier() {
     const enemy = s.enemy;
 
     if (
@@ -1974,7 +2023,8 @@
       analistRevealTimer = setTimeout(finish, 6500);
     }, 1700);
   }
-    function shuffleList(items) {
+
+  function shuffleList(items) {
     const copy = items.slice();
 
     for (let i = copy.length - 1; i > 0; i--) {
@@ -2217,7 +2267,8 @@
       }, 1250);
     }, 1200);
   }
-    function enemyAreaAttack() {
+
+  function enemyAreaAttack() {
     const enemy = s.enemy;
 
     if (!enemy || !enemy.boss || s.region !== 7 || battleLocked()) return;
@@ -2471,7 +2522,8 @@
     render();
     save();
   }
-    // ==========================================
+
+  // ==========================================
   // ENEMY ATTACKS
   // ==========================================
 
@@ -2580,7 +2632,7 @@
   }
 
   // ==========================================
-  // VICTORY AND NEW HEROES
+// VICTORY AND NEW HEROES
   // ==========================================
 
   function defeatEnemy() {
@@ -2719,7 +2771,8 @@
       finishBattleAutopilot();
     }
   }
-    // ==========================================
+
+  // ==========================================
   // SKILLS
   // ==========================================
 
@@ -2946,7 +2999,8 @@
     render();
     save();
   }
-    // ==========================================
+
+  // ==========================================
   // SNACKS
   // ==========================================
 
@@ -3259,7 +3313,8 @@
     $("partyPower").textContent = `PARTY POWER · ${fmt(totalPartyDamage())}`;
     $("partyAttackLabel").textContent = `Attack interval: ${pInterval().toFixed(1)}s`;
   }
-    function renderRewards() {
+
+  function renderRewards() {
     const next = $("nextHeroCard");
     const rewardId = region().rewardHero;
 
@@ -3431,7 +3486,8 @@
     if (healthIsLow && !lowHealthWarning) {
       lowHealthWarning = true;
     }
-        if (ratios.every((ratio) => ratio >= 0.65)) {
+
+    if (ratios.every((ratio) => ratio >= 0.65)) {
       lowHealthWarning = false;
 
       if (currentPrompt && currentPrompt.type === "lowHealth") {
@@ -3439,6 +3495,55 @@
         refreshSagePanel();
       }
     }
+  }
+
+  // ==========================================
+  // CAVE ATLAS — ALWAYS SHOW THE WHOLE JOURNEY
+  // ==========================================
+
+  function renderCaveAtlas() {
+    const grid = $("caveAtlas");
+    const count = $("caveAtlasCount");
+    if (!grid || !count) return;
+
+    const clearedCount = s.bossDefeated.filter(
+      (index) => Number.isInteger(index) && index >= 0 && index < regions.length
+    ).length;
+    count.textContent = `${clearedCount} / ${regions.length} CLEARED`;
+
+    grid.innerHTML = regions.map((cave, index) => {
+      const cleared = s.bossDefeated.includes(index);
+      const current = !cleared && index === s.region;
+      const state = cleared ? "cleared" : current ? "current" : index < s.region ? "unlocked" : index === s.region ? "current" : "locked";
+      const status = cleared ? "CLEARED" : current ? "CURRENT CAVE" : index < s.region ? "OPEN" : "SEALED";
+      const hero = cave.rewardHero ? HEROES[cave.rewardHero] : null;
+      const heroName = hero ? hero.name : "Unknown reward";
+      const heroRole = hero ? hero.role : "";
+      const statusIcon = cleared ? "✓" : current ? "◆" : index < s.region ? "◈" : "🔒";
+
+      return `
+        <article class="cave-atlas-card" data-state="${state}">
+          <div class="cave-atlas-card-top">
+            <span class="cave-atlas-number">CAVE ${String(index + 1).padStart(2, "0")}</span>
+            <span class="cave-atlas-status">${statusIcon} ${status}</span>
+          </div>
+          <h3>${esc(cave.name)}</h3>
+          <p class="cave-atlas-desc">${esc(cave.desc)}</p>
+          <div class="cave-atlas-detail">
+            <span>Guardian</span>
+            <strong>${esc(cave.boss)}</strong>
+          </div>
+          <div class="cave-atlas-reward">
+            <span class="cave-atlas-reward-icon">✦</span>
+            <div>
+              <small>GUARDIAN REWARD · NEW HERO</small>
+              <strong>${esc(heroName)}</strong>
+              <small>${esc(heroRole)}</small>
+            </div>
+          </div>
+        </article>
+      `;
+    }).join("");
   }
 
   // ==========================================
@@ -3673,6 +3778,7 @@
 
     renderParty();
     renderRewards();
+    renderCaveAtlas();
     renderSnacks();
     renderRecruits();
     renderHospital();
@@ -3680,7 +3786,8 @@
     refreshSagePanel();
     updateMusicScene();
   }
-    // ==========================================
+
+  // ==========================================
   // RESET GAME
   // ==========================================
 
@@ -3851,7 +3958,8 @@
     const key = shortcuts[event.key.toLowerCase()];
     if (key) skill(key);
   });
-    // ==========================================
+
+  // ==========================================
   // MAIN GAME LOOP
   // ==========================================
 
@@ -4037,7 +4145,8 @@
       save();
     }
   }
-    // ==========================================
+
+  // ==========================================
   // VOICE ASSISTANT
   // ==========================================
 
@@ -4272,7 +4381,8 @@
 
     return null;
   }
-    function elowenPassiveReadyForFallenAlly(now = Date.now()) {
+
+  function elowenPassiveReadyForFallenAlly(now = Date.now()) {
     const allyIsDown = s.heroes.some(
       (id) => id !== "elowen" && (s.heroHp[id] || 0) <= 0
     );
@@ -4499,7 +4609,8 @@
       startKingdomAutopilot();
       return;
     }
-        const resourceAnswer = answerResourceQuestion(text);
+
+    const resourceAnswer = answerResourceQuestion(text);
 
     if (resourceAnswer) {
       queueSageReply(resourceAnswer);
@@ -4747,7 +4858,8 @@
       }
     }
   }
-    function runKingdomSupplies(now = Date.now()) {
+
+  function runKingdomSupplies(now = Date.now()) {
     if (!kingdomAutoPilot) return false;
 
     if (s.elowenSelfReviveAt > now && (s.heroHp.elowen || 0) <= 0) return true;
@@ -4904,7 +5016,8 @@
       mine();
     }
   }
-    function handleRecognitionResult(event) {
+
+  function handleRecognitionResult(event) {
     for (let i = event.resultIndex; i < event.results.length; i++) {
       const result = event.results[i];
       const rawText = (result[0] && result[0].transcript) || "";
@@ -5068,7 +5181,8 @@
 
     startWakeRecognition();
   }
-    function enterCommandMode() {
+
+  function enterCommandMode() {
     if (!sageEnabled) return;
 
     if (!commandModeActive || speechBusy || speechQueue.length) {

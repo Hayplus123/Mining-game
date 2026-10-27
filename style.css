@@ -198,6 +198,7 @@ button:focus-visible {
   font: 38px/1.12 'Marcellus', serif;
   margin: 0;
 }
+
 .banner h1 em {
   font-style: normal;
   color: #d2adff;
@@ -596,6 +597,7 @@ button:focus-visible {
   min-width: 0;
   flex: 1;
 }
+
 .portrait {
   width: 61px;
   height: 76px;
@@ -796,7 +798,7 @@ button:focus-visible {
 }
 
 .skill strong {
-    font-size: 8px;
+  font-size: 8px;
   color: #a4edc0;
   white-space: nowrap;
 }
@@ -996,7 +998,7 @@ button:focus-visible {
 
 .hospital-pill {
   color: #ffb8c2;
-    border-color: #ff8eaa38;
+  border-color: #ff8eaa38;
   background: #ff8eaa0d;
 }
 
@@ -1196,6 +1198,7 @@ footer {
 .party .battle-hero.attack-bow {
   animation: bowDraw .34s ease-out both;
 }
+
 .party .battle-hero.attack-sword {
   animation: swordLunge .32s ease-out both;
 }
@@ -1395,7 +1398,7 @@ footer {
   }
 
   70% {
-        transform: rotate(92deg) translateY(5px) scale(.78);
+    transform: rotate(92deg) translateY(5px) scale(.78);
   }
 
   100% {
@@ -1595,7 +1598,7 @@ footer {
 }
 
 @keyframes sageVoicePulse {
-    0%, 100% {
+  0%, 100% {
     transform: scale(1);
   }
 
@@ -1795,7 +1798,7 @@ footer {
 
   .party img,
   .party img:nth-child(2),
-    .party img:nth-child(3) {
+  .party img:nth-child(3) {
     width: 45px;
     height: 76px;
     margin-left: -7px;
@@ -1995,7 +1998,7 @@ footer {
   }
 
   to {
-        transform: rotate(360deg);
+    transform: rotate(360deg);
   }
 }
 
@@ -2195,7 +2198,7 @@ footer {
   font-size: 10px;
   font-weight: 800;
   letter-spacing: .08em;
-  }
+}
 
 .unlock-reveal-button:hover {
   background: linear-gradient(135deg, #98642b, #623c1a);
@@ -2395,7 +2398,7 @@ footer {
 
 /* Keep the Kingdom Autopilot spin without reverting to red. */
 .sage-orb.is-raphael.is-kingdom-auto {
-    animation: sageKingdomPilotSpin 12s linear infinite;
+  animation: sageKingdomPilotSpin 12s linear infinite;
 }
 
 @keyframes raphaelBackdropIn {
@@ -2595,7 +2598,7 @@ body.analist-paused .analist-overlay * {
   color: #fff8d9;
   text-shadow:
     0 0 18px #fff,
-        0 0 38px #f5d48d,
+    0 0 38px #f5d48d,
     0 0 80px #f5d48d99;
 }
 
@@ -2776,4 +2779,160 @@ body.analist-paused .analist-overlay * {
   0% { filter: brightness(1); }
   20% { filter: brightness(2.5) saturate(1.7); }
   100% { filter: brightness(1); }
+}
+
+
+/* CAVE ATLAS — visible roadmap for the full Mining Crystal Kingdom */
+.cave-atlas-panel {
+  margin: 0 0 1.15rem;
+  overflow: hidden;
+  background: linear-gradient(145deg, rgba(31, 29, 63, .96), rgba(19, 22, 43, .98));
+}
+.cave-atlas-intro {
+  margin: .2rem 0 1rem;
+  max-width: 82ch;
+  color: #c2c5dc;
+  line-height: 1.55;
+  font-size: .94rem;
+}
+.cave-atlas-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: .75rem;
+}
+.cave-atlas-card {
+  min-width: 0;
+  border: 1px solid rgba(154, 151, 209, .23);
+  border-radius: 15px;
+  padding: .85rem .9rem .9rem;
+  background: linear-gradient(155deg, rgba(42, 41, 79, .9), rgba(24, 27, 52, .9));
+  box-shadow: inset 0 1px rgba(255,255,255,.025);
+  transition: border-color .18s ease, transform .18s ease, opacity .18s ease;
+}
+.cave-atlas-card[data-state="current"] {
+  border-color: #e0c078;
+  box-shadow: 0 0 0 1px rgba(224,192,120,.16), 0 0 25px rgba(224,192,120,.07);
+}
+.cave-atlas-card[data-state="cleared"] {
+  border-color: rgba(113, 218, 177, .48);
+  background: linear-gradient(155deg, rgba(26, 67, 68, .62), rgba(24, 27, 52, .92));
+}
+.cave-atlas-card[data-state="locked"] { opacity: .78; }
+.cave-atlas-card-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: .45rem;
+  margin-bottom: .55rem;
+}
+.cave-atlas-number {
+  color: #bcb9eb;
+  font-size: .69rem;
+  font-weight: 800;
+  letter-spacing: .12em;
+}
+.cave-atlas-status {
+  display: inline-flex;
+  align-items: center;
+  gap: .25rem;
+  padding: .25rem .45rem;
+  border-radius: 999px;
+  background: rgba(8, 10, 26, .4);
+  color: #c5c8dc;
+  font-size: .62rem;
+  font-weight: 800;
+  letter-spacing: .05em;
+  white-space: nowrap;
+}
+.cave-atlas-card[data-state="current"] .cave-atlas-status { color: #ffe5a4; }
+.cave-atlas-card[data-state="cleared"] .cave-atlas-status { color: #90f0c8; }
+.cave-atlas-card h3 {
+  margin: 0 0 .35rem;
+  color: #f2f0ff;
+  font-size: 1rem;
+  line-height: 1.3;
+}
+.cave-atlas-desc {
+  min-height: 2.7em;
+  margin: 0 0 .75rem;
+  color: #b2b5cf;
+  font-size: .78rem;
+  line-height: 1.45;
+}
+.cave-atlas-detail {
+  display: flex;
+  flex-direction: column;
+  gap: .15rem;
+  border-top: 1px solid rgba(167, 165, 207, .13);
+  padding-top: .5rem;
+}
+.cave-atlas-detail span {
+  color: #9398bc;
+  font-size: .66rem;
+  text-transform: uppercase;
+  letter-spacing: .09em;
+}
+.cave-atlas-detail strong { color: #e3dcff; font-size: .82rem; }
+.cave-atlas-reward {
+  display: flex;
+  align-items: center;
+  gap: .65rem;
+  margin-top: .65rem;
+  padding: .55rem .6rem;
+  border-radius: 10px;
+  background: rgba(8, 10, 26, .35);
+}
+.cave-atlas-reward-icon {
+  display: grid;
+  place-items: center;
+  flex: 0 0 30px;
+  height: 30px;
+  border-radius: 9px;
+  background: rgba(209, 180, 255, .12);
+  color: #e3ceff;
+  font-size: 1.1rem;
+}
+.cave-atlas-reward div { display: flex; flex-direction: column; min-width: 0; }
+.cave-atlas-reward small {
+  color: #aaa7ce;
+  font-size: .59rem;
+  line-height: 1.35;
+  letter-spacing: .06em;
+}
+.cave-atlas-reward strong {
+  color: #ffdf9f;
+  font-size: .87rem;
+  line-height: 1.3;
+}
+.cave-feature-strip {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0,1fr));
+  gap: .6rem;
+  margin-top: .9rem;
+}
+.cave-feature-strip > div {
+  display: grid;
+  grid-template-columns: 1.55rem minmax(0,1fr);
+  column-gap: .45rem;
+  align-items: center;
+  border-top: 1px solid rgba(165, 166, 214, .17);
+  padding: .8rem .25rem .1rem;
+}
+.cave-feature-strip > div > span {
+  grid-row: span 2;
+  color: #e4c98e;
+  font-size: 1.25rem;
+  text-align: center;
+}
+.cave-feature-strip b { color: #e9e7ff; font-size: .76rem; }
+.cave-feature-strip small { color: #aeb1cc; font-size: .67rem; line-height: 1.4; }
+@media (max-width: 1050px) {
+  .cave-atlas-grid { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .cave-feature-strip { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+@media (max-width: 560px) {
+  .cave-atlas-grid, .cave-feature-strip { grid-template-columns: minmax(0,1fr); }
+  .cave-atlas-desc { min-height: 0; }
+  .cave-atlas-panel { padding: 1rem; }
+  .cave-atlas-card-top { align-items: flex-start; }
 }

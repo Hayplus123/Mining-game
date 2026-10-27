@@ -48,8 +48,8 @@
       <p class="eyebrow">✦ YOUR ADVENTURE BEGINS</p>
       <h1>Rise of the <em>Crystal</em><br>Kingdom</h1>
       <p>
-        Explore forgotten caves, defeat their guardians,
-        and discover what lies beyond each seal.
+        Mine crystals, defeat every guardian, recruit a hero after every cave,
+        and reclaim the Crystal Kingdom.
       </p>
 
       <div class="region">
@@ -62,6 +62,25 @@
     </div>
 
     <img src="assets/hero-mage.svg" class="hero" alt="A magical hero">
+  </section>
+
+
+  <section class="panel cave-atlas-panel" aria-labelledby="caveAtlasTitle">
+    <div class="panelhead">
+      <div>
+        <p class="eyebrow">YOUR EXPEDITION MAP</p>
+        <h2 id="caveAtlasTitle">The Mining Crystal Kingdom · Cave Atlas</h2>
+      </div>
+      <span class="pill" id="caveAtlasCount">0 / 9 CLEARED</span>
+    </div>
+    <p class="cave-atlas-intro">All nine caves are listed here from the beginning. Clear a cave guardian to open the next passage and recruit that cave's hero. Celeste the Healer is waiting at the end of Cave 1.</p>
+    <div class="cave-atlas-grid" id="caveAtlas" aria-live="polite"></div>
+    <div class="cave-feature-strip" aria-label="Included features">
+      <div><span>⛏</span><b>Crystal mining</b><small>Gather crystals and ore</small></div>
+      <div><span>✚</span><b>Healer &amp; revival</b><small>Skills and rescue support</small></div>
+      <div><span>🏥</span><b>Hospital recovery</b><small>Pay the fee; battles pause for 60 seconds</small></div>
+      <div><span>✦</span><b>9 hero unlocks</b><small>One new hero per cleared cave</small></div>
+    </div>
   </section>
 
   <div class="layout">
@@ -224,7 +243,7 @@
             <p class="eyebrow">TACTICAL ARTS</p>
             <h2>Skills</h2>
           </div>
-          <span class="muted" id="skillShortcutHint">Q · W · E · R · T · Y · U · I</span>
+<span class="muted" id="skillShortcutHint">Q · W · E · R · T · Y · U · I</span>
         </div>
 
         <div class="skill-grid">
@@ -271,14 +290,14 @@
           </button>
 
           <button class="skill analist-skill" data-skill="analist"
-            id="analistBtn" hidden>
-            <span class="skillicon gold">◈</span>
-            <span>
-              <b>Analist</b>
-              <small>Analyze a boss's unique attack</small>
-            </span>
-            <strong id="cd-analist">LOCKED</strong>
-          </button>
+  id="analistBtn" hidden>
+  <span class="skillicon gold">◈</span>
+  <span>
+    <b>Analist</b>
+    <small>Analyze a boss's unique attack</small>
+  </span>
+  <strong id="cd-analist">LOCKED</strong>
+</button>
         </div>
 
         <p class="hint">Skills consume mana. Mana regenerates automatically.</p>
@@ -362,7 +381,7 @@
     </div>
 
     <p id="sageMessage">Standing by.</p>
-    <!-- Great Sage Autopilot Status -->
+        <!-- Great Sage Autopilot Status -->
     <section class="sage-autopilot-status" aria-label="Autopilot modes">
       <p class="sage-autopilot-heading">AUTOPILOT MODES</p>
 
