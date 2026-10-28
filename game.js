@@ -5127,4 +5127,4 @@
     initCrystalKingdom();
   }
 
-})(
+})();
