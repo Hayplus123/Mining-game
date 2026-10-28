@@ -5,8 +5,6 @@
   const SAVE_KEY = "gemMinerCrystalKingdom_v3";
   const OLD_SAVE_KEY = "gemMinerCrystalKingdom_v2";
   let resettingGame = false;
-  let sageHealthCheckClock = 0;
-  let hospitalPromptShown = false;
 
   // ==========================================
   // HEROES
@@ -77,46 +75,6 @@
       damage: 12,
       tagline: "Elowen revives one fallen ally every 30 seconds. If she falls, she revives herself after 60 seconds."
     },
-    tessa_hero: {
-      name: "Tessa",
-      role: "Miner Vanguard · Front line",
-      portrait: "assets/tessa.webp",
-      maxHp: 132,
-      damage: 16,
-      tagline: "A stubborn delver who keeps moving when the tunnels turn dangerous."
-    },
-    borin_hero: {
-      name: "Borin",
-      role: "Stoneguard · Front line",
-      portrait: "assets/borin.webp",
-      maxHp: 154,
-      damage: 15,
-      tagline: "A steadfast guardian who can hold the line against heavy enemies."
-    },
-    iris_hero: {
-      name: "Iris",
-      role: "Mystic · Arcane DPS",
-      portrait: "assets/hero-mage.svg",
-      maxHp: 108,
-      damage: 21,
-      tagline: "Shapes the strange magic discovered in the deeper caves."
-    },
-    darius_hero: {
-      name: "Darius",
-      role: "Crossbowman · Ranged DPS",
-      portrait: "assets/darius.webp",
-      maxHp: 120,
-      damage: 22,
-      tagline: "A precise crossbow shot can turn a dangerous fight around."
-    },
-    elise_hero: {
-      name: "Elise",
-      role: "Spirit Guide · Support",
-      portrait: "assets/elise.webp",
-      maxHp: 124,
-      damage: 12,
-      tagline: "A calm guide who channels restorative spirit energy."
-    },
   };
 
   // A save that has already reached Cave 8 keeps the permanent party upgrade.
@@ -147,15 +105,10 @@
     "aiden",
     "ragnar",
     "kael_rogue",
-    "tessa_hero",
-    "borin_hero",
-    "darius_hero",
     "seraphine",
     "liria",
     "celeste",
-    "iris_hero",
     "sage",
-    "elise_hero",
     "elowen"
   ];
 
@@ -252,7 +205,7 @@
       bossHp: 11500,
       bossDamage: 68,
       desc: "A quiet sentinel waits inside a chamber of forgotten mechanisms.",
-      rewardHero: "tessa_hero"
+      rewardHero: null
     },
     {
       name: "The Astral Foundry",
@@ -267,7 +220,7 @@
       bossHp: 13500,
       bossDamage: 72,
       desc: "Beyond the Crucible, an ancient star forge awaits its challenger.",
-      rewardHero: "borin_hero"
+      rewardHero: null
     },
     {
       name: "The Null Sanctum",
@@ -282,7 +235,7 @@
       bossHp: 24000,
       bossDamage: 88,
       desc: "A silent sovereign waits beyond a sealed passage.",
-      rewardHero: "iris_hero"
+      rewardHero: null
     },
     {
       name: "The Shattered Crown",
@@ -297,7 +250,7 @@
       bossHp: 33000,
       bossDamage: 106,
       desc: "A broken throne casts a long shadow across the final reaches.",
-      rewardHero: "darius_hero"
+      rewardHero: null
     }
   ];
 
@@ -316,7 +269,7 @@
     bossHp: 52000,
     bossDamage: 122,
     desc: "A concealed chamber hums beyond the final known seal. Its true purpose remains uncertain.",
-    rewardHero: "elise_hero"
+    rewardHero: null
   });
 
   // ==========================================
@@ -604,7 +557,7 @@
     state.heroes.forEach((id) => {
       if (state.heroHp[id] === undefined || state.heroHp[id] === null) {
         state.heroHp[id] = HEROES[id].maxHp;
-
+        
       }
     });
 
@@ -628,9 +581,8 @@
       Number(state.elowenSelfReviveAt) || 0
     );
 
-    state.autoPilotUnlocked = Boolean(state.autoPilotUnlocked) || state.region >= 6;
+    state.autoPilotUnlocked = Boolean(state.autoPilotUnlocked);
     state.raphaelEvolved = Boolean(state.raphaelEvolved);
-    state.resistUnlocked = Boolean(state.resistUnlocked) || state.region >= 5 || state.bossDefeated.includes(4);
 
     state.partyUpgradeApplied =
       Boolean(state.partyUpgradeApplied) ||
@@ -666,23 +618,23 @@
       Math.min(savedMaxMana, Number(state.mana) || 0)
     );
 
-    if (state.needsHospital) {
-      state.enemy = null;
-      state.bossMode = false;
-    }
+    state.heroes.forEach((id) => {
+      if (!HEROES[id]) return;
 
-    state.enemy = state.enemy && typeof state.enemy === "object"
-      ? state.enemy
-      : null;
+      if (!Number.isFinite(Number(state.heroHp[id]))) {
+        state.heroHp[id] = HEROES[id].maxHp;
+      }
 
-    state.discoveredGuardians = Array.isArray(state.discoveredGuardians)
-      ? state.discoveredGuardians
-      : [];
+      state.heroHp[id] = Math.max(
+        0,
+        Math.min(HEROES[id].maxHp, Number(state.heroHp[id]))
+      );
+    });
 
     return state;
   }
 
-    let s = loadGame();
+  let s = loadGame();
   let logs = Array.isArray(s.lastLog) ? s.lastLog : [];
 
   // ==========================================
@@ -696,6 +648,8 @@
   let renderClock = 0;
   let exploreTimer = 0;
   let toastTimer = 0;
+  let raphaelEvolutionTimer = null;
+  let raphaelCloseTimer = null;
 
   let battleAutoPilot = false;
   let kingdomAutoPilot = false;
@@ -750,15 +704,15 @@
 
   const MUSIC_TRACKS = {
     exploring: {
-      src: "assets/exploring.wav",
+      src: "exploring.mp3",
       label: "Exploration theme"
     },
     fighting: {
-      src: "assets/fighting.wav",
+      src: "fighting.mp3",
       label: "Battle theme"
     },
     intense: {
-      src: "assets/intense.wav",
+      src: "intense.mp3",
       label: "Boss theme"
     }
   };
@@ -803,7 +757,6 @@
   }[key] ?? 0);
 
   const isSkillUnlocked = (key) => {
-    if (key === "analist") return isAnalistUnlocked();
     if (key === "resist") return Boolean(s.resistUnlocked);
     if (key === "barrier") return Boolean(s.barrierUnlocked);
 
@@ -905,7 +858,7 @@
 
   function availableCombatSkills() {
     return Object.keys(SKILL_MANA_COST).filter((key) =>
-      !["resist", "barrier"].includes(key) &&
+      key !== "resist" &&
       isSkillUnlocked(key) &&
       !(
         ["heal", "phoenix"].includes(key) &&
@@ -961,7 +914,7 @@
 
   const critCost = () =>
     Math.floor(50 * Math.pow(1.85, s.critLevel));
-
+  
   function updateMusicControl() {
     const audio = $("backgroundMusic");
     const button = $("musicToggle");
@@ -1078,15 +1031,16 @@
     s.damageLevel * 4 +
     (s.recruits.includes("darius") ? 6 : 0);
 
-  function save() {
-    if (resettingGame) return;
-    try {
-      s.lastLog = logs.slice(0, 12);
-      localStorage.setItem(SAVE_KEY, JSON.stringify(s));
-    } catch (error) {
-      console.warn("Could not save progress.", error);
-    }
+function save() {
+  if (resettingGame) return;
+
+  try {
+    s.lastLog = logs.slice(0, 12);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+  } catch (error) {
+    console.warn("Could not save progress.", error);
   }
+}
 
   function esc(value) {
     return String(value).replace(
@@ -1182,7 +1136,7 @@
     orb.classList.add("word-pulse");
   }
 
-    function getEnglishVoice() {
+  function getEnglishVoice() {
     if (!("speechSynthesis" in window)) return null;
 
     const voices = window.speechSynthesis.getVoices();
@@ -1338,7 +1292,7 @@
 
     window.speechSynthesis.speak(utterance);
   }
-
+  
   // ==========================================
   // GREAT SAGE: SPEECH AND VOICE RECOGNITION
   // ==========================================
@@ -1365,26 +1319,17 @@
   }
 
   function toggleSage() {
-    if (!("speechSynthesis" in window)) {
-      toast("This browser does not support speech synthesis.");
-      updateSageStatus("VOICE UNAVAILABLE");
-      return;
-    }
-
-    sageEnabled = !sageEnabled;
-
-    if (!sageEnabled) {
+    if (commandModeActive) {
       cancelSageSpeech(true);
-      updateSageStatus("VOICE MUTED");
-      refreshSagePanel();
-      toast(`${assistantWakeName()} voice muted.`);
+      leaveCommandMode();
       return;
     }
 
-    updateSageStatus("VOICE ON");
-    refreshSagePanel();
-    toast(`${assistantWakeName()} voice activated.`);
-    announce(`${assistantWakeName()} online. Voice notifications restored.`);
+    if (speechBusy || speechQueue.length) {
+      cancelSageSpeech(true);
+      currentPrompt = null;
+      refreshSagePanel();
+    }
   }
 
   function updateAutopilotStatusIndicators() {
@@ -1398,21 +1343,34 @@
     }
 
     if (kingdomStatus) {
-      const state = kingdomAutoPilot ? "active" : s.autoPilotUnlocked ? "ready" : "locked";
-      kingdomStatus.textContent = kingdomAutoPilot ? "ACTIVE" : s.autoPilotUnlocked ? "READY" : "LOCKED";
+      const state = kingdomAutoPilot
+        ? "active"
+        : s.autoPilotUnlocked
+          ? "ready"
+          : "locked";
+
+      kingdomStatus.textContent = kingdomAutoPilot
+        ? "ACTIVE"
+        : s.autoPilotUnlocked
+          ? "READY"
+          : "LOCKED";
+
       kingdomStatus.dataset.state = state;
     }
 
-    if (help) {
-      const wakeName = assistantWakeName();
-      help.textContent = kingdomAutoPilot
-        ? `I am managing supplies, upgrades, and mining. Say “${wakeName}, stand down” to stop me.`
-        : battleAutoPilot
-          ? `I am handling the current fight. Say “${wakeName}, stand down” to stop me.`
-          : s.autoPilotUnlocked
-            ? "I am ready for battle and available to help manage the kingdom."
-            : "I am ready for battle. More capabilities may become available as we explore.";
-    }
+if (help) {
+  const assistantName = s.raphaelEvolved
+    ? "Raphael"
+    : "Great Sage";
+
+  help.textContent = kingdomAutoPilot
+    ? `Kingdom Autopilot manages supplies, upgrades, and mining. Say ${assistantName}, stand down to stop.`
+    : battleAutoPilot
+      ? `Battle Autopilot manages the current fight. Say ${assistantName}, stand down to stop.`
+      : s.autoPilotUnlocked
+        ? "Battle Autopilot is available. Kingdom Autopilot is unlocked."
+        : "Battle Autopilot is available. Kingdom Autopilot unlocks after the sixth cave guardian.";
+}
   }
 
   function armCommandIdleTimer() {
@@ -1582,22 +1540,29 @@
   }
 
   function handleVoiceTranscript(transcript) {
-    const text = normalizeVoiceText(transcript);
-    if (!text) return;
-    if (Date.now() < ignoreRecognitionUntil) return;
+    const text = transcript.toLowerCase().trim();
 
-    const wakePattern = assistantWakePattern();
-    const wakeMatch = wakePattern.exec(text);
+const wakePattern = s.raphaelEvolved
+  ? /\b(raphael|rafael|rafayel|raphaell|raphiel|hey raphael|hello raphael)\b/i
+  : /\b(great sage|hey sage|hello sage)\b/i;
+
+    const wakeMatch = text.match(wakePattern);
 
     if (!commandModeActive) {
       if (!wakeMatch) return;
-      const remainder = text.slice(wakeMatch.index + wakeMatch[0].length)
-        .replace(/^[,.:;!? -]+/, "").trim();
+
+      const remainder = text
+        .slice(wakeMatch.index + wakeMatch[0].length)
+        .trim()
+        .replace(/^[,.:;!? -]+/, "");
+
       enterCommandMode();
+
       if (remainder) {
         clearTimeout(commandIdleTimer);
         handleVoiceCommand(remainder);
       }
+
       return;
     }
 
@@ -1621,8 +1586,548 @@
     updateMusicControl();
     refreshSagePanel();
   }
+  
+  // ==========================================
+  // GREAT SAGE: VOICE COMMAND ROUTER
+  // ==========================================
 
-    // CAVE ATLAS: KEEP FUTURE CAVES SECRET
+  function handleVoiceCommand(rawCommand) {
+    const command = String(rawCommand || "")
+      .toLowerCase()
+      .trim()
+      .replace(/[.!?]+$/, "");
+
+    if (!command) {
+      announce("I didn't hear a command. Please try again.");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (
+      /\b(never mind|cancel|stop listening|exit command mode)\b/i
+        .test(command)
+    ) {
+      announce("Understood. I'll stand by.");
+      returnToIdleAfterSpeech = true;
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (
+      /\b(stand down|stop autopilot|disable autopilot|stop managing)\b/i
+        .test(command)
+    ) {
+      stopAutopilot();
+      announce("Autopilot has been stopped.");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (
+      /\b(activate|start|enable)\b/i.test(command) &&
+      /\bkingdom autopilot\b/i.test(command)
+    ) {
+      activateKingdomAutopilot();
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (
+      /\b(activate|start|enable)\b/i.test(command) &&
+      /\b(battle autopilot|battle auto pilot)\b/i.test(command)
+    ) {
+      activateBattleAutopilot();
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(what cave|which cave|current cave|where am i)\b/i.test(command)) {
+      announce(
+        s.region < 9
+          ? `You are exploring Cave ${s.region + 1}.`
+          : s.region === 9
+            ? "You have reached the tenth cave."
+            : "You are exploring an undiscovered cavern."
+      );
+
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(show|check|tell me about)\b.*\b(party|heroes|health)\b/i.test(command)) {
+      const summary = livingHeroes()
+        .map((id) =>
+          `${HEROES[id].name}: ${fmt(s.heroHp[id])} health`
+        )
+        .join(". ");
+
+      announce(
+        summary || "No heroes are currently standing."
+      );
+
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(mine|start mining|gather ore)\b/i.test(command)) {
+      mine();
+      announce("Mining complete.");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(explore|find an enemy|continue exploring)\b/i.test(command)) {
+      if (s.enemy) {
+        announce(`${s.enemy.name} is already here.`);
+      } else {
+        scheduleExplore(true);
+        announce("I'll look for the next enemy.");
+      }
+
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(barrier|protect the party|protect us)\b/i.test(command)) {
+      skill("barrier");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(healing wave|heal the party|heal everyone)\b/i.test(command)) {
+      skill("heal");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(phoenix blessing|revive|revive an ally)\b/i.test(command)) {
+      skill("phoenix");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(radiant slash|slash)\b/i.test(command)) {
+      skill("slash");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(arcane burst|burst)\b/i.test(command)) {
+      skill("burst");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(meteor|meteor strike)\b/i.test(command)) {
+      skill("meteor");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(frost|frost bind)\b/i.test(command)) {
+      skill("frost");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(guard|defend|protect)\b/i.test(command)) {
+      skill("guard");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(resist|anti magic resistance)\b/i.test(command)) {
+      skill("resist");
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(play music|turn music on|enable music)\b/i.test(command)) {
+      if (!musicEnabled) toggleMusic();
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(pause music|stop music|turn music off)\b/i.test(command)) {
+      if (musicEnabled) toggleMusic();
+      armCommandIdleTimer();
+      return;
+    }
+
+    if (/\b(status|how are we doing|kingdom status)\b/i.test(command)) {
+      announce(
+        `Your kingdom has ${fmt(s.gold)} gold, ` +
+        `${fmt(s.crystals)} crystals, and ${fmt(s.ore)} ore. ` +
+        `Your mana is ${fmt(s.mana)} out of ${fmt(maxMana())}.`
+      );
+
+      armCommandIdleTimer();
+      return;
+    }
+
+    announce(
+      "I didn't recognise that command. Try a skill name, mine, explore, or kingdom status."
+    );
+
+    armCommandIdleTimer();
+  }
+
+  // ==========================================
+  // TOASTS, LOGGING, AND DAMAGE EFFECTS
+  // ==========================================
+
+  function toast(message) {
+    const el = $("toast");
+
+    if (el) {
+      el.textContent = String(message);
+      el.classList.add("visible");
+
+      clearTimeout(toastTimer);
+
+      toastTimer = setTimeout(() => {
+        el.classList.remove("visible");
+      }, 2800);
+    } else {
+      console.info("[Crystal Kingdom]", message);
+    }
+  }
+
+  function log(message) {
+    logs.unshift({
+      time: Date.now(),
+      message: String(message)
+    });
+
+    logs = logs.slice(0, 12);
+
+    renderLog();
+    save();
+  }
+
+  function showDamage(text, target = "enemy") {
+    const parent =
+      target === "party"
+        ? $("partyStage") || $("battleStage")
+        : $("enemyStage") || $("battleStage");
+
+    if (!parent) return;
+
+    const damage = document.createElement("span");
+
+    damage.className =
+      target === "party"
+        ? "damage-number party-damage"
+        : "damage-number enemy-damage";
+
+    damage.textContent = String(text);
+    damage.setAttribute("aria-hidden", "true");
+
+    parent.appendChild(damage);
+
+    setTimeout(() => damage.remove(), 1200);
+  }
+
+
+  function enemyHitEffect() {
+    const enemy =
+      document.querySelector(".enemy") ||
+      $("enemyVisual") ||
+      $("enemyStage");
+
+    if (!enemy) return;
+
+    enemy.classList.remove("hit");
+
+    // Force a reflow so the animation can play again.
+    void enemy.offsetWidth;
+
+    enemy.classList.add("hit");
+
+    setTimeout(() => {
+      enemy.classList.remove("hit");
+    }, 350);
+  }
+
+  
+  function triggerPartyAttackAnimations() {
+    const party =
+      $("battleParty") ||
+      document.querySelector(".party");
+
+    if (!party) return;
+
+    party.classList.remove("attacking");
+
+    void party.offsetWidth;
+
+    party.classList.add("attacking");
+
+    const members = party.querySelectorAll(".battle-hero");
+
+    members.forEach((member) => {
+      const id = member.dataset.heroId;
+      const hero = HEROES[id];
+
+      if (!hero || (s.heroHp[id] || 0) <= 0) return;
+
+      const role = hero.role.toLowerCase();
+
+      const attackClass =
+        /archer|ranger|rogue/.test(role)
+          ? "attack-bow"
+          : /mage|druid|healer|reviver|support/.test(role)
+            ? "attack-cast"
+            : "attack-sword";
+
+      member.classList.remove(
+        "attack-bow",
+        "attack-sword",
+        "attack-cast"
+      );
+
+      void member.offsetWidth;
+
+      member.classList.add(attackClass);
+
+      setTimeout(() => {
+        member.classList.remove(attackClass);
+      }, 400);
+    });
+
+    setTimeout(() => {
+      party.classList.remove("attacking");
+    }, 400);
+  }
+
+  function playImportantSound() {
+    const now = Date.now();
+
+    if (now - lastImportantSound < 350) return;
+    lastImportantSound = now;
+
+    try {
+      if (!importantAudioContext) {
+        importantAudioContext = new (
+          window.AudioContext ||
+          window.webkitAudioContext
+        )();
+      }
+
+      const ctx = importantAudioContext;
+      const oscillator = ctx.createOscillator();
+      const gain = ctx.createGain();
+
+      oscillator.type = "sine";
+      oscillator.frequency.setValueAtTime(480, ctx.currentTime);
+      oscillator.frequency.exponentialRampToValueAtTime(
+        170,
+        ctx.currentTime + 0.22
+      );
+
+      gain.gain.setValueAtTime(0.12, ctx.currentTime);
+      gain.gain.exponentialRampToValueAtTime(
+        0.001,
+        ctx.currentTime + 0.24
+      );
+
+      oscillator.connect(gain);
+      gain.connect(ctx.destination);
+
+      oscillator.start();
+      oscillator.stop(ctx.currentTime + 0.25);
+    } catch (error) {
+      // Sound effects are optional; gameplay should continue without them.
+    }
+  }
+
+
+function refreshSagePanel() {
+  updateAutopilotStatusIndicators();
+
+  const panel = $("sagePanel");
+  const orb = $("sageOrb");
+  const dock = $("sageDock");
+  const message = $("sageMessage");
+  const shouldShow = sagePanelVisible();
+
+  const assistantName = s.raphaelEvolved
+    ? "Raphael"
+    : "Great Sage";
+
+  if (dock) {
+    dock.classList.toggle(
+      "is-hidden",
+      !(shouldShow || s.raphaelEvolved)
+    );
+  }
+
+  if (panel) {
+    panel.hidden = !shouldShow;
+    panel.classList.toggle("sage-speaking", speechBusy);
+    panel.classList.toggle("sage-listening", commandModeActive);
+    panel.classList.toggle("sage-hidden", !shouldShow);
+  }
+
+  const heading = $("sageName");
+
+  if (heading) {
+    heading.textContent = assistantName.toUpperCase();
+  }
+
+  if (orb) {
+    const symbol = orb.querySelector(".sage-symbol");
+
+    if (symbol) {
+      symbol.textContent = s.raphaelEvolved ? "R" : "◈";
+    }
+
+    orb.classList.toggle("is-speaking", speechBusy);
+    orb.classList.toggle(
+      "is-listening",
+      commandModeActive && !speechBusy
+    );
+    orb.classList.toggle("is-muted", !sageEnabled);
+    orb.classList.toggle("is-raphael", Boolean(s.raphaelEvolved));
+
+    orb.setAttribute(
+      "aria-label",
+      `Mute or activate ${assistantName} voice`
+    );
+
+    orb.title = `Mute or activate ${assistantName}`;
+  }
+
+  if (message && currentPrompt && !speechBusy) {
+    message.textContent =
+      currentPrompt.message || message.textContent;
+  }
+
+  const commandButton = $("sageCommandButton");
+
+  if (commandButton) {
+    commandButton.textContent = commandModeActive
+      ? "Listening…"
+      : `Talk to ${assistantName}`;
+  }
+
+  const voiceButton = $("sageVoiceToggle");
+
+  if (voiceButton) {
+    voiceButton.textContent = sageEnabled
+      ? "Mute voice"
+      : "Enable voice";
+
+    voiceButton.setAttribute(
+      "aria-pressed",
+      String(sageEnabled)
+    );
+  }
+}
+
+function triggerRaphaelEvolution() {
+  if (s.raphaelEvolved || !s.autoPilotUnlocked) return;
+
+  clearTimeout(raphaelEvolutionTimer);
+  clearTimeout(raphaelCloseTimer);
+
+  pauseGameplay("raphael-evolution");
+
+  s.raphaelEvolved = true;
+
+  cancelSageSpeech(true);
+  currentPrompt = null;
+
+  updateSageMessage("Evolution sequence initiated.");
+  save();
+
+  const overlay = document.createElement("div");
+  overlay.className = "raphael-evolution-overlay";
+
+  overlay.innerHTML = `
+    <div
+      class="raphael-evolution-stage"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Raphael evolution"
+    >
+      <div class="raphael-evolution-caption">
+        GREAT SAGE · EVOLUTION
+      </div>
+
+      <div class="raphael-evolution-emblem" id="raphaelEmblem">
+        ◈
+      </div>
+
+      <h1 id="raphaelEvolutionTitle">
+        EVOLUTION INITIATED
+      </h1>
+
+      <p id="raphaelEvolutionText">
+        An unprecedented evolution is beginning...
+      </p>
+
+      <small>Click to continue when the reveal is complete</small>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  refreshSagePanel();
+
+  let ready = false;
+
+  const closeEvolution = () => {
+    if (!ready) return;
+
+    clearTimeout(raphaelEvolutionTimer);
+    clearTimeout(raphaelCloseTimer);
+
+    overlay.remove();
+
+    resumeGameplay("raphael-evolution");
+    updateAutopilotStatusIndicators();
+    refreshSagePanel();
+    save();
+  };
+
+  overlay.addEventListener("click", closeEvolution);
+
+  raphaelEvolutionTimer = window.setTimeout(() => {
+    const emblem = overlay.querySelector("#raphaelEmblem");
+    const title = overlay.querySelector("#raphaelEvolutionTitle");
+    const text = overlay.querySelector("#raphaelEvolutionText");
+
+    if (emblem) emblem.textContent = "R";
+
+    if (title) {
+      title.textContent = "RAPHAEL HAS AWAKENED";
+    }
+
+    if (text) {
+      text.textContent =
+        "I have evolved into Raphael. You can now wake me by saying Raphael.";
+    }
+
+    overlay.classList.add("is-evolved");
+    ready = true;
+
+    announce(
+      "Evolution complete. I am Raphael, the evolved form of Great Sage."
+    );
+
+    updateAutopilotStatusIndicators();
+    refreshSagePanel();
+    save();
+  }, 2300);
+
+  raphaelCloseTimer = window.setTimeout(() => {
+    ready = true;
+    closeEvolution();
+  }, 6500);
+}
+  
+  // ==========================================
+  // CAVE ATLAS: KEEP FUTURE CAVES SECRET
   // ==========================================
 
   function guardianDiscovered(index) {
@@ -1767,22 +2272,37 @@
     if (container) {
       const cardHTML = s.heroes.map((id) => {
         const hero = HEROES[id];
+
         if (!hero) return "";
 
-        const hp = Math.max(0, Math.min(hero.maxHp, Number(s.heroHp[id]) || 0));
-        const percentage = hero.maxHp ? hp / hero.maxHp * 100 : 0;
+        const hp = Math.max(
+          0,
+          Math.min(
+            hero.maxHp,
+            Number(s.heroHp[id]) || 0
+          )
+        );
+
+        const percentage = hero.maxHp
+          ? hp / hero.maxHp * 100
+          : 0;
+
         const fallen = hp <= 0;
 
         return `
           <article class="${fallen ? "is-fallen" : ""}">
             <div class="portrait">
-              <img src="${esc(hero.portrait)}" alt="${esc(hero.name)}" loading="lazy">
+              <img src="${esc(hero.portrait)}"
+                   alt="${esc(hero.name)}"
+                   loading="lazy">
             </div>
             <div class="companion-info">
               <b>${esc(hero.name)}</b>
               <small>${esc(hero.role)}</small>
               <small>${fmt(hp)} / ${fmt(hero.maxHp)} HP</small>
-              <div class="minibar"><i style="width:${percentage}%"></i></div>
+              <div class="minibar">
+                <i style="width:${percentage}%"></i>
+              </div>
               <small>${fallen ? "FALLEN" : "READY FOR BATTLE"}</small>
             </div>
           </article>
@@ -1796,40 +2316,48 @@
     }
 
     const power = $("partyPower");
-    if (power) power.textContent = `POWER ${fmt(totalPartyDamage())}`;
+
+    if (power) {
+      power.textContent =
+        `POWER ${fmt(totalPartyDamage())}`;
+    }
 
     const attackLabel = $("partyAttackLabel");
-    if (attackLabel) attackLabel.textContent = `Attack interval: ${pInterval().toFixed(1)}s`;
+
+    if (attackLabel) {
+      attackLabel.textContent =
+        `Attack interval: ${pInterval().toFixed(1)}s`;
+    }
 
     const fieldParty = $("battleParty");
-    if (!fieldParty) return;
 
-    fieldParty.classList.add("party");
-    const validIds = s.heroes.filter((id) => HEROES[id]);
-    const livingOrder = validIds.filter((id) => (Number(s.heroHp[id]) || 0) > 0);
-    const fallenOrder = validIds.filter((id) => (Number(s.heroHp[id]) || 0) <= 0).reverse();
-    const displayOrder = [...livingOrder, ...fallenOrder];
-    const frontRank = new Map(livingOrder.map((id, index) => [id, Math.min(index + 1, 8)]));
+    if (fieldParty) {
+      fieldParty.classList.add("party");
 
-    const battleHTML = displayOrder.map((id) => {
-      const hero = HEROES[id];
-      const fallen = (Number(s.heroHp[id]) || 0) <= 0;
-      const rank = frontRank.get(id) || 8;
-      return `
-        <div class="battle-hero front-rank-${rank} ${fallen ? "fallen" : ""}"
-             data-hero-id="${esc(id)}"
-             title="${esc(hero.name)} · ${fmt(s.heroHp[id] || 0)} / ${fmt(hero.maxHp)} HP">
-          <img src="${esc(hero.portrait)}" alt="${esc(hero.name)}">
-        </div>
-      `;
-    }).join("");
+      const battleHTML = s.heroes.map((id, index) => {
+        const hero = HEROES[id];
 
-    if (fieldParty.dataset.renderCache !== battleHTML) {
-      fieldParty.innerHTML = battleHTML;
-      fieldParty.dataset.renderCache = battleHTML;
+        if (!hero) return "";
+
+        const fallen = (s.heroHp[id] || 0) <= 0;
+        const rank = Math.min(index + 1, 8);
+
+        return `
+          <div class="battle-hero front-rank-${rank} ${fallen ? "fallen" : ""}"
+               data-hero-id="${esc(id)}"
+               title="${esc(hero.name)}">
+            <img src="${esc(hero.portrait)}"
+                 alt="${esc(hero.name)}">
+          </div>
+        `;
+      }).join("");
+
+      if (fieldParty.dataset.renderCache !== battleHTML) {
+        fieldParty.innerHTML = battleHTML;
+        fieldParty.dataset.renderCache = battleHTML;
+      }
     }
   }
-
   // ==========================================
   // ENEMY AND GUARDIAN DISPLAY
   // ==========================================
@@ -2121,7 +2649,8 @@
     const container = $("logList");
 
     if (!container) return;
-        container.innerHTML = logs.map((entry) => {
+
+    container.innerHTML = logs.map((entry) => {
       const message =
         typeof entry === "string"
           ? entry
@@ -2152,11 +2681,9 @@
     if (typeof renderSkills === "function") renderSkills();
 
     refreshSagePanel();
-    if (typeof renderSageActions === "function") renderSageActions();
-    if (typeof updateAutopilotStatusIndicators === "function") updateAutopilotStatusIndicators();
     updateMusicScene();
   }
-
+  
   // ==========================================
   // ENEMY GENERATION
   // ==========================================
@@ -2165,50 +2692,55 @@
   let antiMagicClock = 0;
 
   function createEnemyForRegion(index, boss = false) {
-    const cave = regions[index] || regions[regions.length - 1];
+    const cave = regions[index];
+
     const scale = 1 + index * 0.25;
+
     const hp = boss
       ? cave.bossHp
       : Math.floor(cave.hp * (0.9 + Math.random() * 0.35));
-    const damage = boss ? cave.bossDamage : cave.damage;
+
+    const damage = boss
+      ? cave.bossDamage
+      : cave.damage;
 
     return {
       name: boss ? cave.boss : cave.enemy,
-      type: boss ? "CAVE GUARDIAN" : cave.type,
+      type: boss
+        ? "CAVE GUARDIAN"
+        : cave.type,
       hp,
       maxHp: hp,
       damage,
-      gold: boss ? cave.gold * 8 : cave.gold,
-      crystals: boss ? cave.crystals * 6 : cave.crystals,
-      sprite: boss ? "assets/boss.svg" : cave.sprite,
+      gold: boss
+        ? cave.gold * 8
+        : cave.gold,
+      crystals: boss
+        ? cave.crystals * 6
+        : cave.crystals,
+      sprite: boss
+        ? "assets/boss.svg"
+        : cave.sprite,
       boss,
       regionIndex: index,
-      specialName: index === 8 && boss ? "CROWNFALL RUPTURE" : "",
+      specialName: "",
       areaAttackClock: 0,
       specialClock: 0,
-      bossElapsed: 0,
-      specialAttackClock: 0,
-      uniqueAttack: boss && index === 8 ? "antiMagicBarrier" : null,
-      antiMagicBarrierTriggered: false,
-      antiMagicBarrierActive: false,
-      antiMagicUntil: 0,
-      barrierElapsed: 0,
-      barrierActivatedAt: 0,
-      barrierBlocked: false,
-      resistUsed: false,
-      resistPrepared: false,
-      restrictedSkills: [],
       nextAntiMagicAt: Date.now() + 10000,
+      antiMagicUntil: 0,
+      antiMagicBarrierActive: false,
+      restrictedSkills: [],
       scale,
       isCrownfallRupture: false
     };
   }
 
   function spawnEnemy(boss = false) {
-    if (battleLocked() || isGameplayPaused() || !livingHeroes().length) return;
+    if (battleLocked() || !livingHeroes().length) return;
     if (s.enemy) return;
 
     const index = s.region;
+
     if (boss && s.bossDefeated.includes(index)) {
       toast("This guardian has already been defeated.");
       return;
@@ -2216,6 +2748,7 @@
 
     s.enemy = createEnemyForRegion(index, boss);
     s.bossMode = boss;
+
     partyClock = 0;
     enemyClock = 0;
     supportClock = 0;
@@ -2226,12 +2759,18 @@
       s.discoveredGuardians = Array.isArray(s.discoveredGuardians)
         ? s.discoveredGuardians
         : [];
+
       if (!s.discoveredGuardians.includes(index)) {
         s.discoveredGuardians.push(index);
       }
+
       log(`Guardian discovered: ${s.enemy.name}.`);
       announce(`Guardian challenge started: ${s.enemy.name}.`);
-      playImportantSound();
+
+      if (index === 8) {
+        s.enemy.specialName = "CROWNFALL RUPTURE";
+        log("A dangerous pressure gathers around the Crown Devourer.");
+      }
     } else {
       log(`${s.enemy.name} has appeared.`);
     }
@@ -2243,27 +2782,46 @@
 
   function scheduleExplore(immediate = false) {
     clearTimeout(exploreTimer);
-    if (
-      isGameplayPaused() || battleLocked() || s.enemy ||
-      !livingHeroes().length || s.bossDefeated.includes(s.region)
-    ) return;
 
-    const delay = immediate ? 50 : Math.max(1200, 4500 - s.region * 220);
+    if (
+      battleLocked() ||
+      s.enemy ||
+      !livingHeroes().length ||
+      s.bossDefeated.includes(s.region)
+    ) {
+      return;
+    }
+
+    const delay = immediate
+      ? 50
+      : Math.max(1200, 4500 - s.region * 220);
+
     exploreTimer = setTimeout(() => {
-      if (isGameplayPaused() || battleLocked() || s.enemy || !livingHeroes().length) return;
-      explore();
+      if (battleLocked() || s.enemy || !livingHeroes().length) return;
+      spawnEnemy(false);
     }, delay);
   }
 
   function exploreNow() {
     if (battleLocked()) {
-      toast(s.needsHospital ? "Pay the hospital fee first." : "The party is still recovering.");
+      toast(s.needsHospital
+        ? "Pay the hospital fee first."
+        : "The party is still recovering.");
       return;
     }
-    if (!livingHeroes().length) return toast("Your party has fallen. Visit the hospital.");
-    if (s.enemy) return toast("An enemy is already present.");
+
+    if (!livingHeroes().length) {
+      toast("Your party has fallen. Visit the hospital.");
+      return;
+    }
+
+    if (s.enemy) {
+      toast("An enemy is already present.");
+      return;
+    }
+
     clearTimeout(exploreTimer);
-    explore();
+    spawnEnemy(false);
   }
 
   // ==========================================
@@ -2271,22 +2829,35 @@
   // ==========================================
 
   function mine() {
-  if (battleLocked()) return toast("Mining is unavailable during recovery.");
-  const crystalBonus = s.recruits.includes("luna") ? 1.2 : 1;
-  const partyBonus = partyUpgradeMultiplier();
-  const amount = Math.max(1, Math.floor((4 + s.pickaxe * 2) * crystalBonus * partyBonus));
-  const oreAmount = Math.floor((1 + Math.floor(s.pickaxe / 3) + (s.recruits.includes("juno") ? 1 : 0)) * partyBonus);
-  const goldAmount = Math.max(1, Math.floor((2 + Math.floor(s.speedLevel / 2)) * partyBonus));
-  s.crystals += amount;
-  addCaveCrystalProgress(amount);
-  s.ore += oreAmount;
-  s.gold += goldAmount;
-  log(`Mining yielded ${amount} crystals, ${oreAmount} ore, and ${goldAmount} gold.`);
-  showDamage(`+${amount} ◆`, "party", true);
-  toast(`Mined ${amount} crystals · +${oreAmount} ore · +${goldAmount} gold`);
-  render();
-  save();
-}
+    if (battleLocked()) {
+      toast("Mining is unavailable during recovery.");
+      return;
+    }
+
+    const base = 4 + s.pickaxe * 2;
+    const crystalBonus = s.recruits.includes("luna") ? 1.2 : 1;
+    const amount = Math.max(
+      1,
+      Math.floor(base * crystalBonus * partyUpgradeMultiplier())
+    );
+
+    s.crystals += amount;
+    s.ore +=
+      1 +
+      (s.recruits.includes("juno") ? 1 : 0);
+
+    s.gold +=
+      2 +
+      Math.floor(s.speedLevel / 2);
+
+    addCaveCrystalProgress(amount);
+
+    log(`Mining complete: +${amount} crystals.`);
+    toast(`+${amount} crystals · +${1 + (s.recruits.includes("juno") ? 1 : 0)} ore`);
+
+    render();
+    save();
+  }
 
   // ==========================================
   // GUARDIAN CHALLENGE
@@ -2329,53 +2900,63 @@
 
   function applyPartyDamage(amount, areaAttack = false) {
     const living = livingHeroes();
-    if (!living.length) return partyWiped();
 
-    const barrierActive = s.partyBarrierUntil > Date.now();
+    if (!living.length) return;
+
+    const barrierActive =
+      s.partyBarrierUntil > Date.now();
+
     if (barrierActive && areaAttack) {
-      log("Barrier completely blocked the area attack.");
+      log("Barrier completely absorbed the area attack.");
       showDamage("AREA BLOCKED", "party");
-      playSkillAnimation("barrier-block");
-      render();
-      save();
       return;
     }
 
     let damage = Math.max(0, Math.floor(amount));
+
     if (barrierActive && !areaAttack) {
       damage = Math.floor(damage * 0.25);
-      log("Barrier reduced the incoming normal attack by 75%.");
+      log("Barrier reduced the incoming hit by 75%.");
     }
-    if (Number(s.resistUntil) > Date.now()) damage = Math.floor(damage * 0.5);
 
-    if (!areaAttack && s.guardCharges > 0) {
+    if (s.guardCharges > 0 && !areaAttack) {
       s.guardCharges--;
-      log("Aegis Guard blocked a normal attack.");
+      log("Aegis Guard blocked the incoming attack.");
       showDamage("BLOCKED", "party");
-      render();
-      save();
       return;
     }
 
+    const targetId = living[
+      Math.floor(Math.random() * living.length)
+    ];
+
     if (areaAttack) {
-      for (const id of living) {
-        s.heroHp[id] = Math.max(0, (s.heroHp[id] || 0) - damage);
+      living.forEach((id) => {
+        s.heroHp[id] = Math.max(
+          0,
+          (s.heroHp[id] || 0) - damage
+        );
+
         showDamage(`-${damage}`, "party");
-        if (s.heroHp[id] <= 0) playHeroFallenAnimation(id);
-      }
-      log(`An area attack hits the party for ${damage} damage each.`);
+      });
     } else {
-      const targetId = living[Math.floor(Math.random() * living.length)];
-      s.heroHp[targetId] = Math.max(0, (s.heroHp[targetId] || 0) - damage);
+      s.heroHp[targetId] = Math.max(
+        0,
+        (s.heroHp[targetId] || 0) - damage
+      );
+
       showDamage(`-${damage}`, "party");
-      log(`${s.enemy ? s.enemy.name : "The enemy"} hits ${HEROES[targetId].name} for ${damage} damage${s.heroHp[targetId] <= 0 ? " — hero down!" : "."}`);
-      if (s.heroHp[targetId] <= 0) {
-        playHeroFallenAnimation(targetId);
-        if (livingHeroes().length) showPhoenixPrompt(targetId);
-      }
+
+      log(
+        `${s.enemy ? s.enemy.name : "The enemy"} hits ` +
+        `${HEROES[targetId].name} for ${damage} damage.`
+      );
     }
 
-    if (!livingHeroes().length) partyWiped();
+    if (livingHeroes().length === 0) {
+      partyWiped();
+    }
+
     render();
     save();
   }
@@ -2390,7 +2971,6 @@
     }
 
     s.enemy.isCrownfallRupture = true;
-    playSkillAnimation("crownfall");
 
     const damage = Math.floor(
       s.enemy.damage * 1.75 +
@@ -2420,35 +3000,70 @@
   // ==========================================
 
   function updateAntiMagicBarrier() {
-    const enemy = s.enemy;
-    if (!enemy || !enemy.boss || enemy.regionIndex !== 8) return;
+    if (!s.enemy || !s.enemy.boss || s.enemy.regionIndex !== 8) {
+      if (s.enemy) {
+        s.enemy.antiMagicBarrierActive = false;
+        s.enemy.restrictedSkills = [];
+      }
 
-    enemy.uniqueAttack = "antiMagicBarrier";
-    enemy.restrictedSkills = Array.isArray(enemy.restrictedSkills) ? enemy.restrictedSkills : [];
+      return;
+    }
 
-    if (!enemy.antiMagicBarrierTriggered && (Number(enemy.bossElapsed) || 0) >= getBarrierDelaySeconds()) {
-      activateAntiMagicBarrier();
+    const now = Date.now();
+
+    if (
+      s.enemy.antiMagicBarrierActive &&
+      now >= s.enemy.antiMagicUntil
+    ) {
+      s.enemy.antiMagicBarrierActive = false;
+      s.enemy.restrictedSkills = [];
+
+      s.enemy.nextAntiMagicAt = now + 12000;
+
+      log("The Crown Devourer's Anti-Magic Barrier has faded.");
+      toast("ANTI-MAGIC BARRIER DISMISSED");
+    }
+
+    if (
+      !s.enemy.antiMagicBarrierActive &&
+      now >= s.enemy.nextAntiMagicAt
+    ) {
+      s.enemy.antiMagicBarrierActive = true;
+      s.enemy.antiMagicUntil = now + 6500;
+
+      s.enemy.restrictedSkills = [
+        "burst",
+        "meteor",
+        "frost",
+        "heal",
+        "phoenix"
+      ];
+
+      log("The Crown Devourer raises its Anti-Magic Barrier!");
+      toast("ANTI-MAGIC BARRIER ACTIVE");
     }
   }
 
   function enemyAttack() {
-    if (!s.enemy || battleLocked() || isGameplayPaused()) return;
+    if (!s.enemy || battleLocked()) return;
+
     const enemy = s.enemy;
 
-    if (enemy.boss && enemy.regionIndex === 7 && (Number(enemy.specialAttackClock) || 0) >= 12) {
-      enemy.specialAttackClock = 0;
-      enemyAreaAttack();
-      return;
-    }
-
-    if (enemy.boss && enemy.regionIndex === 8 && bossSpecialClock >= 14) {
+    if (
+      enemy.boss &&
+      enemy.regionIndex === 8 &&
+      bossSpecialClock >= 14
+    ) {
       bossSpecialClock = 0;
       crownfallRupture();
       return;
     }
 
-    const amount = Math.max(1, Math.floor(enemy.damage * (0.82 + Math.random() * 0.36)));
-    applyPartyDamage(amount, false);
+    const damage = enemy.damage;
+
+    // Normal attacks are single-target and can be reduced by Barrier.
+    applyPartyDamage(damage, false);
+
     render();
     save();
   }
@@ -2458,52 +3073,95 @@
   // ==========================================
 
   function partyAttack() {
-  if (!s.enemy || battleLocked() || isGameplayPaused()) return;
-  // Attack in the same order as the visible party formation: first recruited, first to the enemy.
-  const active = livingHeroes();
-  if (!active.length) return partyWiped();
+    if (!s.enemy || battleLocked()) return;
 
-  for (const id of active) {
-    if (!s.enemy) break;
-    const hero = HEROES[id];
-    animateHeroAttack(id);
+    const enemy = s.enemy;
+    const living = livingHeroes();
 
-    let amount = hero.damage + (s.pickaxe - 1) * 2 + s.damageLevel * 4 +
-      (s.recruits.includes("darius") ? 6 : 0);
-    if (s.partyBuffUntil > Date.now()) amount *= 1.25;
-    if (s.recruits.includes("silas")) amount *= 1.15;
-    amount *= partyUpgradeMultiplier();
-
-    const criticalChance = Math.min(0.5, s.critLevel * 0.05 + (id === "kael_rogue" ? 0.15 : 0));
-    const critical = Math.random() < criticalChance;
-    amount = Math.max(1, Math.floor(amount * (critical ? 1.8 : 1) * (0.88 + Math.random() * 0.24)));
-
-    s.enemy.hp = Math.max(0, s.enemy.hp - amount);
-    showDamage(`${critical ? "CRIT " : ""}-${amount}`, "enemy");
-    if (critical) playSkillAnimation("critical");
-    enemyHitEffect();
-
-    if (s.enemy.hp <= 0) {
-      defeatEnemy();
+    if (!living.length) {
+      partyWiped();
       return;
     }
-  }
 
-  renderEnemy();
-  save();
+        triggerPartyAttackAnimations();
+
+    let damage = 0;
+
+    living.forEach((id) => {
+      const hero = HEROES[id];
+
+      damage += hero.damage;
+
+      if (
+        s.critLevel > 0 &&
+        Math.random() < s.critLevel * 0.05
+      ) {
+        damage += hero.damage;
+      }
+    });
+
+    damage +=
+      s.damageLevel * 4 +
+      (s.recruits.includes("darius") ? 6 : 0);
+
+    damage *= partyUpgradeMultiplier();
+
+    if (s.recruits.includes("silas")) {
+      damage *= 1.15;
+    }
+
+    if (s.partyBuffUntil > Date.now()) {
+      damage *= 1.25;
+    }
+
+    damage = Math.max(1, Math.floor(damage));
+
+enemy.hp = Math.max(0, enemy.hp - damage);
+
+showDamage(`-${damage}`, "enemy");
+enemyHitEffect();
+
+if (enemy.hp <= 0) {
+  defeatEnemy();
+  return;
 }
 
+renderEnemy();
+save();
+}
+
+  function showDamage(text, target = "enemy") {
+    const parent =
+      target === "party"
+        ? document.querySelector(".party") ||
+          $("partyStage") ||
+          $("battleStage")
+        : document.querySelector(".enemy") ||
+          $("enemyStage") ||
+          $("battleStage");
+
+    if (!parent) return;
+
+    const damage = document.createElement("span");
+
+    // The existing stylesheet animates elements with class "damage".
+    damage.className = "damage";
+    damage.textContent = String(text);
+    damage.setAttribute("aria-hidden", "true");
+
+    damage.style.left =
+      `${25 + Math.random() * 40}%`;
+
+    damage.style.top =
+      `${20 + Math.random() * 35}%`;
+
+    parent.appendChild(damage);
+
+    setTimeout(() => damage.remove(), 1000);
+  }
 
   function updateCombat(delta) {
-    if (!s.enemy || battleLocked() || isGameplayPaused()) return;
-
-    if (s.enemy.boss) {
-      s.enemy.bossElapsed = (Number(s.enemy.bossElapsed) || 0) + delta;
-      s.enemy.specialAttackClock = (Number(s.enemy.specialAttackClock) || 0) + delta;
-    }
-    if (s.enemy.antiMagicBarrierActive) {
-      s.enemy.barrierElapsed = (Number(s.enemy.barrierElapsed) || 0) + delta;
-    }
+    if (!s.enemy || battleLocked()) return;
 
     updateAntiMagicBarrier();
 
@@ -2518,6 +3176,7 @@
       partyClock = 0;
       partyAttack();
     }
+
     if (!s.enemy) return;
 
     if (enemyClock >= eInterval()) {
@@ -2525,19 +3184,12 @@
       enemyAttack();
     }
   }
-
+  
   // ==========================================
   // SKILLS AND MANA
   // ==========================================
 
   function skill(key) {
-    if (isGameplayPaused()) return;
-    if (key === "analist") {
-      if (!isAnalistUnlocked()) return toast("That ability is not available yet.");
-      if (pendingAnalistApproval) return answerAnalistPrompt(true);
-      return startAnalistAnalysis();
-    }
-    if (key === "resist") return castResist();
     if (!(key in SKILL_MANA_COST)) return;
 
     if (!isSkillUnlocked(key)) {
@@ -2587,7 +3239,9 @@
       return toast("You need a healer in your party to use this skill.");
     }
 
-    const antiMagicBlocked = isSkillSealed(key);
+    const antiMagicBlocked =
+      isAntiMagicBarrierActive() &&
+      isSkillSealed(key);
 
     const partyBarrierActive =
       s.partyBarrierUntil > Date.now();
@@ -2610,7 +3264,6 @@
     }
 
     s.mana -= manaCost;
-    playSkillAnimation(key);
 
     const partyBonus = partyUpgradeMultiplier();
 
@@ -2620,493 +3273,602 @@
 
     const skillMultiplier =
       partyBonus *
-            s.bossMode = false;
-      partyClock = 0;
-      enemyClock = 0;
-      supportClock = 0;
+      recruitBonus *
+      antiMagicEffectiveness;
+
+    const healingBonus = s.recruits.includes("elise")
+      ? 1.2
+      : 1;
+
+    const startCooldown = (seconds) => {
+      s.cooldowns[key] = seconds;
+    };
+
+    const damageEnemy = (amount) => {
+      if (!s.enemy) return;
+
+      const damage = Math.max(
+        1,
+        Math.floor(amount * skillMultiplier)
+      );
+
+      s.enemy.hp = Math.max(0, s.enemy.hp - damage);
+
+      showDamage(`-${damage}`, "enemy");
+      enemyHitEffect();
+
+      log(
+        `${key.toUpperCase()} deals ${fmt(damage)} damage.`
+      );
+
+      if (s.enemy.hp <= 0) {
+        defeatEnemy();
+      }
+    };
+
+    // RADIANT SLASH
+    if (key === "slash") {
+      damageEnemy(
+        45 +
+        s.pickaxe * 5 +
+        s.region * 12
+      );
+
+      startCooldown(8);
+    }
+
+    // ARCANE BURST
+    else if (key === "burst") {
+      damageEnemy(72 + s.region * 20);
+
+      startCooldown(14);
+    }
+
+    // AEGIS GUARD
+    else if (key === "guard") {
+      s.guardCharges = 2;
+
+      startCooldown(12);
+
+      log("Aegis Guard is ready to block two normal attacks.");
+      toast("AEGIS GUARD ACTIVATED");
+    }
+
+    // HEALING WAVE
+    else if (key === "heal") {
+      let totalHealing = 0;
+
+      livingHeroes().forEach((id) => {
+        const hero = HEROES[id];
+
+        const amount = Math.floor(
+          35 *
+          partyBonus *
+          healingBonus *
+          antiMagicEffectiveness
+        );
+
+        const before = s.heroHp[id];
+
+        s.heroHp[id] = Math.min(
+          hero.maxHp,
+          before + amount
+        );
+
+        totalHealing += s.heroHp[id] - before;
+      });
+
+      startCooldown(18);
+
+      log(`Healing Wave restores ${fmt(totalHealing)} party HP.`);
+      toast(`Healing Wave restored ${fmt(totalHealing)} HP.`);
+    }
+
+    // METEOR STRIKE
+    else if (key === "meteor") {
+      damageEnemy(130 + s.region * 32);
+
+      startCooldown(25);
+    }
+
+    // FROST BIND
+    else if (key === "frost") {
+      damageEnemy(65 + s.region * 14);
+
+      if (s.enemy) {
+        const duration = Math.floor(
+          8000 * antiMagicEffectiveness
+        );
+
+        s.frostUntil = Date.now() + duration;
+
+        log(
+          `Frost Bind slows the enemy for ${fmt(duration / 1000)} seconds.`
+        );
+      }
+
+      startCooldown(18);
+    }
+
+    // PHOENIX BLESSING
+    else if (key === "phoenix") {
+      const fallen = s.heroes.filter(
+        (id) => (s.heroHp[id] || 0) <= 0
+      );
+
+      if (!fallen.length) {
+        s.mana += manaCost;
+        s.mana = Math.min(maxMana(), s.mana);
+
+        return toast("No fallen heroes need revival.");
+      }
+
+      const target = fallen[0];
+
+      s.heroHp[target] = Math.max(
+        1,
+        Math.floor(
+          HEROES[target].maxHp *
+          0.6 *
+          skillMultiplier
+        )
+      );
+
+      startCooldown(40);
+
+      log(`${HEROES[target].name} returns to battle!`);
+      toast(`${HEROES[target].name} revived!`);
+    }
+
+    // RESIST
+    else if (key === "resist") {
+      s.resistUntil = Date.now() + 6000;
+
+      startCooldown(25);
+
+      log("Resist protects the party for six seconds.");
+      toast("RESIST ACTIVATED");
+    }
+
+    // BARRIER
+    else if (key === "barrier") {
+      s.partyBarrierUntil = Date.now() + 5000;
+
+      startCooldown(22);
+
+      log(
+        "Barrier forms around the party for five seconds!"
+      );
+
+      toast("BARRIER ACTIVATED · 5 SECONDS");
     }
 
     render();
     save();
+  }
 
-    // Raphael evolves after Kingdom Autopilot unlocks.
-    if (unlocks.some((item) => item.title === "Kingdom Autopilot") && !s.raphaelEvolved) {
-      setTimeout(triggerRaphaelEvolution, 1200);
+  // ==========================================
+  // MAXIMUM MANA UPGRADE
+  // ==========================================
+
+  function manaUpgradeCost() {
+    return Math.floor(
+      120 * Math.pow(1.8, s.manaLevel)
+    );
+  }
+
+  function upgradeMaxMana() {
+    if (s.manaLevel >= 5) {
+      return toast("Maximum mana upgrade level reached.");
     }
 
-    if (unlocks.length) {
-      queueUnlockReveal(unlocks);
+    const cost = manaUpgradeCost();
+
+    if (s.gold < cost) {
+      return toast(`Not enough gold. Need ${fmt(cost)} gold.`);
     }
+
+    s.gold -= cost;
+    s.manaLevel++;
+
+    // Each upgrade adds 25 to the maximum and grants
+    // the newly acquired mana capacity immediately.
+    s.mana = Math.min(
+      maxMana(),
+      s.mana + 25
+    );
+
+    log(
+      `Maximum mana upgraded to ${fmt(maxMana())}.`
+    );
+
+    toast(`MAX MANA INCREASED TO ${fmt(maxMana())}!`);
+
+    render();
+    save();
+  }
+
+  function renderSkills() {
+    document.querySelectorAll("[data-skill]").forEach((button) => {
+      const key = button.dataset.skill;
+      const cost = SKILL_MANA_COST[key];
+
+      if (cost === undefined) return;
+
+      const locked = !isSkillUnlocked(key);
+
+      const healerRequired =
+        ["heal", "phoenix"].includes(key) &&
+        !s.heroes.includes("celeste") &&
+        !s.heroes.includes("sage");
+
+      const antiMagicBlocked =
+        isAntiMagicBarrierActive() &&
+        isSkillSealed(key);
+
+      const barrierActive =
+        s.partyBarrierUntil > Date.now();
+
+      const sealed =
+        antiMagicBlocked && !barrierActive;
+
+      const needsEnemy = [
+        "slash",
+        "burst",
+        "meteor",
+        "frost"
+      ].includes(key) && !s.enemy;
+
+      button.disabled =
+        locked ||
+        healerRequired ||
+        sealed ||
+        battleLocked() ||
+        !livingHeroes().length ||
+        needsEnemy ||
+        s.cooldowns[key] > 0 ||
+        s.mana < cost;
+
+      const label = $("cd-" + key);
+
+      if (label) {
+        if (locked || healerRequired) {
+          label.textContent = "LOCKED";
+        } else if (sealed) {
+          label.textContent = "SEALED";
+        } else if (s.cooldowns[key] > 0) {
+          label.textContent = `${Math.ceil(s.cooldowns[key])}s`;
+        } else if (s.mana < cost) {
+          label.textContent = `NEED ${cost} M`;
+        } else if (antiMagicBlocked && barrierActive) {
+          label.textContent = `50% EFFECT · ${cost} M`;
+        } else {
+          label.textContent = `READY · ${cost} M`;
+        }
+      }
+    });
+
+    const manaLevel = $("manaLevel");
+    const manaCost = $("manaUpgradeCost");
+    const manaButton = $("manaUpgrade");
+
+    if (manaLevel) {
+      manaLevel.textContent = `Level ${s.manaLevel} / 5`;
+    }
+
+    if (manaCost) {
+      manaCost.textContent = s.manaLevel >= 5
+        ? "MAX"
+        : `${fmt(manaUpgradeCost())} G`;
+    }
+
+    if (manaButton) {
+      manaButton.disabled =
+        s.manaLevel >= 5 ||
+        s.gold < manaUpgradeCost();
+    }
+  }
+  
+  // ==========================================
+  // CAVE 8: PERMANENT PARTY UPGRADE
+  // ==========================================
+
+  function activatePartyUpgrade() {
+    if (s.partyUpgradeApplied) return;
+
+    s.partyUpgradeApplied = true;
+
+    applyPermanentHeroBoost();
+
+    s.heroes.forEach((id) => {
+      if (!HEROES[id]) return;
+
+      s.heroHp[id] = Math.min(
+        HEROES[id].maxHp,
+        Math.ceil(
+          (Number(s.heroHp[id]) || 0) *
+          CK_PARTY_UPGRADE_MULTIPLIER
+        )
+      );
+    });
+
+    log(
+      "PARTY UPGRADE! Maximum health, damage, skill effects, snack effects, and mining rewards increased by 20%."
+    );
+
+    toast("PARTY UPGRADE UNLOCKED · ALL STATS +20%");
+
+    announce(
+      "A permanent party upgrade is now active. Health, damage, skill effects, snack effects, and mining rewards are stronger."
+    );
+
+    render();
+    save();
+  }
+
+  // ==========================================
+  // HOSPITAL AND RECOVERY
+  // ==========================================
+
+  function partyWiped() {
+    if (s.needsHospital || isRecovering()) return;
+
+    const fallenEnemy = s.enemy
+      ? s.enemy.name
+      : "the enemy";
+
+    s.enemy = null;
+    s.bossMode = false;
+
+    partyClock = 0;
+    enemyClock = 0;
+    supportClock = 0;
+
+    s.needsHospital = true;
+    s.healingUntil = 0;
+
+    s.hospitalFee = Math.floor(
+      400 +
+      s.region * 300 +
+      Math.floor(s.defeated / 10) * 100
+    );
+
+    clearTimeout(exploreTimer);
+
+    log(
+      `Every hero has fallen against ${fallenEnemy}. ` +
+      `The hospital requires ${fmt(s.hospitalFee)} gold.`
+    );
+
+    announce(
+      "The entire party has fallen. The hospital is ready to help. Battles are paused until treatment is complete."
+    );
+
+    toast("PARTY WIPED · HOSPITAL REQUIRED");
+
+    render();
+    save();
+  }
+
+  function payHospitalFee() {
+    if (!s.needsHospital) {
+      return toast("The hospital does not require payment.");
+    }
+
+    if (s.gold < s.hospitalFee) {
+      return toast("You do not have enough gold for hospital treatment.");
+    }
+
+    s.gold -= s.hospitalFee;
+
+    s.needsHospital = false;
+    s.healingUntil = Date.now() + 60000;
+
+    s.enemy = null;
+    s.bossMode = false;
+
+    log(
+      `Hospital fee paid. The party will recover in 60 seconds.`
+    );
+
+    announce(
+      "Hospital treatment has started. Your party will recover in one minute."
+    );
+
+    toast("TREATMENT STARTED · 60 SECONDS");
+
+    render();
+    save();
+  }
+
+  function completeRecovery() {
+    if (s.needsHospital || !isRecovering()) return;
+
+    if (s.healingUntil > Date.now()) return;
+
+    s.healingUntil = 0;
+
+    s.heroes.forEach((id) => {
+      if (!HEROES[id]) return;
+
+      s.heroHp[id] = HEROES[id].maxHp;
+    });
+
+    log("Hospital treatment complete. All party members are restored.");
+    announce("Treatment is complete. The entire party is ready to return.");
+
+    toast("PARTY FULLY RECOVERED");
+
+    render();
+    save();
 
     scheduleExplore();
   }
 
   // ==========================================
-  // PASSIVE RESOURCE AND HERO SUPPORT EFFECTS
+  // ENEMY DEFEAT AND REWARDS
   // ==========================================
 
-  function updatePassiveResources(delta) {
-    if (battleLocked() || isGameplayPaused()) return;
+  function defeatEnemy() {
+    const enemy = s.enemy;
 
-    const income =
-      (s.recruits.includes("tessa") ? 0.8 : 0) +
-      (s.recruits.includes("borin") ? 1.3 : 0);
+    if (!enemy) return;
 
-    if (income > 0) {
-      s.gold += income * delta;
-    }
-
-    if (s.recruits.includes("kellan")) {
-      s.crystals += 0.3 * delta;
-    }
-
-    const previousMana = s.mana;
-    s.mana = Math.min(
-      maxMana(),
-      s.mana + manaRate() * delta
+    const goldReward = Math.floor(
+      enemy.gold *
+      partyUpgradeMultiplier()
     );
 
-    if (previousMana < maxMana() && s.mana >= maxMana()) {
-      s.manaWarning = false;
-    }
-
-    if (s.mana < 10 && !s.manaWarning) {
-      s.manaWarning = true;
-      toast("LOW MANA");
-    } else if (s.mana >= 10) {
-      s.manaWarning = false;
-    }
-
-    if (s.partyBuffUntil && s.partyBuffUntil <= Date.now()) {
-      s.partyBuffUntil = 0;
-      log("Moonberry damage boost has worn off.");
-    }
-
-    if (s.manaBuffUntil && s.manaBuffUntil <= Date.now()) {
-      s.manaBuffUntil = 0;
-      log("Astral Tea's mana boost has worn off.");
-    }
-
-    if (s.frostUntil && s.frostUntil <= Date.now()) {
-      s.frostUntil = 0;
-      log("Frost Bind has worn off.");
-    }
-  }
-
-  function updateCelesteHealing(delta) {
-    if (!s.heroes.includes("celeste") || battleLocked() || isGameplayPaused()) return;
-
-    supportClock += delta;
-    if (supportClock < 5) return;
-    supportClock = 0;
-
-    let healed = 0;
-    for (const id of livingHeroes()) {
-      const maxHp = HEROES[id].maxHp;
-      if ((s.heroHp[id] || 0) >= maxHp) continue;
-      const amount = Math.max(1, Math.floor(3 * partyUpgradeMultiplier()));
-      const before = s.heroHp[id];
-      s.heroHp[id] = Math.min(maxHp, before + amount);
-      healed += s.heroHp[id] - before;
-    }
-
-    if (healed > 0) {
-      showDamage(`+${healed} HP`, "party", true);
-    }
-  }
-
-  function elowenPassiveReadyForFallenAlly() {
-    if (!s.heroes.includes("elowen")) return false;
-    if ((s.heroHp.elowen || 0) <= 0) return false;
-
-    return s.heroes.some((id) =>
-      id !== "elowen" && (s.heroHp[id] || 0) <= 0
+    const crystalReward = Math.floor(
+      enemy.crystals *
+      partyUpgradeMultiplier()
     );
-  }
 
-  function updateElowenRevival() {
-    if (!s.heroes.includes("elowen")) return;
-    if (battleLocked() || isGameplayPaused()) return;
+    s.gold += goldReward;
+    s.crystals += crystalReward;
 
-    const now = Date.now();
-    const elowenHP = Number(s.heroHp.elowen) || 0;
+    addCaveCrystalProgress(crystalReward);
 
-    if (elowenHP <= 0) {
-      if (!s.elowenSelfReviveAt) {
-        s.elowenSelfReviveAt = now + 60000;
-        save();
-      } else if (now >= s.elowenSelfReviveAt) {
-        s.heroHp.elowen = Math.max(
-          1,
-          Math.floor(HEROES.elowen.maxHp * 0.4)
-        );
-        s.elowenSelfReviveAt = 0;
-        s.elowenNextReviveAt = now + 30000;
-        log("Elowen revived herself through spirit magic.");
-        playHeroReviveAnimation("elowen");
-        announce("My spirit ally, Elowen, has returned.");
-        render();
-        save();
+    s.ore += enemy.boss
+      ? 8
+      : 1 + Math.floor(Math.random() * 3);
+
+    s.defeated++;
+
+    if (enemy.boss) {
+      const clearedRegion = s.region;
+
+      if (!s.bossDefeated.includes(clearedRegion)) {
+        s.bossDefeated.push(clearedRegion);
       }
-      return;
+
+      log(
+        `Guardian defeated! +${fmt(goldReward)} gold, ` +
+        `+${fmt(crystalReward)} crystals, +${enemy.boss ? 8 : 0} ore.`
+      );
+
+      const rewardId = regions[clearedRegion].rewardHero;
+
+      if (
+        rewardId &&
+        HEROES[rewardId] &&
+        !s.heroes.includes(rewardId)
+      ) {
+        s.heroes.push(rewardId);
+
+        s.heroHp[rewardId] = HEROES[rewardId].maxHp;
+
+        const hero = HEROES[rewardId];
+
+        log(`${hero.name} joined the party after the cave clear!`);
+
+        toast(`NEW HERO JOINED: ${hero.name}!`);
+
+        announce(
+          `A new ally has joined your party: ${hero.name}.`
+        );
+      } else {
+        toast("Guardian defeated! Cave cleared.");
+      }
+
+      // The fifth guardian can unlock Resist.
+      if (clearedRegion === 4 && !s.resistUnlocked) {
+        s.resistUnlocked = true;
+
+        log("New skill unlocked: Resist.");
+        announce("A new defensive skill has been unlocked: Resist.");
+      }
+
+      // Kingdom Autopilot unlocks when the sixth guardian falls.
+if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+  s.autoPilotUnlocked = true;
+
+  log("Kingdom Autopilot unlocked.");
+  announce("Kingdom Autopilot has been unlocked.");
+  toast("KINGDOM AUTOPILOT UNLOCKED");
+
+  raphaelEvolutionTimer = window.setTimeout(() => {
+    if (s.autoPilotUnlocked && !s.raphaelEvolved) {
+      triggerRaphaelEvolution();
     }
+  }, 1200);
+}
 
-    if (!s.elowenNextReviveAt) {
-      s.elowenNextReviveAt = now + 30000;
-      save();
-      return;
-    }
+      // Clearing the seventh guardian triggers the permanent
+      // party upgrade while entering Cave 8.
+      if (clearedRegion === 6) {
+        activatePartyUpgrade();
+      }
 
-    if (now < s.elowenNextReviveAt) return;
+      if (clearedRegion < regions.length - 1) {
+        s.region = clearedRegion + 1;
 
-    const fallen = s.heroes.find((id) =>
-      id !== "elowen" && (s.heroHp[id] || 0) <= 0
-    );
+        s.caveCrystalProgress = 0;
 
-    if (!fallen) {
-      s.elowenNextReviveAt = now + 30000;
-      return;
-    }
-
-    s.heroHp[fallen] = Math.max(
-      1,
-      Math.floor(HEROES[fallen].maxHp * 0.4)
-    );
-
-    s.elowenNextReviveAt = now + 30000;
-
-    log(`${HEROES[fallen].name} was revived by Elowen.`);
-    announce(`Elowen has revived ${HEROES[fallen].name}.`);
-    playHeroReviveAnimation(fallen);
-    render();
-    save();
-  }
-
-  // ==========================================
-  // SNACKS
-  // ==========================================
-
-  function buySnack(id) {
-    const snack = SNACKS.find((item) => item.id === id);
-    if (!snack) return;
-
-    if (battleLocked()) {
-      return toast("Snacks cannot be purchased during recovery.");
-    }
-
-    if (s.gold < snack.cost) {
-      return toast(`Not enough gold. Need ${fmt(snack.cost)}.`);
-    }
-
-    s.gold -= snack.cost;
-    s.snacks[id] = (s.snacks[id] || 0) + 1;
-
-    log(`Purchased ${snack.name}.`);
-    toast(`${snack.name} purchased.`);
-    render();
-    save();
-  }
-
-  function useSnack(id) {
-    const snack = SNACKS.find((item) => item.id === id);
-    if (!snack) return;
-
-    if (battleLocked()) {
-      return toast("Snacks cannot be used during recovery.");
-    }
-
-    if (!(s.snacks[id] > 0)) {
-      return toast(`You have no ${snack.name} remaining.`);
-    }
-
-    if (!livingHeroes().length) {
-      return toast("Your party has fallen. Visit the hospital.");
-    }
-
-    if (id === "revive" && !livingHeroes().length) {
-      return toast("At least one hero must remain standing to use a Revive Snack.");
-    }
-
-    let used = false;
-    const partyBonus = partyUpgradeMultiplier();
-    const cookBonus = s.recruits.includes("mira_cook") ? 1.25 : 1;
-
-    switch (snack.effect) {
-      case "healOne": {
-        const injured = livingHeroes()
-          .filter((heroId) => s.heroHp[heroId] < HEROES[heroId].maxHp)
-          .sort((a, b) =>
-            s.heroHp[a] / HEROES[a].maxHp -
-            s.heroHp[b] / HEROES[b].maxHp
-          );
-
-        if (!injured.length) {
-          return toast("No hero needs healing right now.");
-        }
-
-        const target = injured[0];
-        const healing = Math.floor(35 * partyBonus * cookBonus);
-
-        s.heroHp[target] = Math.min(
-          HEROES[target].maxHp,
-          s.heroHp[target] + healing
+        log(
+          `A new passage has opened. Cave ${s.region + 1} is now accessible.`
         );
 
-        showDamage(`+${healing}`, "party", true);
-        used = true;
-        break;
-      }
+        // Do not reveal the new cave's name or guardian.
+        announce(
+          "The guardian has fallen. A previously sealed passage has opened. Its secrets remain undiscovered."
+        );
 
-      case "healAll": {
-        let amountHealed = 0;
+        if (s.region === 9 && !s.barrierUnlocked) {
+          s.barrierUnlocked = true;
 
-        for (const heroId of livingHeroes()) {
-          const hero = HEROES[heroId];
-          const before = s.heroHp[heroId];
-          s.heroHp[heroId] = Math.min(
-            hero.maxHp,
-            before + Math.floor(24 * partyBonus * cookBonus)
+          log(
+            "A new skill has been unlocked: Barrier. It costs 75 mana and lasts five seconds."
           );
-          amountHealed += s.heroHp[heroId] - before;
+
+          announce(
+            "A new defensive skill is available: Barrier. It costs 75 mana and lasts five seconds."
+          );
+
+          toast("NEW SKILL UNLOCKED: BARRIER");
         }
+      } else {
+        log("The final known guardian has fallen.");
 
-        if (!amountHealed) return toast("Your party is already fully healed.");
-        showDamage(`+${amountHealed} HP`, "party", true);
-        used = true;
-        break;
+        announce(
+          "The final known guardian has fallen. The kingdom's deepest mystery remains."
+        );
       }
+    } else {
+      log(
+        `${enemy.name} defeated. +${fmt(goldReward)} gold and +${fmt(crystalReward)} crystals.`
+      );
 
-      case "buff":
-        s.partyBuffUntil = Date.now() + 20000;
-        used = true;
-        break;
-
-      case "ore":
-        s.ore += Math.floor(4 * partyBonus);
-        used = true;
-        break;
-
-      case "mana":
-        s.mana = Math.min(maxMana(), s.mana + 35);
-        used = true;
-        break;
-
-      case "manaBuff":
-        s.manaBuffUntil = Date.now() + 30000;
-        used = true;
-        break;
-
-      case "revive": {
-        const fallen = s.heroes.find((heroId) => (s.heroHp[heroId] || 0) <= 0);
-        if (!fallen) return toast("No fallen hero needs revival.");
-
-        if (elowenPassiveReadyForFallenAlly()) {
-          return toast("Elowen's revival is ready. Save the Revive Snack for later.");
-        }
-
-        s.heroHp[fallen] = Math.floor(HEROES[fallen].maxHp * 0.4);
-        playHeroReviveAnimation(fallen);
-        used = true;
-        break;
-      }
+      toast(
+        `Victory! +${fmt(goldReward)} gold · +${fmt(crystalReward)} crystals`
+      );
     }
 
-    if (!used) return;
+    s.enemy = null;
+    s.bossMode = false;
 
-    s.snacks[id]--;
-    log(`Used ${snack.name}.`);
-    toast(`${snack.name} used.`);
-    render();
-    save();
-  }
-
-  function renderSnacks() {
-    const container = $("snackList");
-    if (!container) return;
-
-    container.innerHTML = SNACKS.map((snack) => {
-      const count = s.snacks[snack.id] || 0;
-
-      return `
-        <article class="snack-card">
-          <div class="snack-icon">${snack.icon}</div>
-          <div class="snack-info">
-            <b>${esc(snack.name)}</b>
-            <small>${esc(snack.desc)}</small>
-            <small>Owned: ${fmt(count)} · ${fmt(snack.cost)} gold</small>
-          </div>
-          <div class="snack-actions">
-            <button data-action="buySnack" data-id="${snack.id}" ${battleLocked() || s.gold < snack.cost ? "disabled" : ""}>Buy</button>
-            <button data-action="useSnack" data-id="${snack.id}" ${battleLocked() || count <= 0 || !livingHeroes().length ? "disabled" : ""}>Use</button>
-          </div>
-        </article>
-      `;
-    }).join("");
-  }
-
-  // ==========================================
-  // RECRUITS
-  // ==========================================
-
-  function buyRecruit(id) {
-    const recruit = RECRUITS.find((item) => item.id === id);
-    if (!recruit) return;
-
-    if (battleLocked()) {
-      return toast("Recruitment is paused during recovery.");
-    }
-
-    if (s.recruits.includes(id)) {
-      return toast(`${recruit.name} has already joined your kingdom staff.`);
-    }
-
-    if (s.gold < recruit.cost) {
-      return toast(`Not enough gold. Need ${fmt(recruit.cost)}.`);
-    }
-
-    s.gold -= recruit.cost;
-    s.recruits.push(id);
-
-    log(`${recruit.name} joined the kingdom staff.`);
-    toast(`${recruit.name} recruited.`);
-    render();
-    save();
-  }
-
-  function renderRecruits() {
-    const container = $("recruitList");
-    if (!container) return;
-
-    container.innerHTML = RECRUITS.map((recruit) => {
-      const hired = s.recruits.includes(recruit.id);
-
-      return `
-        <article class="recruit-card">
-          <div class="recruit-info">
-            <b>${esc(recruit.name)}</b>
-            <small>${esc(recruit.role)}</small>
-            <small>${esc(recruit.desc)}</small>
-          </div>
-          <button
-            data-action="buyRecruit"
-            data-id="${recruit.id}"
-            ${hired || battleLocked() || s.gold < recruit.cost ? "disabled" : ""}
-          >${hired ? "Recruited" : `Hire · ${fmt(recruit.cost)} G`}</button>
-        </article>
-      `;
-    }).join("");
-  }
-
-  // ==========================================
-  // UPGRADES
-  // ==========================================
-
-  function upgrade(kind) {
-    const configs = {
-      pickaxe: {
-        level: "pickaxe",
-        cost: pickCost,
-        max: 10,
-        label: "Pickaxe"
-      },
-      speed: {
-        level: "speedLevel",
-        cost: speedCost,
-        max: 5,
-        label: "Attack Speed"
-      },
-      damage: {
-        level: "damageLevel",
-        cost: damageCost,
-        max: 10,
-        label: "Damage"
-      },
-      crit: {
-        level: "critLevel",
-        cost: critCost,
-        max: 5,
-        label: "Critical Strike"
-      },
-      mana: {
-        level: "manaLevel",
-        cost: manaUpgradeCost,
-        max: 5,
-        label: "Maximum Mana"
-      }
-    };
-
-    const config = configs[kind];
-    if (!config) return;
-
-    if (battleLocked()) {
-      return toast("Upgrades are paused during recovery.");
-    }
-
-    if (s[config.level] >= config.max) {
-      return toast(`${config.label} is already at maximum level.`);
-    }
-
-    const price = config.cost();
-
-    if (s.gold < price) {
-      return toast(`Not enough gold. Need ${fmt(price)}.`);
-    }
-
-    s.gold -= price;
-    const previousMaxMana = maxMana();
-    s[config.level]++;
-
-    if (kind === "mana") {
-      s.mana = Math.min(maxMana(), s.mana + maxMana() - previousMaxMana);
-    }
-
-    log(`${config.label} upgraded to level ${s[config.level]}.`);
-    toast(`${config.label} upgraded.`);
-    render();
-    save();
-  }
-
-  function renderUpgrades() {
-    const map = [
-      ["pickaxe", "Pickaxe", s.pickaxe, 10, pickCost()],
-      ["speed", "Attack Speed", s.speedLevel, 5, speedCost()],
-      ["damage", "Party Damage", s.damageLevel, 10, damageCost()],
-      ["crit", "Critical Strike", s.critLevel, 5, critCost()],
-      ["mana", "Maximum Mana", s.manaLevel, 5, manaUpgradeCost()]
-    ];
-
-    for (const [id, label, level, max, cost] of map) {
-      const levelEl = $(`${id}Level`);
-      const costEl = $(`${id}Cost`);
-      const button = $(`${id}Upgrade`);
-
-      if (levelEl) levelEl.textContent = `Level ${level} / ${max}`;
-      if (costEl) costEl.textContent = level >= max ? "MAX" : `${fmt(cost)} G`;
-      if (button) {
-        button.disabled =
-          battleLocked() ||
-          level >= max ||
-          s.gold < cost;
-      }
-    }
-  }
-
-      enemyClock = 0;
+    partyClock = 0;
+    enemyClock = 0;
     supportClock = 0;
     bossSpecialClock = 0;
     antiMagicClock = 0;
-    if (s.needsHospital) return;
 
+    // Small recovery after a victory; fallen heroes stay down.
     livingHeroes().forEach((id) => {
-      s.heroHp[id] = Math.min(HEROES[id].maxHp, (s.heroHp[id] || 0) + Math.floor(7 * partyUpgradeMultiplier()));
+      s.heroHp[id] = Math.min(
+        HEROES[id].maxHp,
+        (s.heroHp[id] || 0) + Math.floor(
+          7 * partyUpgradeMultiplier()
+        )
+      );
     });
 
     render();
     save();
-    if (unlocks.length) unlocks.forEach(queueUnlockReveal);
-    else scheduleExplore();
-  }
 
+    scheduleExplore();
+  }
+  
   // ==========================================
   // SNACKS
   // ==========================================
@@ -3175,77 +3937,141 @@
   }
 
   function useSnack(id) {
-  const snack = SNACKS.find((entry) => entry.id === id);
-  if (!snack) return;
-  if (battleLocked()) return toast("Snacks can be used after hospital treatment.");
-  if (!livingHeroes().length) return toast("Your party needs hospital treatment first.");
-  if ((Number(s.snacks[id]) || 0) <= 0) return toast("You are out of that snack. Buy more.");
-  if (snack.effect === "mana" && s.mana >= maxMana()) return toast("Your mana is already full.");
-  if (snack.effect === "revive" && !s.heroes.some((heroId) => (s.heroHp[heroId] || 0) <= 0)) {
-    return toast("No hero needs reviving right now.");
-  }
+    const snack = SNACKS.find((item) => item.id === id);
 
-  s.snacks[id]--;
-  const partyBonus = partyUpgradeMultiplier();
-  const snackHealingBonus = partyBonus * (s.recruits.includes("mira_cook") ? 1.25 : 1);
-  let revivedHero = null;
+    if (!snack) return;
 
-  if (snack.effect === "healOne") {
-    const target = livingHeroes().slice().sort((a, b) =>
-      (s.heroHp[a] / HEROES[a].maxHp) - (s.heroHp[b] / HEROES[b].maxHp)
-    )[0];
-    if (target) {
-      const amount = Math.floor(35 * snackHealingBonus);
-      const before = s.heroHp[target] || 0;
-      s.heroHp[target] = Math.min(HEROES[target].maxHp, before + amount);
-      showDamage(`+${s.heroHp[target] - before}`, "party", true);
-      log(`Trail Rations restored HP to ${HEROES[target].name}.`);
-      playSkillAnimation("heal");
+    if (battleLocked()) {
+      return toast("Snacks cannot be used during hospital recovery.");
     }
-  } else if (snack.effect === "buff") {
-    const duration = 20000 * partyBonus;
-    s.partyBuffUntil = Math.max(Date.now(), s.partyBuffUntil || 0) + duration;
-    log(`Moonberries boosted party damage for ${fmt(duration / 1000)} seconds.`);
-  } else if (snack.effect === "ore") {
-    const amount = Math.ceil(4 * partyBonus);
-    s.ore += amount;
-    showDamage(`+${amount} ORE`, "party", true);
-    log(`Miner's Tea refreshed the crew. +${amount} ore.`);
-  } else if (snack.effect === "healAll") {
-    let healed = 0;
-    livingHeroes().forEach((heroId) => {
-      const before = s.heroHp[heroId] || 0;
-      const amount = Math.floor(24 * snackHealingBonus);
-      s.heroHp[heroId] = Math.min(HEROES[heroId].maxHp, before + amount);
-      healed += s.heroHp[heroId] - before;
-    });
-    showDamage(`TEAM +${healed}`, "party", true);
-    log(`Crystal Cake healed the party by up to ${Math.floor(24 * snackHealingBonus)} HP per hero.`);
-    playSkillAnimation("heal");
-  } else if (snack.effect === "mana") {
-    const before = s.mana;
-    const amount = Math.floor(35 * partyBonus);
-    s.mana = Math.min(maxMana(), s.mana + amount);
-    log(`Etherberries restored ${Math.floor(s.mana - before)} mana.`);
-  } else if (snack.effect === "manaBuff") {
-    const duration = 30000 * partyBonus;
-    s.manaBuffUntil = Math.max(Date.now(), s.manaBuffUntil || 0) + duration;
-    log(`Astral Tea tripled mana regeneration for ${fmt(duration / 1000)} seconds.`);
-  } else if (snack.effect === "revive") {
-    revivedHero = s.heroes.find((heroId) => (s.heroHp[heroId] || 0) <= 0);
-    if (!revivedHero) {
-      s.snacks[id]++;
-      return toast("No hero needs reviving right now.");
-    }
-    s.heroHp[revivedHero] = Math.max(1, Math.ceil(HEROES[revivedHero].maxHp * 0.4 * snackHealingBonus));
-    log(`${HEROES[revivedHero].name} was revived with a Revive Snack.`);
-    playHeroReviveAnimation(revivedHero);
-  }
 
-  toast(`${snack.name} used.`);
-  render();
-  save();
-}
+    if ((Number(s.snacks[id]) || 0) <= 0) {
+      return toast("You don't have any of that snack.");
+    }
+
+    const living = livingHeroes();
+    const partyBonus = partyUpgradeMultiplier();
+
+    if (snack.effect === "revive" && !living.length) {
+      return toast("At least one hero must be standing to use this snack.");
+    }
+
+    if (
+      snack.effect !== "revive" &&
+      snack.effect !== "ore" &&
+      snack.effect !== "mana" &&
+      snack.effect !== "manaBuff" &&
+      !living.length
+    ) {
+      return toast("Your party needs hospital treatment.");
+    }
+
+    s.snacks[id]--;
+
+    if (snack.effect === "healOne") {
+      const target = living
+        .slice()
+        .sort((a, b) =>
+          (s.heroHp[a] / HEROES[a].maxHp) -
+          (s.heroHp[b] / HEROES[b].maxHp)
+        )[0];
+
+      if (target) {
+        const healing = Math.floor(35 * partyBonus);
+
+        s.heroHp[target] = Math.min(
+          HEROES[target].maxHp,
+          s.heroHp[target] + healing
+        );
+
+        log(
+          `${HEROES[target].name} used Trail Rations.`
+        );
+      }
+    }
+
+    else if (snack.effect === "healAll") {
+      living.forEach((id) => {
+        const healing = Math.floor(24 * partyBonus);
+
+        s.heroHp[id] = Math.min(
+          HEROES[id].maxHp,
+          s.heroHp[id] + healing
+        );
+      });
+
+      log("Crystal Cake restored health to the party.");
+    }
+
+    else if (snack.effect === "buff") {
+      // The Cave 8 upgrade increases snack effect duration.
+      const duration = 20000 * partyBonus;
+
+      s.partyBuffUntil = Math.max(
+        Date.now(),
+        s.partyBuffUntil || 0
+      ) + duration;
+
+      log(
+        `Moonberries boost party damage for ${fmt(duration / 1000)} seconds.`
+      );
+    }
+
+    else if (snack.effect === "ore") {
+      s.ore += 4;
+      log("Miner's Tea provided 4 ore.");
+    }
+
+    else if (snack.effect === "mana") {
+      const amount = Math.floor(35 * partyBonus);
+
+      s.mana = Math.min(
+        maxMana(),
+        s.mana + amount
+      );
+
+      log(`Etherberries restored ${fmt(amount)} mana.`);
+    }
+
+    else if (snack.effect === "manaBuff") {
+      const duration = 30000 * partyBonus;
+
+      s.manaBuffUntil = Math.max(
+        Date.now(),
+        s.manaBuffUntil || 0
+      ) + duration;
+
+      log(
+        `Astral Tea boosted mana regeneration for ${fmt(duration / 1000)} seconds.`
+      );
+    }
+
+    else if (snack.effect === "revive") {
+      const fallen = s.heroes.filter(
+        (heroId) => (s.heroHp[heroId] || 0) <= 0
+      );
+
+      if (!fallen.length) {
+        s.snacks[id]++;
+        return toast("No fallen heroes need reviving.");
+      }
+
+      const target = fallen[0];
+
+      s.heroHp[target] = Math.max(
+        1,
+        Math.floor(HEROES[target].maxHp * 0.4)
+      );
+
+      log(`${HEROES[target].name} was revived by a Revive Snack.`);
+      toast(`${HEROES[target].name} has returned!`);
+    }
+
+    toast(`${snack.name} used.`);
+
+    render();
+    save();
+  }
 
   // ==========================================
   // RECRUITS
@@ -3323,97 +4149,240 @@
   // ==========================================
 
   function upgradePickaxe() {
-  if (battleLocked()) return toast("Upgrades are unavailable during recovery.");
-  if (s.pickaxe >= 10) return toast("Your pickaxe is already at maximum level.");
-  const cost = pickCost();
-  if (s.crystals < cost) return toast(`Not enough crystals. Need ${fmt(cost)} crystals.`);
-  s.crystals -= cost;
-  s.pickaxe++;
-  log(`Pickaxe upgraded to level ${s.pickaxe}.`);
-  toast(`PICKAXE LEVEL ${s.pickaxe}`);
-  render();
-  save();
-}
-
-  function upgradeSpeed() {
-  if (battleLocked()) return toast("Upgrades are unavailable during recovery.");
-  if (s.speedLevel >= 5) return toast("Party tempo is already at maximum.");
-  const cost = speedCost();
-  if (s.crystals < cost) return toast(`Not enough crystals. Need ${fmt(cost)} crystals.`);
-  s.crystals -= cost;
-  s.speedLevel++;
-  partyClock = 0;
-  log(`Party attack interval is now ${pInterval().toFixed(1)} seconds.`);
-  toast("Party tempo improved!");
-  render();
-  save();
-}
-
-  function upgradeDamage() {
-  if (battleLocked()) return toast("Upgrades are unavailable during recovery.");
-  if (s.damageLevel >= 10) return toast("Party damage is already at maximum.");
-  const cost = damageCost();
-  if (s.gold < cost) return toast(`Not enough gold. Need ${fmt(cost)} gold.`);
-  s.gold -= cost;
-  s.damageLevel++;
-  log(`Party damage increased to level ${s.damageLevel}.`);
-  toast("Party hits harder!");
-  render();
-  save();
-}
-
-  function upgradeCrit() {
-  if (battleLocked()) return toast("Upgrades are unavailable during recovery.");
-  if (s.critLevel >= 8) return toast("Critical chance is already at maximum.");
-  const cost = critCost();
-  if (s.crystals < cost) return toast(`Not enough crystals. Need ${fmt(cost)} crystals.`);
-  s.crystals -= cost;
-  s.critLevel++;
-  log(`Critical strike chance increased to ${s.critLevel * 5}%.`);
-  toast("Critical strikes improved!");
-  render();
-  save();
-}
-
-  function renderUpgrades() {
-  const rows = [
-    { id: "pickaxe", level: s.pickaxe, max: 10, cost: pickCost(), currency: "crystals" },
-    { id: "speed", level: s.speedLevel, max: 5, cost: speedCost(), currency: "crystals" },
-    { id: "damage", level: s.damageLevel, max: 10, cost: damageCost(), currency: "gold" },
-    { id: "crit", level: s.critLevel, max: 8, cost: critCost(), currency: "crystals" }
-  ];
-
-  for (const item of rows) {
-    const levelElement = $(item.id + "Level");
-    const costElement = $(item.id + "Cost");
-    const button = $(item.id + "Upgrade");
-    const funds = item.currency === "crystals" ? s.crystals : s.gold;
-    const currencyLabel = item.currency === "crystals" ? "C" : "G";
-
-    if (levelElement) {
-      levelElement.textContent = item.id === "speed"
-        ? `Level ${item.level} / ${item.max} · ${pInterval().toFixed(1)}s`
-        : item.id === "crit"
-          ? `Level ${item.level} / ${item.max} · ${item.level * 5}%`
-          : `Level ${item.level} / ${item.max}`;
+    if (battleLocked()) {
+      return toast("Upgrades are unavailable during recovery.");
     }
-    if (costElement) costElement.textContent = item.level >= item.max ? "MAX" : `${fmt(item.cost)} ${currencyLabel}`;
-    if (button) button.disabled = battleLocked() || item.level >= item.max || funds < item.cost;
+
+    if (s.pickaxe >= 10) {
+      return toast("Your pickaxe is already at maximum level.");
+    }
+
+    const cost = pickCost();
+
+    if (s.gold < cost) {
+      return toast(`Not enough gold. Need ${fmt(cost)}.`);
+    }
+
+    s.gold -= cost;
+    s.pickaxe++;
+
+    log(`Pickaxe upgraded to level ${s.pickaxe}.`);
+    toast(`PICKAXE LEVEL ${s.pickaxe}`);
+
+    render();
+    save();
   }
 
-  const manaLevelElement = $("manaLevel");
-  const manaCostElement = $("manaUpgradeCost");
-  const manaButton = $("manaUpgrade");
-  if (manaLevelElement) manaLevelElement.textContent = `Level ${s.manaLevel} / 5 · ${fmt(maxMana())} max mana`;
-  if (manaCostElement) manaCostElement.textContent = s.manaLevel >= 5 ? "MAX" : `${fmt(manaUpgradeCost())} G`;
-  if (manaButton) manaButton.disabled = battleLocked() || s.manaLevel >= 5 || s.gold < manaUpgradeCost();
-}
+  function upgradeSpeed() {
+    if (battleLocked()) {
+      return toast("Upgrades are unavailable during recovery.");
+    }
 
+    if (s.speedLevel >= 5) {
+      return toast("Mining speed is already at maximum.");
+    }
+
+    const cost = speedCost();
+
+    if (s.gold < cost) {
+      return toast(`Not enough gold. Need ${fmt(cost)}.`);
+    }
+
+    s.gold -= cost;
+    s.speedLevel++;
+
+    log(`Mining speed upgraded to level ${s.speedLevel}.`);
+
+    render();
+    save();
+  }
+
+  function upgradeDamage() {
+    if (battleLocked()) {
+      return toast("Upgrades are unavailable during recovery.");
+    }
+
+    if (s.damageLevel >= 10) {
+      return toast("Party damage is already at maximum.");
+    }
+
+    const cost = damageCost();
+
+    if (s.gold < cost) {
+      return toast(`Not enough gold. Need ${fmt(cost)}.`);
+    }
+
+    s.gold -= cost;
+    s.damageLevel++;
+
+    log(`Party damage upgraded to level ${s.damageLevel}.`);
+
+    render();
+    save();
+  }
+
+  function upgradeCrit() {
+    if (battleLocked()) {
+      return toast("Upgrades are unavailable during recovery.");
+    }
+
+    if (s.critLevel >= 8) {
+      return toast("Critical chance is already at maximum.");
+    }
+
+    const cost = critCost();
+
+    if (s.gold < cost) {
+      return toast(`Not enough gold. Need ${fmt(cost)}.`);
+    }
+
+    s.gold -= cost;
+    s.critLevel++;
+
+    log(
+      `Critical chance upgraded to ${s.critLevel * 5}%.`
+    );
+
+    render();
+    save();
+  }
+
+  function renderUpgrades() {
+    const values = [
+      ["pickaxe", s.pickaxe, 10, pickCost()],
+      ["speed", s.speedLevel, 5, speedCost()],
+      ["damage", s.damageLevel, 10, damageCost()],
+      ["crit", s.critLevel, 8, critCost()]
+    ];
+
+    values.forEach(([id, level, max, cost]) => {
+      const levelEl = $(`${id}Level`);
+      const costEl = $(`${id}Cost`);
+      const button = $(`${id}Upgrade`);
+
+      if (levelEl) {
+        levelEl.textContent = `Level ${level} / ${max}`;
+      }
+
+      if (costEl) {
+        costEl.textContent = level >= max
+          ? "MAX"
+          : `${fmt(cost)} G`;
+      }
+
+      if (button) {
+        button.disabled =
+          battleLocked() ||
+          level >= max ||
+          s.gold < cost;
+      }
+    });
+
+    const manaLevelEl = $("manaLevel");
+    const manaCostEl = $("manaUpgradeCost");
+    const manaButton = $("manaUpgrade");
+
+    if (manaLevelEl) {
+      manaLevelEl.textContent = `Level ${s.manaLevel} / 5`;
+    }
+
+    if (manaCostEl) {
+      manaCostEl.textContent = s.manaLevel >= 5
+        ? "MAX"
+        : `${fmt(manaUpgradeCost())} G`;
+    }
+
+    if (manaButton) {
+      manaButton.disabled =
+        battleLocked() ||
+        s.manaLevel >= 5 ||
+        s.gold < manaUpgradeCost();
+    }
+  }
+  
   // ==========================================
   // PARTY DAMAGE: BARRIER AND RESIST
   // ==========================================
 
+  function applyPartyDamage(amount, areaAttack = false) {
+    const living = livingHeroes();
 
+    if (!living.length) {
+      partyWiped();
+      return;
+    }
+
+    const barrierActive =
+      s.partyBarrierUntil > Date.now();
+
+    if (barrierActive && areaAttack) {
+      log("Barrier completely blocked the area attack.");
+      showDamage("AREA BLOCKED", "party");
+      render();
+      return;
+    }
+
+    let damage = Math.max(0, Math.floor(amount));
+
+    if (barrierActive) {
+      damage = Math.floor(damage * 0.25);
+    }
+
+    if (
+      s.resistUntil > Date.now() &&
+      typeof s.resistUntil === "number"
+    ) {
+      damage = Math.floor(damage * 0.5);
+    }
+
+    // Aegis Guard only blocks normal, single-target attacks.
+    if (!areaAttack && s.guardCharges > 0) {
+      s.guardCharges--;
+
+      log("Aegis Guard blocked a normal attack.");
+      showDamage("BLOCKED", "party");
+
+      render();
+      save();
+      return;
+    }
+
+    if (areaAttack) {
+      living.forEach((id) => {
+        s.heroHp[id] = Math.max(
+          0,
+          (s.heroHp[id] || 0) - damage
+        );
+
+        showDamage(`-${damage}`, "party");
+      });
+
+      log(`An area attack hits the party for ${damage} damage each.`);
+    } else {
+      const target = living[
+        Math.floor(Math.random() * living.length)
+      ];
+
+      s.heroHp[target] = Math.max(
+        0,
+        (s.heroHp[target] || 0) - damage
+      );
+
+      showDamage(`-${damage}`, "party");
+
+      log(
+        `${s.enemy ? s.enemy.name : "The enemy"} hits ` +
+        `${HEROES[target].name} for ${damage} damage.`
+      );
+    }
+
+    if (!livingHeroes().length) {
+      partyWiped();
+    }
+
+    render();
+    save();
+  }
 
   // ==========================================
   // PASSIVE INCOME AND MANA REGENERATION
@@ -3436,7 +4405,7 @@
 
     s.mana = Math.min(
       maxMana(),
-      s.mana + manaRate() * delta * partyBonus
+      s.mana + manaRate() * delta
     );
   }
 
@@ -3445,73 +4414,147 @@
   // ==========================================
 
   function updateElowenRevival() {
-  if (!s.heroes.includes("elowen") || !HEROES.elowen || s.needsHospital || isRecovering()) return;
-  const now = Date.now();
-  const elowenFallen = (s.heroHp.elowen || 0) <= 0;
-
-  if (elowenFallen) {
-    if (!s.elowenSelfReviveAt) {
-      s.elowenSelfReviveAt = now + 60000;
-      log("Elowen will attempt to revive herself after one minute.");
+    if (
+      !s.heroes.includes("elowen") ||
+      !HEROES.elowen ||
+      s.needsHospital
+    ) {
+      return;
     }
-    if (now >= s.elowenSelfReviveAt) {
-      s.heroHp.elowen = Math.max(1, Math.floor(HEROES.elowen.maxHp * 0.35));
-      s.elowenSelfReviveAt = 0;
-      log("Elowen has revived herself!");
-      toast("ELOWEN RETURNS!");
-      render();
-      save();
-      setTimeout(() => playHeroReviveAnimation("elowen"), 0);
-      announce("Elowen has returned to the party.");
-    }
-    return;
-  }
 
-  s.elowenSelfReviveAt = 0;
-  const fallen = s.heroes.filter((id) => id !== "elowen" && (s.heroHp[id] || 0) <= 0);
-  if (!fallen.length) {
-    s.elowenNextReviveAt = 0;
-    return;
-  }
-  if (!s.elowenNextReviveAt) {
+    const now = Date.now();
+
+    const elowenFallen =
+      (s.heroHp.elowen || 0) <= 0;
+
+    // If Elowen falls, schedule her own return after 60 seconds.
+    if (elowenFallen) {
+      if (!s.elowenSelfReviveAt) {
+        s.elowenSelfReviveAt = now + 60000;
+
+        log("Elowen will attempt to revive herself after one minute.");
+      }
+
+      if (now >= s.elowenSelfReviveAt) {
+        s.heroHp.elowen = Math.max(
+          1,
+          Math.floor(HEROES.elowen.maxHp * 0.35)
+        );
+
+        s.elowenSelfReviveAt = 0;
+
+        log("Elowen has revived herself!");
+        toast("ELOWEN RETURNS!");
+
+        announce("Elowen has returned to the party.");
+        render();
+        save();
+      }
+
+      return;
+    }
+
+    // Elowen is standing again.
+    s.elowenSelfReviveAt = 0;
+
+    const fallen = s.heroes.filter(
+      (id) =>
+        id !== "elowen" &&
+        (s.heroHp[id] || 0) <= 0
+    );
+
+    if (!fallen.length) {
+      s.elowenNextReviveAt = 0;
+      return;
+    }
+
+    if (!s.elowenNextReviveAt) {
+      s.elowenNextReviveAt = now + 30000;
+      return;
+    }
+
+    if (now < s.elowenNextReviveAt) return;
+
+    const target = fallen[0];
+
+    s.heroHp[target] = Math.max(
+      1,
+      Math.floor(HEROES[target].maxHp * 0.4)
+    );
+
     s.elowenNextReviveAt = now + 30000;
-    return;
-  }
-  if (now < s.elowenNextReviveAt) return;
 
-  const target = fallen[0];
-  s.heroHp[target] = Math.max(1, Math.floor(HEROES[target].maxHp * 0.4));
-  s.elowenNextReviveAt = now + 30000;
-  log(`${HEROES[target].name} was revived by Elowen.`);
-  toast(`${HEROES[target].name} REVIVED BY ELOWEN`);
-  render();
-  save();
-  setTimeout(() => playHeroReviveAnimation(target), 0);
-  announce(`${HEROES[target].name} has been revived.`);
-}
+    log(`${HEROES[target].name} was revived by Elowen.`);
+    toast(`${HEROES[target].name} REVIVED BY ELOWEN`);
+
+    announce(`${HEROES[target].name} has been revived.`);
+
+    render();
+    save();
+  }
 
   // ==========================================
   // AUTOPILOT CONTROLS
   // ==========================================
 
   function activateBattleAutopilot() {
-    if (battleLocked()) return toast("Autopilot cannot start during recovery.");
-    if (!livingHeroes().length) return toast("Your party has fallen.");
-    startBattleAutopilot();
+    if (battleLocked()) {
+      return toast("Autopilot cannot start during recovery.");
+    }
+
+    if (!livingHeroes().length) {
+      return toast("Your party has fallen.");
+    }
+
+    battleAutoPilot = true;
+
+    log("Battle Autopilot activated.");
+    toast("BATTLE AUTOPILOT ACTIVE");
+
     render();
     save();
   }
 
   function activateKingdomAutopilot() {
-    if (battleLocked()) return toast("Autopilot cannot start during recovery.");
-    if (!livingHeroes().length) return toast("Your party has fallen.");
-    startKingdomAutopilot();
+    if (!s.autoPilotUnlocked) {
+      return toast("Kingdom Autopilot is still locked.");
+    }
+
+    if (battleLocked()) {
+      return toast("Autopilot cannot start during recovery.");
+    }
+
+    if (!livingHeroes().length) {
+      return toast("Your party has fallen.");
+    }
+
+    kingdomAutoPilot = true;
+    battleAutoPilot = true;
+
+    log("Kingdom Autopilot activated.");
+    toast("KINGDOM AUTOPILOT ACTIVE");
+
+    announce(
+      "Kingdom Autopilot is online. I'll manage exploration, mining, and affordable upgrades."
+    );
+
     render();
     save();
   }
 
   function stopAutopilot() {
-    stopAllAutopilots();
+    battleAutoPilot = false;
+    kingdomAutoPilot = false;
+
+    battlePilotClock = 0;
+    kingdomMineClock = 0;
+    kingdomManagementClock = 0;
+    kingdomRecruitClock = 0;
+    kingdomUpgradeClock = 0;
+
+    log("Autopilot stopped.");
+    toast("AUTOPILOT OFF");
+
     render();
     save();
   }
@@ -3521,13 +4564,129 @@
   // ==========================================
 
   function autopilotStep(delta) {
-    if (!autopilotActive() || battleLocked() || isGameplayPaused()) return;
-    const now = Date.now();
-    if (kingdomAutoPilot) runKingdomAutopilot(now, delta);
+    if (!autopilotActive() || battleLocked()) return;
+
     battlePilotClock += delta;
-    if (battlePilotClock >= 0.9) {
-      battlePilotClock = 0;
-      runBattleAutopilot(now);
+
+    if (battlePilotClock < 1.25) return;
+
+    battlePilotClock = 0;
+
+    if (!livingHeroes().length) return;
+
+    // Recover a damaged party when the healer is available.
+    const living = livingHeroes();
+
+    const hasInjuredHero = living.some(
+      (id) =>
+        s.heroHp[id] < HEROES[id].maxHp * 0.65
+    );
+
+    if (
+      hasInjuredHero &&
+      s.heroes.some((id) => id === "celeste" || id === "sage") &&
+      s.cooldowns.heal <= 0 &&
+      s.mana >= SKILL_MANA_COST.heal &&
+      isSkillUnlocked("heal") &&
+      !isSkillSealed("heal")
+    ) {
+      skill("heal");
+      return;
+    }
+
+    if (!s.enemy) {
+      if (kingdomAutoPilot) {
+        kingdomMineClock += 1.25;
+
+        if (kingdomMineClock >= 5) {
+          kingdomMineClock = 0;
+
+          const crystals = Math.floor(
+            (4 + s.pickaxe * 2) *
+            partyUpgradeMultiplier()
+          );
+
+          s.crystals += crystals;
+          s.gold += Math.floor(3 * partyUpgradeMultiplier());
+          s.ore += 1;
+
+          addCaveCrystalProgress(crystals);
+
+          log(`Autopilot mined ${crystals} crystals.`);
+          render();
+          save();
+        }
+
+        kingdomManagementClock += 1.25;
+
+        if (kingdomManagementClock >= 8) {
+          kingdomManagementClock = 0;
+
+          // Choose a useful upgrade when it is affordable.
+          if (
+            s.damageLevel < 10 &&
+            s.gold >= damageCost()
+          ) {
+            upgradeDamage();
+            return;
+          }
+
+          if (
+            s.pickaxe < 10 &&
+            s.gold >= pickCost()
+          ) {
+            upgradePickaxe();
+            return;
+          }
+
+          if (
+            s.speedLevel < 5 &&
+            s.gold >= speedCost()
+          ) {
+            upgradeSpeed();
+            return;
+          }
+        }
+      }
+
+      scheduleExplore();
+      return;
+    }
+
+    if (!s.enemy) return;
+
+    // Use defensive Barrier during a dangerous boss fight.
+    if (
+      s.barrierUnlocked &&
+      s.cooldowns.barrier <= 0 &&
+      s.mana >= SKILL_MANA_COST.barrier &&
+      s.enemy.boss &&
+      s.enemy.regionIndex === 8 &&
+      bossSpecialClock >= 9
+    ) {
+      skill("barrier");
+      return;
+    }
+
+    // Prefer powerful attacks when the enemy's Anti-Magic
+    // restriction does not block the skill.
+    const offensiveSkills = [
+      "meteor",
+      "burst",
+      "frost",
+      "slash"
+    ];
+
+    for (const key of offensiveSkills) {
+      if (
+        isSkillUnlocked(key) &&
+        s.cooldowns[key] <= 0 &&
+        s.mana >= SKILL_MANA_COST[key] &&
+        !isSkillSealed(key)
+      ) {
+        skill(key);
+        return;
+      }
     }
   }
 
@@ -3537,72 +4696,57 @@
 
   function gameTick() {
     const now = performance.now();
-    const delta = Math.max(0, Math.min(1, (now - lastTick) / 1000));
+
+    const delta = Math.max(
+      0,
+      Math.min(1, (now - lastTick) / 1000)
+    );
+
     lastTick = now;
+
     if (isGameplayPaused()) return;
 
-    if (!s.needsHospital && s.healingUntil > 0 && Date.now() >= s.healingUntil) {
+    if (
+      !s.needsHospital &&
+      s.healingUntil > 0 &&
+      now >= 0 &&
+      Date.now() >= s.healingUntil
+    ) {
       completeRecovery();
     }
 
+    // Cooldowns continue to tick outside active battles,
+    // but nothing progresses during hospital recovery.
     Object.keys(s.cooldowns).forEach((key) => {
-      s.cooldowns[key] = Math.max(0, (Number(s.cooldowns[key]) || 0) - delta);
+      s.cooldowns[key] = Math.max(
+        0,
+        (Number(s.cooldowns[key]) || 0) - delta
+      );
     });
 
     if (!s.needsHospital && !isRecovering()) {
       updatePassiveResources(delta);
       updateElowenRevival();
 
-      const celesteAlive = s.heroes.includes("celeste") && livingHeroes().includes("celeste");
-      if (celesteAlive) {
-        supportClock += delta;
-        if (supportClock >= 10) {
-          supportClock -= 10;
-          const amount = Math.floor((7 + (s.recruits.includes("elise") ? 4 : 0)) * partyUpgradeMultiplier());
-          let healedAnyone = false;
-          for (const id of livingHeroes()) {
-            const before = s.heroHp[id] || 0;
-            const after = Math.min(HEROES[id].maxHp, before + amount);
-            if (after > before) {
-              s.heroHp[id] = after;
-              showDamage(`+${after - before}`, "party", true);
-              healedAnyone = true;
-            }
-          }
-          if (healedAnyone) {
-            log(`Celeste's healing aura restores up to ${amount} HP to every living hero.`);
-            playSkillAnimation("heal");
-          }
-        }
+      if (s.enemy) {
+        updateCombat(delta);
       } else {
-        supportClock = 0;
-      }
-
-      if (s.enemy) updateCombat(delta);
-      else {
         partyClock = 0;
         enemyClock = 0;
       }
-      autopilotStep(delta);
 
-      sageHealthCheckClock += delta;
-      if (sageHealthCheckClock >= 1) {
-        sageHealthCheckClock = 0;
-        checkPartyHealthWarning();
-      }
-    } else if (s.needsHospital && !hospitalPromptShown) {
-            hospitalPromptShown = true;
-      showHospitalPrompt();
+      autopilotStep(delta);
     }
 
     renderClock += delta;
+
     if (renderClock >= 0.5) {
       renderClock = 0;
       render();
       save();
     }
   }
-
+  
   // ==========================================
   // DYNAMIC BARRIER SKILL BUTTON
   // ==========================================
@@ -3710,7 +4854,6 @@
     if (visual) return visual;
 
     const stage =
-      $("scene") ||
       $("partyStage") ||
       $("battleStage") ||
       $("enemyStage") ||
@@ -3744,88 +4887,180 @@
   // RESET GAME
   // ==========================================
 
-  function resetGame() {
-    const confirmed = window.confirm("Reset Crystal Kingdom? All saved game progress, recruited heroes, and upgrades will be erased. Music and voice preferences will remain.");
-    if (!confirmed) return;
+  
+function resetGame() {
+  const confirmed = window.confirm(
+    "Reset Crystal Kingdom? All saved progress, caves, heroes, and upgrades will be erased."
+  );
 
-    resettingGame = true;
-    for (const timer of [exploreTimer, toastTimer, commandIdleTimer, recognitionRestartTimer, unlockRevealTimer, analistRevealTimer, resistRevealTimer]) {
-      clearTimeout(timer);
-    }
-    if ("speechSynthesis" in window) window.speechSynthesis.cancel();
-    if (recognition) {
-      try { recognition.stop(); } catch (error) { /* already stopped */ }
-    }
-    try {
-      localStorage.removeItem(SAVE_KEY);
-      localStorage.removeItem(OLD_SAVE_KEY);
-      const remove = [];
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-        if (key && /gem.?miner|crystal.?kingdom/i.test(key) && !/music|volume|voice|sage/i.test(key)) remove.push(key);
-      }
-      remove.forEach((key) => localStorage.removeItem(key));
-    } catch (error) {
-      resettingGame = false;
-      console.error("Reset failed:", error);
-      toast("Could not clear the saved game. Check browser storage permissions.");
-      return;
-    }
-    window.location.reload();
+  if (!confirmed) return;
+
+  // Stop beforeunload from writing the old save back.
+  resettingGame = true;
+
+  clearTimeout(raphaelEvolutionTimer);
+  clearTimeout(raphaelCloseTimer);
+  clearTimeout(exploreTimer);
+  clearTimeout(toastTimer);
+  clearTimeout(commandIdleTimer);
+  clearTimeout(recognitionRestartTimer);
+  clearTimeout(unlockRevealTimer);
+  clearTimeout(analistRevealTimer);
+  clearTimeout(resistRevealTimer);
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
   }
 
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (error) {
+      // Recognition may already be stopped.
+    }
+  }
+
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(OLD_SAVE_KEY);
+
+    const keysToRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (!key) continue;
+
+      const isGameKey = /gem.?miner|crystal.?kingdom/i.test(key);
+      const isPreference = /music|volume|voice|sage/i.test(key);
+
+      if (isGameKey && !isPreference) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+  } catch (error) {
+    resettingGame = false;
+
+    console.error("Could not clear saved progress:", error);
+
+    window.alert(
+      "The game could not clear its save. Check your browser storage permissions."
+    );
+
+    return;
+  }
+
+  window.location.reload();
+}
   // ==========================================
   // CONNECT BUTTONS
   // ==========================================
 
-  function dispatchAction(action, id, value) {
+  function dispatchAction(action, id) {
     switch (action) {
-      case "toggleMusic": toggleMusic(); break;
+      case "toggleMusic":
+        toggleMusic();
+        break;
+
       case "mine":
-      case "mineNow": mine(); break;
+      case "mineNow":
+        mine();
+        break;
+
       case "explore":
-      case "exploreNow": exploreNow(); break;
+      case "exploreNow":
+        exploreNow();
+        break;
+
       case "challengeGuardian":
-      case "boss": challengeGuardian(); break;
-      case "upgrade": upgrade(value); break;
-      case "upgradePickaxe": upgradePickaxe(); break;
-      case "upgradeSpeed": upgradeSpeed(); break;
-      case "upgradeDamage": upgradeDamage(); break;
-      case "upgradeCrit": upgradeCrit(); break;
+      case "boss":
+        challengeGuardian();
+        break;
+
+      case "upgradePickaxe":
+        upgradePickaxe();
+        break;
+
+      case "upgradeSpeed":
+        upgradeSpeed();
+        break;
+
+      case "upgradeDamage":
+        upgradeDamage();
+        break;
+
+      case "upgradeCrit":
+        upgradeCrit();
+        break;
+
       case "upgradeMaxMana":
-      case "upgradeMana": upgradeMaxMana(); break;
+      case "upgradeMana":
+        upgradeMaxMana();
+        break;
+
       case "payHospitalFee":
-      case "payHeal": payHeal(); break;
+      case "payHeal":
+        payHospitalFee();
+        break;
+
       case "activateBattleAutopilot":
-      case "battleAutopilot": activateBattleAutopilot(); break;
+      case "battleAutopilot":
+        activateBattleAutopilot();
+        break;
+
       case "activateKingdomAutopilot":
-      case "kingdomAutopilot": activateKingdomAutopilot(); break;
-      case "stopAutopilot": stopAutopilot(); break;
+      case "kingdomAutopilot":
+        activateKingdomAutopilot();
+        break;
+
+      case "stopAutopilot":
+        stopAutopilot();
+        break;
+
       case "toggleSage":
-      case "sageToggle": toggleSage(); break;
-      case "toggleVoice": setVoiceEnabled(!sageEnabled); break;
+        toggleSage();
+        break;
+
+      case "toggleVoice":
+        setVoiceEnabled(!sageEnabled);
+        break;
+
       case "talkToSage":
       case "sageCommand":
-        if (commandModeActive) leaveCommandMode();
-        else enterCommandMode();
+        if (commandModeActive) {
+          leaveCommandMode();
+        } else {
+          enterCommandMode();
+        }
         break;
-      case "buySnack": buySnack(id || value); break;
-      case "useSnack": useSnack(id || value); break;
-      case "buyRecruit": buyRecruit(id || value); break;
-      case "clearLog":
-        logs = [];
-        s.lastLog = [];
-        renderLog();
-        save();
-        toast("Adventure log cleared.");
+
+      case "buySnack":
+        buySnack(id);
         break;
-      case "resetGame":
+
+      case "useSnack":
+        useSnack(id);
+        break;
+
+      case "buyRecruit":
+        buyRecruit(id);
+        break;
+
+            case "resetGame":
       case "reset":
       case "reset-save":
       case "resetSave":
-      case "resetProgress": resetGame(); break;
-      default: return false;
+      case "resetProgress":
+        resetGame();
+        break;
+      default:
+        return false;
     }
+
     return true;
   }
 
@@ -3836,12 +5071,6 @@
       );
 
       if (!button) return;
-
-      if (button.matches("[data-sage-action]")) {
-        event.preventDefault();
-        handleSageAction(button);
-        return;
-      }
 
       // Keep an existing inline click handler from firing twice.
       // Inline handlers can call the public functions exposed below.
@@ -3860,8 +5089,7 @@
 
         dispatchAction(
           action,
-          button.dataset.id,
-          button.dataset.value
+          button.dataset.id
         );
 
         return;
@@ -3887,7 +5115,6 @@
         sageBattleAutoButton: "activateBattleAutopilot",
         sageKingdomAutoButton: "activateKingdomAutopilot",
         resetButton: "resetGame",
-        resetGame: "resetGame",
         resetBtn: "resetGame",
         resetSave: "resetGame",
         resetSaveBtn: "resetGame",
@@ -3985,1322 +5212,7 @@
   // INITIALIZE CRYSTAL KINGDOM
   // ==========================================
 
-  // ==========================================
-  // RESTORED MECHANICS FROM THE FULLER GAME
-  // ==========================================
-
-  function explore() {
-    if (isGameplayPaused() || battleLocked() || s.enemy || !livingHeroes().length) return;
-    clearTimeout(exploreTimer);
-
-    // Every exploration attempt independently has a one-in-ten encounter chance.
-    if (Math.random() < 0.10) {
-      spawnEnemy(false);
-      return;
-    }
-
-    const crystalBonus = s.recruits.includes("luna") ? 1.2 : 1;
-    const partyBonus = partyUpgradeMultiplier();
-    const crystalsFound = Math.floor((3 + Math.random() * 7 + s.region * 2) * crystalBonus * partyBonus);
-    const oreFound = Math.floor((1 + Math.floor(Math.random() * 3) + (s.recruits.includes("juno") ? 1 : 0)) * partyBonus);
-    const goldFound = Math.max(1, Math.floor(crystalsFound * 0.7));
-
-    s.crystals += crystalsFound;
-    addCaveCrystalProgress(crystalsFound);
-    s.ore += oreFound;
-    s.gold += goldFound;
-
-    log(`Exploration found ${crystalsFound} crystals, ${oreFound} ore, and ${goldFound} gold.`);
-    toast(`Found ${crystalsFound} crystals, ${oreFound} ore, and ${goldFound} gold.`);
-    showDamage(`+${crystalsFound} ◆`, "party", true);
-    render();
-    save();
-    scheduleExplore();
-  }
-
-  function enemyAreaAttack() {
-    const enemy = s.enemy;
-    if (!enemy || !enemy.boss || enemy.regionIndex !== 7 || battleLocked()) return;
-
-    playSkillAnimation("cataclysm");
-    const scene = $("scene");
-    if (scene) {
-      scene.classList.remove("cataclysm-flash");
-      void scene.offsetWidth;
-      scene.classList.add("cataclysm-flash");
-      setTimeout(() => scene.classList.remove("cataclysm-flash"), 1200);
-    }
-
-    if (s.partyBarrierUntil > Date.now()) {
-      log("Barrier completely blocked the Null Sanctum guardian's area attack.");
-      showDamage("AREA BLOCKED", "party");
-      playSkillAnimation("barrier-block");
-      render();
-      save();
-      return;
-    }
-
-    const guarded = s.guardCharges > 0;
-    for (const id of livingHeroes()) {
-      let amount = Math.floor(HEROES[id].maxHp * (0.15 + Math.random() * 0.08) + enemy.damage * 0.25);
-      if (guarded) amount = Math.ceil(amount * 0.45);
-      s.heroHp[id] = Math.max(0, (s.heroHp[id] || 0) - amount);
-      showDamage(`PULSE -${amount}`, "party");
-      if (s.heroHp[id] <= 0) playHeroFallenAnimation(id);
-    }
-    if (guarded) s.guardCharges = 0;
-
-    log(`${enemy.name} unleashed Cataclysmic Pulse against the entire party${guarded ? "; Guard softened the impact" : ""}.`);
-    announce("Warning: Cataclysmic Pulse is striking the entire party!");
-    playImportantSound();
-    if (!livingHeroes().length) partyWiped();
-    render();
-    save();
-  }
-
-  function canUseSkill(key) {
-    if (key === "analist") {
-      return isAnalistUnlocked() && Boolean(s.enemy) && !battleLocked() && !isGameplayPaused();
-    }
-    if (!(key in SKILL_MANA_COST) || !isSkillUnlocked(key)) return false;
-    if (battleLocked() || isGameplayPaused() || !livingHeroes().length) return false;
-    if ((s.cooldowns[key] || 0) > 0 || s.mana < SKILL_MANA_COST[key]) return false;
-    if (key === "resist") {
-      return Boolean(s.enemy && s.enemy.uniqueAttack === "antiMagicBarrier" && !s.enemy.resistUsed &&
-        (!isAntiMagicBarrierActive() || (Number(s.enemy.barrierElapsed) || 0) < 5));
-    }
-    if (key !== "barrier" && isSkillSealed(key) && s.partyBarrierUntil <= Date.now()) return false;
-    if (isAntiMagicBarrierActive() && !["resist", "barrier"].includes(key) && s.partyBarrierUntil <= Date.now()) return false;
-    if (["slash", "burst", "meteor", "frost"].includes(key) && !s.enemy) return false;
-    if (["heal", "phoenix"].includes(key) && !s.heroes.some((id) => ["celeste", "sage"].includes(id))) return false;
-    if (key === "phoenix" && !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0)) return false;
-    return true;
-  }
-
-  function playSkillAnimation(key) {
-    const scene = $("scene");
-    if (!scene) return;
-
-    const effects = {
-      slash: ["RADIANT SLASH", "✦"],
-      crownfall: ["CROWNFALL RUPTURE", "♛"],
-      cataclysm: ["CATACLYSMIC PULSE", "◈"],
-      "anti-magic": ["ANTI-MAGIC BARRIER", "⊘"],
-      burst: ["ARCANE BURST", "✧"],
-      critical: ["CRITICAL HIT", "✹"],
-      guard: ["AEGIS GUARD", "⬡"],
-      heal: ["HEALING WAVE", "✚"],
-      meteor: ["METEOR RAIN", "☄"],
-      frost: ["FROST NOVA", "❄"],
-      phoenix: ["PHOENIX BLESSING", "♨"],
-      barrier: ["BARRIER", "⬡"],
-      "barrier-block": ["AREA BLOCKED", "⬡"],
-      partyUpgrade: ["CRYSTAL ASCENDANCE", "✦"]
-    };
-    const info = effects[key];
-    if (!info) return;
-
-    scene.classList.remove("skill-scene-flash", `skill-scene-${key}`);
-    void scene.offsetWidth;
-    scene.classList.add("skill-scene-flash", `skill-scene-${key}`);
-
-    const effect = document.createElement("div");
-    effect.className = `skill-vfx skill-vfx-${key}`;
-    effect.setAttribute("aria-hidden", "true");
-    effect.innerHTML = `<span class="skill-vfx-symbol">${info[1]}</span><b>${info[0]}</b>`;
-    scene.appendChild(effect);
-    setTimeout(() => effect.remove(), key === "meteor" ? 1500 : 1100);
-    setTimeout(() => scene.classList.remove("skill-scene-flash", `skill-scene-${key}`), 1200);
-
-    if (key === "heal") {
-      document.querySelectorAll("#battleParty .battle-hero:not(.fallen)").forEach((hero) => {
-        hero.classList.remove("hero-heal-glow");
-        void hero.offsetWidth;
-        hero.classList.add("hero-heal-glow");
-        setTimeout(() => hero.classList.remove("hero-heal-glow"), 1100);
-      });
-    }
-    if (key === "guard") {
-      const party = $("battleParty");
-      if (party) {
-        party.classList.add("party-guard-glow");
-        setTimeout(() => party.classList.remove("party-guard-glow"), 1000);
-      }
-    }
-    if (key === "barrier") {
-      const party = $("battleParty");
-      if (party) {
-        party.classList.add("party-barrier-glow");
-        setTimeout(() => party.classList.remove("party-barrier-glow"), 5200);
-      }
-    }
-  }
-
-  function playHeroReviveAnimation(heroId) {
-  // Run after the current render so the newly rebuilt hero element keeps the glow class.
-  setTimeout(() => {
-    const hero = document.querySelector(`#battleParty [data-hero-id="${heroId}"]`);
-    if (!hero) return;
-    hero.classList.remove("fallen", "hero-revive-glow");
-    void hero.offsetWidth;
-    hero.classList.add("hero-revive-glow");
-    setTimeout(() => hero.classList.remove("hero-revive-glow"), 1500);
-  }, 0);
-}
-
-function playHeroFallenAnimation(heroId) {
-    const hero = document.querySelector(`#battleParty [data-hero-id="${heroId}"]`);
-    if (!hero) return;
-    hero.classList.add("fallen");
-  }
-
-function checkPartyHealthWarning() {
-    const active = livingHeroes();
-    if (!active.length || battleLocked()) {
-      lowHealthWarning = false;
-      return;
-    }
-    const ratios = active.map((id) => (s.heroHp[id] || 0) / HEROES[id].maxHp);
-    const average = ratios.reduce((sum, ratio) => sum + ratio, 0) / ratios.length;
-    const low = ratios.some((ratio) => ratio <= 0.35) || average <= 0.45;
-    if (low && !lowHealthWarning) {
-      lowHealthWarning = true;
-      showLowHealthPrompt();
-    }
-    if (ratios.every((ratio) => ratio >= 0.65)) {
-      lowHealthWarning = false;
-      if (currentPrompt && currentPrompt.type === "lowHealth") {
-        currentPrompt = null;
-        refreshSagePanel();
-      }
-    }
-  }
-
-function spawn(boss = false) {
-    if (boss) return challengeGuardian();
-    return spawnEnemy(false);
-  }
-
-function upgrade(kind) {
-    if (kind === "pickaxe") return upgradePickaxe();
-    if (kind === "speed") return upgradeSpeed();
-    if (kind === "damage") return upgradeDamage();
-    if (kind === "crit") return upgradeCrit();
-    if (kind === "mana" || kind === "max mana" || kind === "maximum mana") return upgradeMaxMana();
-    return false;
-  }
-
-function hireRecruit(id) {
-    return buyRecruit(id);
-  }
-
-function payHeal() {
-    hospitalPromptShown = false;
-    return payHospitalFee();
-  }
-
-function finishHealing() {
-    return completeRecovery();
-  }
-
-function getHealingAdvice() {
-    const options = [];
-
-    if (
-      isSkillUnlocked("heal") &&
-      (s.heroes.includes("celeste") || s.heroes.includes("sage"))
-    ) {
-      options.push("Healing Wave");
-    }
-
-    options.push("Guard");
-
-    if ((s.snacks.rations || 0) > 0) options.push("Trail Rations");
-    if ((s.snacks.cake || 0) > 0) options.push("Crystal Cake");
-
-    return options;
-  }
-
-function renderSageActions() {
-    const box = $("sageActions");
-    if (!box) return;
-
-    if (!currentPrompt) {
-      box.hidden = true;
-      if (box.innerHTML) box.innerHTML = "";
-      return;
-    }
-
-    box.hidden = false;
-
-    let html = "";
-
-    if (currentPrompt.type === "phoenix") {
-      const ready = canUseSkill("phoenix");
-
-      html = `
-        ${isSkillUnlocked("phoenix") ? `
-          <button
-            class="sage-primary"
-            data-sage-action="phoenix"
-            ${ready ? "" : "disabled"}
-          >Use Phoenix Blessing</button>
-        ` : ""}
-
-        ${(s.snacks.revive || 0) > 0 ? `
-          <button
-            data-sage-action="snack"
-            data-value="revive"
-            ${battleLocked() || !livingHeroes().length ? "disabled" : ""}
-          >Use Revive Snack</button>
-        ` : ""}
-
-        <button class="sage-dismiss" data-sage-action="dismiss">Not now</button>
-
-        <small>
-          ${isSkillUnlocked("phoenix")
-            ? `The recovery ability costs 45 mana. ${ready ? "It is ready to use." : "It is currently unavailable."}`
-            : "Let me check our available recovery options."}
-        </small>
-      `;
-    } else if (currentPrompt.type === "analist") {
-      html = `
-        <button class="sage-primary" data-sage-action="analistYes">Analyze</button>
-        <button class="sage-dismiss" data-sage-action="analistNo">Not now</button>
-        <small>The enemy's effect may interfere with combat abilities.</small>
-      `;
-    } else if (currentPrompt.type === "lowHealth") {
-      const buttons = [];
-
-      if (
-        isSkillUnlocked("heal") &&
-        (s.heroes.includes("celeste") || s.heroes.includes("sage"))
-      ) {
-        buttons.push(`
-          <button
-            class="sage-primary"
-            data-sage-action="skill"
-            data-value="heal"
-            ${canUseSkill("heal") ? "" : "disabled"}
-          >Use Healing Wave</button>
-        `);
-      }
-
-      buttons.push(`
-        <button
-          class="sage-primary"
-          data-sage-action="skill"
-          data-value="guard"
-          ${canUseSkill("guard") ? "" : "disabled"}
-        >Use Guard</button>
-      `);
-
-      if ((s.snacks.rations || 0) > 0) {
-        buttons.push(`
-          <button
-            data-sage-action="snack"
-            data-value="rations"
-            ${battleLocked() ? "disabled" : ""}
-          >Use Trail Rations</button>
-        `);
-      }
-
-      if ((s.snacks.cake || 0) > 0) {
-        buttons.push(`
-          <button
-            data-sage-action="snack"
-            data-value="cake"
-            ${battleLocked() ? "disabled" : ""}
-          >Use Crystal Cake</button>
-        `);
-      }
-
-      buttons.push(`
-        <button class="sage-dismiss" data-sage-action="dismiss">Not now</button>
-      `);
-
-      html = buttons.join("");
-    } else if (currentPrompt.type === "hospital") {
-      html = `
-        <button
-          class="sage-primary"
-          data-sage-action="hospital"
-          ${s.gold >= s.hospitalFee ? "" : "disabled"}
-        >Pay hospital fee</button>
-
-        <button class="sage-dismiss" data-sage-action="dismiss">Not now</button>
-
-        <small>
-          Fee: ${fmt(s.hospitalFee)} gold.
-          ${s.gold >= s.hospitalFee
-            ? "Payment starts one-minute recovery."
-            : "Mine resources to earn more gold."}
-        </small>
-      `;
-    }
-
-    if (box.innerHTML !== html) box.innerHTML = html;
-  }
-
-function showPhoenixPrompt(heroId) {
-    if (!livingHeroes().length || autopilotActive() || isGameplayPaused()) return;
-
-    const accepted = showPrompt({ type: "phoenix", heroId });
-
-    if (accepted) {
-      updateSageMessage(
-        `${HEROES[heroId].name} is down. Would you like me to check the recovery options?`
-      );
-    }
-
-    refreshSagePanel();
-  }
-
-function showLowHealthPrompt() {
-    if (!livingHeroes().length || autopilotActive() || isGameplayPaused()) return;
-
-    const accepted = showPrompt({ type: "lowHealth" });
-
-    if (accepted) {
-      updateSageMessage(
-        `Your party's health is low. Consider using ${getHealingAdvice().join(", ")} to heal your team.`
-      );
-    }
-
-    refreshSagePanel();
-  }
-
-function showHospitalPrompt() {
-    const accepted = showPrompt({ type: "hospital" });
-
-    if (accepted) {
-      updateSageMessage(
-        "Notice: All party members are down. Would you like to pay the hospital fee and begin recovery?"
-      );
-    }
-
-    refreshSagePanel();
-  }
-
-function animateHeroAttack(id) {
-    const party = $("battleParty");
-    const hero = party && party.querySelector(`[data-hero-id="${id}"]`);
-    if (!hero || hero.classList.contains("fallen")) return;
-
-    const usesBow = ["liria", "darius_hero"].includes(id);
-    const usesSword = ["aiden", "ragnar", "kael_rogue", "tessa_hero", "borin_hero"].includes(id);
-    const uniqueHeroAttack = { tessa_hero: "attack-miner", borin_hero: "attack-stoneguard", iris_hero: "attack-mystic", elise_hero: "attack-support", elowen: "attack-spirit" }[id];
-    const animationClass = uniqueHeroAttack || (usesBow ? "attack-bow" : usesSword ? "attack-sword" : ["celeste", "sage"].includes(id) ? "attack-support" : "attack-cast");
-
-    hero.classList.remove("attack-bow", "attack-sword", "attack-cast", "attack-support", "attack-spirit", "attack-miner", "attack-stoneguard", "attack-mystic");
-    void hero.offsetWidth;
-    hero.classList.add(animationClass);
-    setTimeout(() => hero.classList.remove(animationClass), 500);
-
-    if (usesBow) launchArrow(hero);
-    if (usesSword) launchSwordSlash();
-    if (id === "iris_hero") launchMagicBolt(hero);
-  }
-
-function launchArrow(hero) {
-    const scene = $("scene");
-    const enemy = $("enemyVisual");
-    if (!scene || !enemy || enemy.classList.contains("hidden")) return;
-
-    const sceneRect = scene.getBoundingClientRect();
-    const heroRect = hero.getBoundingClientRect();
-    const enemyRect = enemy.getBoundingClientRect();
-    const startX = heroRect.left + heroRect.width * 0.72 - sceneRect.left;
-    const startY = heroRect.top + heroRect.height * 0.38 - sceneRect.top;
-    const endX = enemyRect.left + enemyRect.width * 0.24 - sceneRect.left;
-    const endY = enemyRect.top + enemyRect.height * 0.42 - sceneRect.top;
-
-    const arrow = document.createElement("span");
-    arrow.className = "attack-projectile arrow-projectile";
-    arrow.style.left = `${startX}px`;
-    arrow.style.top = `${startY}px`;
-    arrow.style.setProperty("--travel-x", `${endX - startX}px`);
-    arrow.style.setProperty("--travel-y", `${endY - startY}px`);
-    arrow.style.setProperty("--angle", `${Math.atan2(endY - startY, endX - startX) * 180 / Math.PI}deg`);
-    scene.appendChild(arrow);
-    setTimeout(() => arrow.remove(), 520);
-  }
-
-function launchSwordSlash() {
-    const scene = $("scene");
-    const enemy = $("enemyVisual");
-    if (!scene || !enemy || enemy.classList.contains("hidden")) return;
-
-    const sceneRect = scene.getBoundingClientRect();
-    const enemyRect = enemy.getBoundingClientRect();
-    const slash = document.createElement("span");
-    slash.className = "attack-projectile sword-slash";
-    slash.style.left = `${enemyRect.left - sceneRect.left + enemyRect.width * 0.18 - 25}px`;
-    slash.style.top = `${enemyRect.top - sceneRect.top + enemyRect.height * 0.38 - 25}px`;
-    scene.appendChild(slash);
-    setTimeout(() => slash.remove(), 420);
-  }
-
-function queueSageReply(message) {
-    if (message) announce(message);
-  }
-
-function queueUnlockReveal(item) {
-    unlockRevealQueue.push(item);
-
-    if (!unlockRevealActive) showNextUnlockReveal();
-  }
-
-function ensureUnlockRevealOverlay() {
-    let overlay = $("unlockRevealOverlay");
-    if (overlay) return overlay;
-
-    overlay = document.createElement("div");
-    overlay.id = "unlockRevealOverlay";
-    overlay.className = "unlock-reveal-overlay";
-    overlay.hidden = true;
-
-    overlay.innerHTML = `
-      <section class="unlock-reveal-card" role="dialog" aria-modal="true">
-        <div class="unlock-reveal-kicker">✦ NEW UNLOCK ✦</div>
-        <div class="unlock-reveal-medallion" id="unlockRevealMedallion">✦</div>
-        <div class="unlock-reveal-category" id="unlockRevealCategory">NEW DISCOVERY</div>
-        <h2 id="unlockRevealTitle">Something New</h2>
-        <p class="unlock-reveal-description" id="unlockRevealDescription"></p>
-        <div class="unlock-reveal-footer">
-          <small>Click anywhere to continue · Auto-closes in 10 seconds</small>
-          <button type="button" class="unlock-reveal-button">Continue ✦</button>
-        </div>
-      </section>
-    `;
-
-    overlay.addEventListener("click", dismissUnlockReveal);
-    document.body.appendChild(overlay);
-    return overlay;
-  }
-
-function showNextUnlockReveal() {
-    if (!unlockRevealQueue.length) {
-      unlockRevealActive = false;
-      resumeGameplay("unlock-reveal");
-
-      if (s.region >= 6 && s.autoPilotUnlocked && !s.raphaelEvolved) {
-        triggerRaphaelEvolution();
-        return;
-      }
-
-      refreshSagePanel();
-      return;
-    }
-
-    pauseGameplay("unlock-reveal");
-    unlockRevealActive = true;
-
-    const item = unlockRevealQueue.shift();
-    cancelSageSpeech(true);
-
-    const overlay = ensureUnlockRevealOverlay();
-    const medallion = $("unlockRevealMedallion");
-    medallion.replaceChildren();
-
-    if (item.imageSrc) {
-      const image = document.createElement("img");
-      image.src = item.imageSrc;
-      image.alt = item.title;
-      medallion.appendChild(image);
-    } else {
-      medallion.textContent = item.symbol || "✦";
-    }
-
-    $("unlockRevealCategory").textContent = item.category || "NEW DISCOVERY";
-    $("unlockRevealTitle").textContent = item.title;
-    $("unlockRevealDescription").textContent = item.description || "";
-    overlay.hidden = false;
-
-    updateSageMessage(item.speech || item.title);
-
-    if (sageEnabled && item.speech) {
-      speechQueue.length = 0;
-      speechQueue.push(item.speech);
-      processSpeechQueue();
-    }
-
-    clearTimeout(unlockRevealTimer);
-    unlockRevealTimer = setTimeout(dismissUnlockReveal, 10000);
-  }
-
-function dismissUnlockReveal() {
-    if (!unlockRevealActive) return;
-
-    clearTimeout(unlockRevealTimer);
-    unlockRevealTimer = null;
-
-    const overlay = $("unlockRevealOverlay");
-    if (overlay) overlay.hidden = true;
-
-    if (unlockRevealQueue.length) {
-      showNextUnlockReveal();
-      return;
-    }
-
-    unlockRevealActive = false;
-    resumeGameplay("unlock-reveal");
-
-    if (s.region >= 6 && s.autoPilotUnlocked && !s.raphaelEvolved) {
-      triggerRaphaelEvolution();
-      return;
-    }
-
-    refreshSagePanel();
-  }
-
-function ensureDynamicAbilityButtons() {
-    const grid = document.querySelector(".skill-grid");
-    if (!grid) return;
-
-    const addButton = (id, key, symbol, title, subtitle, label, extraClass = "") => {
-      if ($(id)) return;
-
-      const button = document.createElement("button");
-      button.className = `skill ${extraClass}`.trim();
-      button.id = id;
-      button.dataset.skill = key;
-      button.hidden = true;
-
-      button.innerHTML = `
-        <span class="skillicon gold">${symbol}</span>
-        <span><b>${title}</b><small>${subtitle}</small></span>
-        <strong id="cd-${key}">${label}</strong>
-      `;
-
-      grid.appendChild(button);
-    };
-
-    addButton("analistBtn", "analist", "◈", "Analist", "Study an unusual enemy ability", "READY", "analist-skill");
-    addButton("resistBtn", "resist", "⬡", "Resist", "Protect your abilities", "LOCKED", "resist-skill");
-
-    updateSkillShortcutHint();
-  }
-
-function updateSkillShortcutHint() {
-    const hint = $("skillShortcutHint");
-    if (hint) {
-      hint.textContent = s.resistUnlocked
-        ? "Q · W · E · R · T · Y · U · I · O"
-        : "Q · W · E · R · T · Y · U · I";
-    }
-  }
-
-function getBarrierDelaySeconds() {
-    return s.region >= 8 ? 5 : 10;
-  }
-
-function activateAntiMagicBarrier() {
-    const enemy = s.enemy;
-
-    if (
-      !enemy ||
-      enemy.uniqueAttack !== "antiMagicBarrier" ||
-      enemy.antiMagicBarrierTriggered
-    ) {
-      return;
-    }
-
-    enemy.antiMagicBarrierTriggered = true;
-    enemy.barrierElapsed = 0;
-    enemy.barrierActivatedAt = Date.now();
-
-    if (enemy.resistPrepared) {
-      enemy.antiMagicBarrierActive = false;
-      enemy.barrierBlocked = true;
-      log(`${enemy.name}'s unknown magic was stopped by Resist.`);
-      announce("Resist held. The enemy's magic could not take hold.");
-      toast("Resist blocked the enemy's ability.");
-      render();
-      save();
-      return;
-    }
-
-    enemy.restrictedSkills = availableCombatSkills().filter((key) => !["resist", "barrier", "analist"].includes(key));
-    enemy.antiMagicBarrierActive = true;
-    playSkillAnimation("anti-magic");
-    cancelSageSpeech(true);
-
-    if (isAnalistUnlocked()) {
-      pendingAnalistApproval = true;
-      currentPrompt = { type: "analist" };
-      const message =
-        "Notice: new threat: anti magic barrier. Would you like me to use analist?";
-      updateSageMessage(message);
-      announce(message);
-    } else {
-      pendingAnalistApproval = false;
-      announce("Notice: an unfamiliar hostile effect is active. Combat skills are unavailable; snacks still work.");
-    }
-
-    playImportantSound();
-    log(`${enemy.name} raised an Anti-Magic Barrier. Combat skills are sealed; snacks still work.`);
-    render();
-    save();
-  }
-
-      if (s.needsHospital) return "The party needs hospital treatment first.";
-    if (isRecovering()) return "The party is still recovering.";
-    if (!livingHeroes().length) return "No heroes are standing.";
-    if (s.mana < SKILL_MANA_COST[key]) return `You need ${SKILL_MANA_COST[key]} mana.`;
-    if ((s.cooldowns[key] || 0) > 0) return `${skillVoiceLabel(key)} is recharging for ${Math.ceil(s.cooldowns[key])} more seconds.`;
-
-    if (["slash", "burst", "meteor", "frost"].includes(key) && !s.enemy) {
-      return "There is no enemy to attack right now.";
-    }
-
-    if (
-      ["heal", "phoenix"].includes(key) &&
-      !s.heroes.includes("celeste") &&
-      !s.heroes.includes("sage")
-    ) {
-      return "Healer support has not joined the party yet.";
-    }
-
-    if (key === "phoenix" && !s.heroes.some((id) => (s.heroHp[id] || 0) <= 0)) {
-      return "There is no fallen hero to revive.";
-    }
-
-    return `${skillVoiceLabel(key)} cannot be used right now.`;
-  }
-
-function getVoiceCommandMatches(text) {
-    const choices = [
-      { kind: "skill", key: "heal", label: "Healing Wave", patterns: [/\bhealing wave\b/gi, /\bheal\b/gi] },
-      { kind: "skill", key: "slash", label: "Radiant Slash", patterns: [/\bradiant slash\b/gi, /\bslash\b/gi] },
-      { kind: "skill", key: "burst", label: "Arcane Burst", patterns: [/\barcane burst\b/gi, /\bburst\b/gi] },
-      { kind: "skill", key: "guard", label: "Guard", patterns: [/\baegis guard\b/gi, /\baegis\b/gi, /\bguard\b/gi] },
-      { kind: "skill", key: "meteor", label: "Meteor Rain", patterns: [/\bmeteor rain\b/gi, /\bmeteor\b/gi] },
-      { kind: "skill", key: "frost", label: "Frost Nova", patterns: [/\bfrost nova\b/gi, /\bfrost\b/gi] },
-      { kind: "skill", key: "phoenix", label: "Phoenix Blessing", patterns: [/\bphoenix blessing\b/gi, /\bphoenix\b/gi] },
-      { kind: "skill", key: "resist", label: "Resist", patterns: [/\bresist\b/gi, /\bresisting\b/gi] },
-      { kind: "skill", key: "barrier", label: "Barrier", patterns: [/\bbarrier\b/gi, /\bprotect (?:the )?party\b/gi] },
-      { kind: "skill", key: "analist", label: "Analist", patterns: [/\banalist\b/gi, /\banalyst\b/gi, /\banalyze\b/gi, /\banalyse\b/gi] },
-      { kind: "utility", key: "mine", label: "mining", patterns: [/\bmine\s+(?:some\s+)?crystals?\b/gi, /\bmine\b/gi] },
-      { kind: "utility", key: "explore", label: "exploration", patterns: [/\bexplore\b/gi, /\bexploration\b/gi] },
-      { kind: "utility", key: "status", label: "status report", patterns: [/\bstatus report\b/gi, /\bcheck status\b/gi, /\bstatus\b/gi] },
-      { kind: "utility", key: "hospital", label: "hospital treatment", patterns: [/\bpay (?:the )?hospital(?: fee)?\b/gi, /\bpay (?:the )?healing fee\b/gi] },
-      { kind: "upgrade", key: "pickaxe", label: "pickaxe", patterns: [/\bupgrade (?:my |the )?pickaxe\b/gi, /\bpickaxe upgrade\b/gi, /\bimprove (?:my |the )?pickaxe\b/gi] },
-      { kind: "upgrade", key: "speed", label: "attack speed", patterns: [/\bupgrade (?:the )?(?:attack )?speed\b/gi, /\battack speed upgrade\b/gi] },
-      { kind: "upgrade", key: "damage", label: "party damage", patterns: [/\bupgrade (?:the )?(?:party )?damage\b/gi, /\bdamage upgrade\b/gi] },
-      { kind: "upgrade", key: "mana", label: "maximum mana", patterns: [/\bupgrade (?:my |the )?(?:maximum|max) mana\b/gi, /\bmax(?:imum)? mana upgrade\b/gi, /\bincrease (?:my )?mana capacity\b/gi] },
-      { kind: "upgrade", key: "crit", label: "critical strikes", patterns: [/\bupgrade (?:the )?crit(?:ical)?(?: strikes?| chance)?\b/gi, /\bcritical strikes? upgrade\b/gi, /\bcritical strike chance\b/gi] },
-      { kind: "snack", action: "use", key: "rations", label: "Trail Rations", patterns: [/\buse (?:the )?(?:trail rations|rations)\b/gi, /\beat (?:the )?(?:trail rations|rations)\b/gi] },
-      { kind: "snack", action: "use", key: "moonberries", label: "Moonberries", patterns: [/\buse (?:the )?moonberries\b/gi, /\beat (?:the )?moonberries\b/gi] },
-      { kind: "snack", action: "use", key: "tea", label: "Miner's Tea", patterns: [/\buse (?:the )?miner(?:\s+s)?\s+tea\b/gi, /\bdrink (?:the )?miner(?:\s+s)?\s+tea\b/gi] },
-      { kind: "snack", action: "use", key: "cake", label: "Crystal Cake", patterns: [/\buse (?:the )?crystal cake\b/gi, /\beat (?:the )?crystal cake\b/gi] },
-      { kind: "snack", action: "use", key: "etherberry", label: "Etherberries", patterns: [/\buse (?:the )?etherberries\b/gi, /\beat (?:the )?etherberries\b/gi] },
-      { kind: "snack", action: "use", key: "astralTea", label: "Astral Tea", patterns: [/\buse (?:the )?astral tea\b/gi, /\bdrink (?:the )?astral tea\b/gi] },
-      { kind: "snack", action: "use", key: "revive", label: "Revive Snack", patterns: [/\buse (?:the )?revive snack\b/gi] },
-      { kind: "snack", action: "buy", key: "rations", label: "Trail Rations", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the)\s+)?(?:trail rations|rations)\b/gi] },
-      { kind: "snack", action: "buy", key: "moonberries", label: "Moonberries", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?moonberries\b/gi] },
-      { kind: "snack", action: "buy", key: "tea", label: "Miner's Tea", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?miner(?:\s+s)?\s+tea\b/gi] },
-      { kind: "snack", action: "buy", key: "cake", label: "Crystal Cake", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?crystal cake\b/gi] },
-      { kind: "snack", action: "buy", key: "etherberry", label: "Etherberries", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?etherberries\b/gi] },
-      { kind: "snack", action: "buy", key: "astralTea", label: "Astral Tea", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?astral tea\b/gi] },
-      { kind: "snack", action: "buy", key: "revive", label: "Revive Snack", patterns: [/\b(?:buy|purchase|get)\s+(?:(?:some|the )\s+)?revive snack\b/gi] },
-      { kind: "snack", action: "use", key: "auto", label: "a suitable snack", patterns: [/\buse (?:a |the |some )?snack\b/gi, /\beat (?:a |the |some )?snack\b/gi] },
-      { kind: "snack", action: "buy", key: "auto", label: "a snack", patterns: [/\b(?:buy|purchase|get)\s+(?:a |the |some )?snack\b/gi] }
-    ];
-
-    const matches = [];
-
-    for (const choice of choices) {
-      let first = null;
-
-      for (const pattern of choice.patterns) {
-        const regex = new RegExp(pattern.source, pattern.flags);
-        let match;
-
-        while ((match = regex.exec(text)) !== null) {
-          if (
-            !first ||
-            match.index < first.index ||
-            (match.index === first.index && match[0].length > first.text.length)
-          ) {
-            first = { index: match.index, text: match[0] };
-          }
-
-          if (!match[0].length) regex.lastIndex++;
-        }
-      }
-
-      if (first) matches.push({ ...choice, index: first.index });
-    }
-
-    matches.sort((a, b) => a.index - b.index);
-    const seen = new Set();
-
-    return matches.filter((choice) => {
-      const id = `${choice.kind}:${choice.action || ""}:${choice.key}`;
-      if (seen.has(id)) return false;
-      seen.add(id);
-      return true;
-    });
-  }
-
-function makeStatusReport() {
-    const living = livingHeroes();
-    const fallen = s.heroes.filter((id) => (s.heroHp[id] || 0) <= 0);
-
-    const enemy = s.enemy
-      ? `${s.enemy.name}, ${Math.max(0, Math.floor(s.enemy.hp))} of ${s.enemy.maxHp} health remaining`
-      : "no enemy nearby";
-
-    const health = living.length
-      ? `${living.length} heroes standing${fallen.length ? ` and ${fallen.length} fallen` : ""}`
-      : "no heroes standing";
-
-    const pilot = kingdomAutoPilot
-      ? "I am managing the kingdom"
-      : battleAutoPilot
-        ? "I am handling the current battle"
-        : "I am standing by";
-
-    return `Status report. Cave ${s.region + 1}, ${region().name}. ${health}. Mana ${Math.floor(s.mana)} of ${maxMana()}. ${enemy}. ${fmt(s.gold)} gold, ${fmt(s.crystals)} crystals, and ${fmt(s.ore)} ore. ${pilot}.`;
-  }
-
-function answerResourceQuestion(text) {
-    const asks = /\b(how much|how many|what|tell me|show me|check|count|amount|do i have|my resources|resource report|inventory)\b/.test(text);
-    const directResource = /^(?:gold|coins?|money|crystals?|ore|mana|snacks?|resources|inventory)$/.test(text);
-
-    const names = {
-      gold: /\b(?:gold|coins?|money)\b/.test(text),
-      crystals: /\bcrystals?\b/.test(text),
-      ore: /\bore\b/.test(text),
-      mana: /\bmana\b/.test(text),
-      snacks: /\b(?:snacks?|food|rations?)\b/.test(text),
-      inventory: /\b(?:all resources|resources|inventory)\b/.test(text)
-    };
-
-    if (!asks && !directResource) return null;
-
-    if (names.inventory) {
-      return `You have ${fmt(s.gold)} gold, ${fmt(s.crystals)} crystals, ${fmt(s.ore)} ore, and ${Math.floor(s.mana)} of ${maxMana()} mana.`;
-    }
-
-    if (names.gold) return `You have ${fmt(s.gold)} gold.`;
-    if (names.crystals) return `You have ${fmt(s.crystals)} crystals.`;
-    if (names.ore) return `You have ${fmt(s.ore)} ore.`;
-    if (names.mana) return `You have ${Math.floor(s.mana)} out of ${maxMana()} mana.`;
-
-    if (names.snacks) {
-      const counts = SNACKS.map((snack) => `${snack.name}: ${s.snacks[snack.id] || 0}`).join(", ");
-      return `Your snack inventory is: ${counts}.`;
-    }
-
-    return null;
-  }
-
-function elowenPassiveReadyForFallenAlly(now = Date.now()) {
-    const allyIsDown = s.heroes.some(
-      (id) => id !== "elowen" && (s.heroHp[id] || 0) <= 0
-    );
-
-    return s.heroes.includes("elowen") &&
-      (s.heroHp.elowen || 0) > 0 &&
-      allyIsDown &&
-      now >= (s.elowenNextReviveAt || 0) &&
-      !battleLocked();
-  }
-
-function chooseSnackForBattlePrompt(now = Date.now()) {
-    const living = livingHeroes();
-    const fallen = s.heroes.some((id) => (s.heroHp[id] || 0) <= 0);
-
-    if (elowenPassiveReadyForFallenAlly(now)) return null;
-    if ((s.heroHp.elowen || 0) <= 0 && s.elowenSelfReviveAt > now) return null;
-    if (fallen && living.length && (s.snacks.revive || 0) > 0) return "revive";
-
-    const injured = living.filter((id) => s.heroHp[id] < HEROES[id].maxHp);
-    if (injured.length >= 2 && (s.snacks.cake || 0) > 0) return "cake";
-    if (injured.length && (s.snacks.rations || 0) > 0) return "rations";
-    if (s.mana < maxMana() * 0.22 && (s.snacks.etherberry || 0) > 0) return "etherberry";
-
-    return null;
-  }
-
-function askToUseBattleSnack(snackId) {
-    if (!snackId) return;
-
-    if (autopilotActive()) {
-      pendingSnackApproval = null;
-      if ((s.snacks[snackId] || 0) > 0) useSnack(snackId);
-      return;
-    }
-
-    if (pendingSnackApproval) return;
-
-    const snack = SNACKS.find((item) => item.id === snackId);
-    if (!snack) return;
-
-    pendingSnackApproval = snackId;
-    announce(`The party may need ${snack.name}. Would you like me to use it? Say yes or no.`);
-    log(`Battle Autopilot is asking permission to use ${snack.name}.`);
-  }
-
-function finishBattleAutopilot() {
-    if (!battleAutoPilot) return;
-
-    battleAutoPilot = false;
-    pendingSnackApproval = null;
-
-    if (!kingdomAutoPilot) {
-      standDownAfterReply = true;
-      announce("Enemy defeated. Battle Autopilot is standing down.");
-    }
-
-    refreshSagePanel();
-  }
-
-function startBattleAutopilot() {
-    battleAutoPilot = true;
-    battlePilotClock = 0;
-    clearAutopilotRecommendations();
-    pendingSnackApproval = null;
-    cancelSageSpeech(true);
-    standDownAfterReply = false;
-
-    announce(
-      s.enemy
-        ? `Battle Autopilot engaged. I will defeat ${s.enemy.name}, use skills responsibly, and protect the party.`
-        : "Battle Autopilot armed. I will engage the next enemy we encounter."
-    );
-
-    log("Battle Autopilot activated by the player.");
-    refreshSagePanel();
-  }
-
-function startKingdomAutopilot() {
-    if (!s.autoPilotUnlocked) {
-      queueSageReply("My kingdom-management protocols are not ready yet. We will discover more as we go.");
-      return;
-    }
-
-    kingdomAutoPilot = true;
-    battleAutoPilot = false;
-    clearAutopilotRecommendations();
-    kingdomMineClock = 0;
-    kingdomManagementClock = 0;
-    kingdomRecruitClock = 0;
-    kingdomUpgradeClock = 0;
-    battlePilotClock = 0;
-    pendingSnackApproval = null;
-    cancelSageSpeech(true);
-    standDownAfterReply = false;
-
-    announce(
-      `I am managing your kingdom now. I will handle urgent healing, ` +
-      `revive fallen heroes responsibly, buy necessary supplies, ` +
-      `improve our equipment, and mine when it is safe. ` +
-      `Say ${assistantWakeName()}, stand down to stop me.`
-    );
-
-    log("Kingdom Autopilot activated by the player.");
-    refreshSagePanel();
-    save();
-  }
-
-function stopAllAutopilots() {
-    battleAutoPilot = false;
-    kingdomAutoPilot = false;
-    pendingSnackApproval = null;
-    battlePilotClock = 0;
-    kingdomMineClock = 0;
-    kingdomManagementClock = 0;
-    kingdomRecruitClock = 0;
-    kingdomUpgradeClock = 0;
-
-    log("Raphael's Autopilot modes are now off.");
-    toast("Autopilot stood down.");
-    standDownAfterReply = true;
-    queueSageReply("Understood. I am standing down. Both Autopilot modes are off.");
-    refreshSagePanel();
-  }
-
-function handleSnackYesNo(text) {
-    if (!pendingSnackApproval) return false;
-
-    if (/^(?:yes|yeah|yep|sure|okay|ok|do it|go ahead|affirmative)$/.test(text)) {
-      const snackId = pendingSnackApproval;
-      pendingSnackApproval = null;
-      const snack = SNACKS.find((item) => item.id === snackId);
-
-      if (snack && (s.snacks[snackId] || 0) > 0) {
-        useSnack(snackId);
-        queueSageReply(`Understood. I tried to use ${snack.name}.`);
-      } else {
-        queueSageReply("That snack is no longer available.");
-      }
-
-      return true;
-    }
-
-    if (/^(?:no|nope|not now|don't|do not|negative)$/.test(text)) {
-      const snack = SNACKS.find((item) => item.id === pendingSnackApproval);
-      pendingSnackApproval = null;
-      queueSageReply(`Understood. I will not use ${snack ? snack.name : "that snack"}.`);
-      return true;
-    }
-
-    return false;
-  }
-
-function runBattleAutopilot(now = Date.now()) {
-    if ((!battleAutoPilot && !kingdomAutoPilot) || !s.enemy || battleLocked() || isGameplayPaused()) return;
-    if (!livingHeroes().length) return;
-
-    if (
-      isSkillUnlocked("resist") &&
-      s.enemy.uniqueAttack === "antiMagicBarrier" &&
-      !s.enemy.antiMagicBarrierTriggered &&
-      !s.enemy.resistUsed &&
-      (Number(s.enemy.bossElapsed) || 0) >= Math.max(0, getBarrierDelaySeconds() - 1.2) &&
-      canUseSkill("resist")
-    ) {
-      skill("resist");
-      battlePilotClock = 0;
-      return;
-    }
-
-    if (isAntiMagicBarrierActive()) {
-      if (isSkillUnlocked("resist") && canUseSkill("resist")) {
-        skill("resist");
-      } else if (!s.enemy.lastBarrierVoiceAt || now - s.enemy.lastBarrierVoiceAt >= 9000) {
-        s.enemy.lastBarrierVoiceAt = now;
-        announce("I am not able to use any skills due to the enemy's ability.");
-      }
-
-      return;
-    }
-
-    if (elowenPassiveReadyForFallenAlly(now)) return;
-
-    const fallen = s.heroes.filter((id) => (s.heroHp[id] || 0) <= 0);
-
-    if (fallen.length) {
-      const elowenWaitingOnSelf = fallen.includes("elowen") && s.elowenSelfReviveAt > now;
-
-      if (!elowenWaitingOnSelf && canUseSkill("phoenix")) {
-        skill("phoenix");
-        battlePilotClock = 0;
-        return;
-      }
-
-      if (!kingdomAutoPilot) {
-        const snackId = (s.snacks.revive || 0) > 0 ? "revive" : null;
-        if (snackId) askToUseBattleSnack(snackId);
-      }
-
-      if (kingdomAutoPilot) runKingdomSupplies(now);
-      return;
-    }
-
-    const living = livingHeroes();
-    const ratios = living.map((id) => (s.heroHp[id] || 0) / HEROES[id].maxHp);
-    const lowHero = ratios.some((ratio) => ratio <= 0.32);
-    const manyHurt = ratios.filter((ratio) => ratio <= 0.72).length >= 2;
-    const avgRatio = ratios.reduce((sum, ratio) => sum + ratio, 0) / Math.max(1, ratios.length);
-
-    if (canUseSkill("heal") && (lowHero || manyHurt || avgRatio <= 0.72)) {
-      skill("heal");
-      battlePilotClock = 0;
-      return;
-    }
-
-    if (canUseSkill("guard") && (manyHurt || avgRatio <= 0.65)) {
-      skill("guard");
-      battlePilotClock = 0;
-      return;
-    }
-
-    if (kingdomAutoPilot) {
-      if (runKingdomSupplies(now)) {
-        battlePilotClock = 0;
-        return;
-      }
-    } else if (lowHero || avgRatio <= 0.48 || (s.mana < maxMana() * 0.15 && s.enemy.boss)) {
-      const snackId = chooseSnackForBattlePrompt(now);
-
-      if (snackId) {
-        askToUseBattleSnack(snackId);
-        return;
-      }
-    }
-
-    for (const key of ["meteor", "burst", "slash", "frost"]) {
-      if (canUseSkill(key)) {
-        skill(key);
-        battlePilotClock = 0;
-        return;
-      }
-    }
-  }
-
-function runKingdomSupplies(now = Date.now()) {
-    if (!kingdomAutoPilot) return false;
-
-    if (s.elowenSelfReviveAt > now && (s.heroHp.elowen || 0) <= 0) return true;
-    if (elowenPassiveReadyForFallenAlly(now)) return true;
-
-    if (s.needsHospital && !isRecovering() && s.gold >= s.hospitalFee) {
-      payHeal();
-      return true;
-    }
-
-    if (battleLocked()) return false;
-
-    const living = livingHeroes();
-    const fallen = s.heroes.filter((id) => (s.heroHp[id] || 0) <= 0);
-
-    if (fallen.length && living.length) {
-      if (canUseSkill("phoenix")) {
-        skill("phoenix");
-        return true;
-      }
-
-      if (
-        (s.snacks.revive || 0) <= 0 &&
-        s.gold >= SNACKS.find((item) => item.id === "revive").cost
-      ) {
-        buySnack("revive");
-
-        if ((s.snacks.revive || 0) > 0) {
-          useSnack("revive");
-          return true;
-        }
-      }
-
-      if ((s.snacks.revive || 0) > 0) {
-        useSnack("revive");
-        return true;
-      }
-    }
-
-    const urgentInjury = living.some((id) => (s.heroHp[id] || 0) / HEROES[id].maxHp <= 0.42);
-    const livingInjured = living.filter((id) => (s.heroHp[id] || 0) < HEROES[id].maxHp);
-
-    if (urgentInjury && living.length) {
-      if (livingInjured.length >= 2 && (s.snacks.cake || 0) > 0) {
-        useSnack("cake");
-        return true;
-      }
-
-      if ((s.snacks.rations || 0) > 0) {
-        useSnack("rations");
-        return true;
-      }
-
-      const rationCost = SNACKS.find((item) => item.id === "rations").cost;
-
-      if (s.gold >= rationCost) {
-        buySnack("rations");
-
-        if ((s.snacks.rations || 0) > 0) {
-          useSnack("rations");
-          return true;
-        }
-      }
-    }
-
-    if (s.mana <= maxMana() * 0.24) {
-      if ((s.snacks.etherberry || 0) > 0) {
-        useSnack("etherberry");
-        return true;
-      }
-
-      const manaSnackCost = SNACKS.find((item) => item.id === "etherberry").cost;
-
-      if (s.gold >= manaSnackCost) {
-        buySnack("etherberry");
-
-        if ((s.snacks.etherberry || 0) > 0) {
-          useSnack("etherberry");
-          return true;
-        }
-      }
-    }
-
-    return false;
-  }
-
-  function runKingdomAutopilot(now = Date.now(), dt = 0) {
-    if (!kingdomAutoPilot) return;
-
-    kingdomMineClock += dt;
-    kingdomManagementClock += dt;
-    kingdomRecruitClock += dt;
-    kingdomUpgradeClock += dt;
-
-    if (s.needsHospital && !isRecovering()) {
-      if (s.gold >= s.hospitalFee) {
-        payHeal();
-        return;
-      }
-
-      if (kingdomMineClock >= 12) {
-        kingdomMineClock = 0;
-        mine();
-      }
-
-      return;
-    }
-
-    if (kingdomManagementClock >= 2) {
-      kingdomManagementClock = 0;
-      if (runKingdomSupplies(now)) return;
-    }
-
-    if (!battleLocked() && kingdomUpgradeClock >= 18) {
-      kingdomUpgradeClock = 0;
-
-      const possible = [
-        { key: "damage", level: s.damageLevel, max: 10, funds: s.gold, cost: damageCost() },
-        { key: "pickaxe", level: s.pickaxe, max: 10, funds: s.crystals, cost: pickCost() },
-        { key: "speed", level: s.speedLevel, max: 5, funds: s.crystals, cost: speedCost() },
-        { key: "crit", level: s.critLevel, max: 8, funds: s.crystals, cost: critCost() }
-      ];
-
-      const choice = possible.find((item) => item.level < item.max && item.funds >= item.cost);
-
-      if (choice) {
-        upgrade(choice.key);
-        announce(`I upgraded ${choice.key === "crit" ? "critical strikes" : choice.key}.`);
-        return;
-      }
-    }
-
-    if (!battleLocked() && kingdomRecruitClock >= 45) {
-      kingdomRecruitClock = 0;
-
-      const recruitPriority = [
-        "tessa", "borin", "luna", "kellan", "darius",
-        "silas", "mira_cook", "elise", "iris", "juno"
-      ];
-
-      const recruit = recruitPriority
-        .map((id) => RECRUITS.find((item) => item.id === id))
-        .find((item) => item && !s.recruits.includes(item.id) && s.gold >= item.cost);
-
-      if (recruit) {
-        hireRecruit(recruit.id);
-        announce(`I hired ${recruit.name} to help the expedition.`);
-        return;
-      }
-    }
-
-    if (!s.enemy && !battleLocked() && kingdomMineClock >= 12) {
-      kingdomMineClock = 0;
-      mine();
-    }
-  }
-
-function triggerRaphaelEvolution() {
-    if (s.raphaelEvolved) return;
-
-    pauseGameplay("raphael-evolution");
-    s.raphaelEvolved = true;
-    s.autoPilotUnlocked = true;
-    cancelSageSpeech(true);
-    currentPrompt = null;
-    updateSageMessage("Evolution sequence initiated.");
-    save();
-
-    const overlay = document.createElement("div");
-    overlay.className = "raphael-evolution-overlay";
-    overlay.innerHTML = `
-      <div class="raphael-evolution-stage">
-        <div class="raphael-evolution-caption">GREAT SAGE · EVOLUTION</div>
-        <div class="raphael-evolution-emblem" id="raphaelEmblem">◈</div>
-        <h1 id="raphaelEvolutionTitle">EVOLUTION INITIATED</h1>
-        <p id="raphaelEvolutionText">An unprecedented evolution is beginning...</p>
-        <small>Click to continue when the reveal is complete</small>
-      </div>
-    `;
-
-    document.body.appendChild(overlay);
-    refreshSagePanel();
-
-    let ready = false;
-
-    const closeEvolution = () => {
-      if (!ready) return;
-
-      clearTimeout(overlay._evolutionTimer);
-      clearTimeout(overlay._closeTimer);
-      overlay.remove();
-      resumeGameplay("raphael-evolution");
-      updateAutopilotStatusIndicators();
-      refreshSagePanel();
-      save();
-
-      if (!window._analistUnlockQueued) {
-        window._analistUnlockQueued = true;
-
-        queueUnlockReveal({
-          category: "NEW ABILITY",
-          title: "Analist",
-          symbol: "◈",
-          description: "A new analysis mode for examining unusual enemy abilities.",
-          speech: "A new function is online: Analist. I can study unusual enemy abilities."
-        });
-      }
-    };
-
-    overlay.addEventListener("click", closeEvolution);
-
-    overlay._evolutionTimer = window.setTimeout(() => {
-      const emblem = overlay.querySelector("#raphaelEmblem");
-      const title = overlay.querySelector("#raphaelEvolutionTitle");
-      const text = overlay.querySelector("#raphaelEvolutionText");
-
-      if (emblem) emblem.textContent = "R";
-      if (title) title.textContent = "RAPHAEL HAS AWAKENED";
-      if (text) text.textContent = "I have evolved into Raphael. You can now wake me by saying Raphael.";
-
-      overlay.classList.add("is-evolved");
-      ready = true;
-
-      announce("Evolution complete. I am Raphael, the evolved form of Great Sage.");
-      updateAutopilotStatusIndicators();
-      refreshSagePanel();
-      save();
-    }, 2300);
-
-    overlay._closeTimer = window.setTimeout(() => {
-      ready = true;
-      closeEvolution();
-    }, 6500);
-  }
-
-function launchMagicBolt(hero) {
-    const scene = $("scene");
-    const enemy = $("enemyVisual");
-    if (!scene || !hero || !enemy || enemy.classList.contains("hidden")) return;
-    const sceneRect = scene.getBoundingClientRect();
-    const heroRect = hero.getBoundingClientRect();
-    const enemyRect = enemy.getBoundingClientRect();
-    const startX = heroRect.left + heroRect.width * 0.72 - sceneRect.left;
-    const startY = heroRect.top + heroRect.height * 0.38 - sceneRect.top;
-    const endX = enemyRect.left + enemyRect.width * 0.24 - sceneRect.left;
-    const endY = enemyRect.top + enemyRect.height * 0.42 - sceneRect.top;
-    const bolt = document.createElement("span");
-    bolt.className = "attack-projectile magic-bolt";
-    bolt.style.left = startX + "px";
-    bolt.style.top = startY + "px";
-    bolt.style.setProperty("--travel-x", (endX - startX) + "px");
-    bolt.style.setProperty("--travel-y", (endY - startY) + "px");
-    scene.appendChild(bolt);
-    setTimeout(() => bolt.remove(), 460);
-  }
-
-
-function initCrystalKingdom() {
+  function initCrystalKingdom() {
     if (window.__crystalKingdomInitialized) return;
 
     window.__crystalKingdomInitialized = true;
@@ -5309,7 +5221,6 @@ function initCrystalKingdom() {
     ensureBarrierVisual();
     ensureBarrierSkillButton();
     ensureManaUpgradeCard();
-    ensureDynamicAbilityButtons();
 
     bindEvents();
 
@@ -5335,7 +5246,7 @@ function initCrystalKingdom() {
     }
 
     // Start voice recognition where supported. Browsers that
-    // require microphone permission will report the appropriate status.
+    // require microphone permission will report the appropriate status
     if (SpeechRecognitionAPI && recognitionEnabled) {
       startRecognition();
     } else if (!SpeechRecognitionAPI) {
@@ -5348,15 +5259,13 @@ function initCrystalKingdom() {
 
     scheduleExplore();
 
-    log("Crystal Kingdom ready. Your next destination remains a mystery.");
-    save();
+log("Crystal Kingdom ready. Your next destination remains a mystery.");
+save();
 
-    if (s.autoPilotUnlocked && !s.raphaelEvolved) {
-      window.setTimeout(triggerRaphaelEvolution, 600);
-    }
+console.info("Mining Crystal Kingdom initialized.");
 
-    window.gemMinerReady = true;
-    console.info("Mining Crystal Kingdom initialized.");
+// Tell maintenance.js that startup succeeded.
+window.gemMinerReady = true;
   }
 
   if (document.readyState === "loading") {
