@@ -4,6 +4,7 @@
   const $ = (id) => document.getElementById(id);
   const SAVE_KEY = "gemMinerCrystalKingdom_v3";
   const OLD_SAVE_KEY = "gemMinerCrystalKingdom_v2";
+  let resettingGame = false;
 
   // ==========================================
   // HEROES
@@ -647,6 +648,8 @@
   let renderClock = 0;
   let exploreTimer = 0;
   let toastTimer = 0;
+  let raphaelEvolutionTimer = null;
+  let raphaelCloseTimer = null;
 
   let battleAutoPilot = false;
   let kingdomAutoPilot = false;
@@ -1028,14 +1031,16 @@
     s.damageLevel * 4 +
     (s.recruits.includes("darius") ? 6 : 0);
 
-  function save() {
-    try {
-      s.lastLog = logs.slice(0, 12);
-      localStorage.setItem(SAVE_KEY, JSON.stringify(s));
-    } catch (error) {
-      console.warn("Could not save progress.", error);
-    }
+function save() {
+  if (resettingGame) return;
+
+  try {
+    s.lastLog = logs.slice(0, 12);
+    localStorage.setItem(SAVE_KEY, JSON.stringify(s));
+  } catch (error) {
+    console.warn("Could not save progress.", error);
   }
+}
 
   function esc(value) {
     return String(value).replace(
@@ -1353,15 +1358,19 @@
       kingdomStatus.dataset.state = state;
     }
 
-    if (help) {
-      help.textContent = kingdomAutoPilot
-        ? "Kingdom Autopilot manages supplies, upgrades, and mining. Say Great Sage, stand down to stop."
-        : battleAutoPilot
-          ? "Battle Autopilot manages the current fight. Say Great Sage, stand down to stop."
-          : s.autoPilotUnlocked
-            ? "Battle Autopilot is available. Kingdom Autopilot is unlocked."
-            : "Battle Autopilot is available. Kingdom Autopilot unlocks after the sixth cave guardian.";
-    }
+if (help) {
+  const assistantName = s.raphaelEvolved
+    ? "Raphael"
+    : "Great Sage";
+
+  help.textContent = kingdomAutoPilot
+    ? `Kingdom Autopilot manages supplies, upgrades, and mining. Say ${assistantName}, stand down to stop.`
+    : battleAutoPilot
+      ? `Battle Autopilot manages the current fight. Say ${assistantName}, stand down to stop.`
+      : s.autoPilotUnlocked
+        ? "Battle Autopilot is available. Kingdom Autopilot is unlocked."
+        : "Battle Autopilot is available. Kingdom Autopilot unlocks after the sixth cave guardian.";
+}
   }
 
   function armCommandIdleTimer() {
@@ -1533,8 +1542,9 @@
   function handleVoiceTranscript(transcript) {
     const text = transcript.toLowerCase().trim();
 
-    const wakePattern =
-      /\b(great sage|hey sage|hello sage)\b/i;
+const wakePattern = s.raphaelEvolved
+  ? /\b(raphael|rafael|rafayel|raphaell|raphiel|hey raphael|hello raphael)\b/i
+  : /\b(great sage|hey sage|hello sage)\b/i;
 
     const wakeMatch = text.match(wakePattern);
 
@@ -1932,59 +1942,189 @@
   }
 
 
-  function refreshSagePanel() {
-    updateAutopilotStatusIndicators();
+function refreshSagePanel() {
+  updateAutopilotStatusIndicators();
 
-    const panel = $("sagePanel");
-    const orb = $("sageOrb");
-    const message = $("sageMessage");
+  const panel = $("sagePanel");
+  const orb = $("sageOrb");
+  const dock = $("sageDock");
+  const message = $("sageMessage");
+  const shouldShow = sagePanelVisible();
 
-    if (panel) {
-      panel.classList.toggle("sage-speaking", speechBusy);
-      panel.classList.toggle("sage-listening", commandModeActive);
-      panel.classList.toggle(
-        "sage-hidden",
-        !sagePanelVisible()
-      );
-    }
+  const assistantName = s.raphaelEvolved
+    ? "Raphael"
+    : "Great Sage";
 
-    if (orb) {
-      orb.classList.toggle("is-speaking", speechBusy);
-
-      orb.classList.toggle(
-        "is-listening",
-        commandModeActive && !speechBusy
-      );
-
-      orb.classList.toggle("is-muted", !sageEnabled);
-    }
-
-    if (message && currentPrompt && !speechBusy) {
-      message.textContent =
-        currentPrompt.message || message.textContent;
-    }
-
-    const commandButton = $("sageCommandButton");
-
-    if (commandButton) {
-      commandButton.textContent = commandModeActive
-        ? "Listening…"
-        : "Talk to Great Sage";
-    }
-
-    const voiceButton = $("sageVoiceToggle");
-
-    if (voiceButton) {
-      voiceButton.textContent = sageEnabled
-        ? "Mute voice"
-        : "Enable voice";
-
-      voiceButton.setAttribute(
-        "aria-pressed",
-        String(sageEnabled)
-      );
-    }
+  if (dock) {
+    dock.classList.toggle(
+      "is-hidden",
+      !(shouldShow || s.raphaelEvolved)
+    );
   }
+
+  if (panel) {
+    panel.hidden = !shouldShow;
+    panel.classList.toggle("sage-speaking", speechBusy);
+    panel.classList.toggle("sage-listening", commandModeActive);
+    panel.classList.toggle("sage-hidden", !shouldShow);
+  }
+
+  const heading = $("sageName");
+
+  if (heading) {
+    heading.textContent = assistantName.toUpperCase();
+  }
+
+  if (orb) {
+    const symbol = orb.querySelector(".sage-symbol");
+
+    if (symbol) {
+      symbol.textContent = s.raphaelEvolved ? "R" : "◈";
+    }
+
+    orb.classList.toggle("is-speaking", speechBusy);
+    orb.classList.toggle(
+      "is-listening",
+      commandModeActive && !speechBusy
+    );
+    orb.classList.toggle("is-muted", !sageEnabled);
+    orb.classList.toggle("is-raphael", Boolean(s.raphaelEvolved));
+
+    orb.setAttribute(
+      "aria-label",
+      `Mute or activate ${assistantName} voice`
+    );
+
+    orb.title = `Mute or activate ${assistantName}`;
+  }
+
+  if (message && currentPrompt && !speechBusy) {
+    message.textContent =
+      currentPrompt.message || message.textContent;
+  }
+
+  const commandButton = $("sageCommandButton");
+
+  if (commandButton) {
+    commandButton.textContent = commandModeActive
+      ? "Listening…"
+      : `Talk to ${assistantName}`;
+  }
+
+  const voiceButton = $("sageVoiceToggle");
+
+  if (voiceButton) {
+    voiceButton.textContent = sageEnabled
+      ? "Mute voice"
+      : "Enable voice";
+
+    voiceButton.setAttribute(
+      "aria-pressed",
+      String(sageEnabled)
+    );
+  }
+}
+
+function triggerRaphaelEvolution() {
+  if (s.raphaelEvolved || !s.autoPilotUnlocked) return;
+
+  clearTimeout(raphaelEvolutionTimer);
+  clearTimeout(raphaelCloseTimer);
+
+  pauseGameplay("raphael-evolution");
+
+  s.raphaelEvolved = true;
+
+  cancelSageSpeech(true);
+  currentPrompt = null;
+
+  updateSageMessage("Evolution sequence initiated.");
+  save();
+
+  const overlay = document.createElement("div");
+  overlay.className = "raphael-evolution-overlay";
+
+  overlay.innerHTML = `
+    <div
+      class="raphael-evolution-stage"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Raphael evolution"
+    >
+      <div class="raphael-evolution-caption">
+        GREAT SAGE · EVOLUTION
+      </div>
+
+      <div class="raphael-evolution-emblem" id="raphaelEmblem">
+        ◈
+      </div>
+
+      <h1 id="raphaelEvolutionTitle">
+        EVOLUTION INITIATED
+      </h1>
+
+      <p id="raphaelEvolutionText">
+        An unprecedented evolution is beginning...
+      </p>
+
+      <small>Click to continue when the reveal is complete</small>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+  refreshSagePanel();
+
+  let ready = false;
+
+  const closeEvolution = () => {
+    if (!ready) return;
+
+    clearTimeout(raphaelEvolutionTimer);
+    clearTimeout(raphaelCloseTimer);
+
+    overlay.remove();
+
+    resumeGameplay("raphael-evolution");
+    updateAutopilotStatusIndicators();
+    refreshSagePanel();
+    save();
+  };
+
+  overlay.addEventListener("click", closeEvolution);
+
+  raphaelEvolutionTimer = window.setTimeout(() => {
+    const emblem = overlay.querySelector("#raphaelEmblem");
+    const title = overlay.querySelector("#raphaelEvolutionTitle");
+    const text = overlay.querySelector("#raphaelEvolutionText");
+
+    if (emblem) emblem.textContent = "R";
+
+    if (title) {
+      title.textContent = "RAPHAEL HAS AWAKENED";
+    }
+
+    if (text) {
+      text.textContent =
+        "I have evolved into Raphael. You can now wake me by saying Raphael.";
+    }
+
+    overlay.classList.add("is-evolved");
+    ready = true;
+
+    announce(
+      "Evolution complete. I am Raphael, the evolved form of Great Sage."
+    );
+
+    updateAutopilotStatusIndicators();
+    refreshSagePanel();
+    save();
+  }, 2300);
+
+  raphaelCloseTimer = window.setTimeout(() => {
+    ready = true;
+    closeEvolution();
+  }, 6500);
+}
   
   // ==========================================
   // CAVE ATLAS: KEEP FUTURE CAVES SECRET
@@ -2976,34 +3116,19 @@
 
     damage = Math.max(1, Math.floor(damage));
 
-    enemy.hp = Math.max(0, enemy.hp - damage);
+enemy.hp = Math.max(0, enemy.hp - damage);
 
-    
-    showDamage(`-${damage}`, "enemy");
-    enemyHitEffect();
+showDamage(`-${damage}`, "enemy");
+enemyHitEffect();
 
-    if (enemy.hp <= 0) {
-      defeatEnemy();
-      return;
-    }
+if (enemy.hp <= 0) {
+  defeatEnemy();
+  return;
+}
 
-    renderEnemy();
-    save();
-  }
-    
-    // Trigger the attack animation and display the damage.
-    showDamage(`-${damage}`, "enemy");
-    enemyHitEffect();
-
-    // Finish the enemy when its health reaches zero.
-    if (enemy.hp <= 0) {
-      defeatEnemy();
-      return;
-    }
-
-    renderEnemy();
-    save();
-  }
+renderEnemy();
+save();
+}
 
   function showDamage(text, target = "enemy") {
     const parent =
@@ -3655,13 +3780,19 @@
       }
 
       // Kingdom Autopilot unlocks when the sixth guardian falls.
-      if (clearedRegion === 5 && !s.autoPilotUnlocked) {
-        s.autoPilotUnlocked = true;
+if (clearedRegion === 5 && !s.autoPilotUnlocked) {
+  s.autoPilotUnlocked = true;
 
-        log("Kingdom Autopilot unlocked.");
-        announce("Kingdom Autopilot has been unlocked.");
-        toast("KINGDOM AUTOPILOT UNLOCKED");
-      }
+  log("Kingdom Autopilot unlocked.");
+  announce("Kingdom Autopilot has been unlocked.");
+  toast("KINGDOM AUTOPILOT UNLOCKED");
+
+  raphaelEvolutionTimer = window.setTimeout(() => {
+    if (s.autoPilotUnlocked && !s.raphaelEvolved) {
+      triggerRaphaelEvolution();
+    }
+  }, 1200);
+}
 
       // Clearing the seventh guardian triggers the permanent
       // party upgrade while entering Cave 8.
@@ -4757,69 +4888,74 @@
   // ==========================================
 
   
-  function resetGame() {
-    const confirmed = window.confirm(
-      "Reset Crystal Kingdom? All saved game progress will be erased."
+function resetGame() {
+  const confirmed = window.confirm(
+    "Reset Crystal Kingdom? All saved progress, caves, heroes, and upgrades will be erased."
+  );
+
+  if (!confirmed) return;
+
+  // Stop beforeunload from writing the old save back.
+  resettingGame = true;
+
+  clearTimeout(raphaelEvolutionTimer);
+  clearTimeout(raphaelCloseTimer);
+  clearTimeout(exploreTimer);
+  clearTimeout(toastTimer);
+  clearTimeout(commandIdleTimer);
+  clearTimeout(recognitionRestartTimer);
+  clearTimeout(unlockRevealTimer);
+  clearTimeout(analistRevealTimer);
+  clearTimeout(resistRevealTimer);
+
+  if ("speechSynthesis" in window) {
+    window.speechSynthesis.cancel();
+  }
+
+  if (recognition) {
+    try {
+      recognition.stop();
+    } catch (error) {
+      // Recognition may already be stopped.
+    }
+  }
+
+  try {
+    localStorage.removeItem(SAVE_KEY);
+    localStorage.removeItem(OLD_SAVE_KEY);
+
+    const keysToRemove = [];
+
+    for (let i = 0; i < localStorage.length; i++) {
+      const key = localStorage.key(i);
+
+      if (!key) continue;
+
+      const isGameKey = /gem.?miner|crystal.?kingdom/i.test(key);
+      const isPreference = /music|volume|voice|sage/i.test(key);
+
+      if (isGameKey && !isPreference) {
+        keysToRemove.push(key);
+      }
+    }
+
+    keysToRemove.forEach((key) => {
+      localStorage.removeItem(key);
+    });
+  } catch (error) {
+    resettingGame = false;
+
+    console.error("Could not clear saved progress:", error);
+
+    window.alert(
+      "The game could not clear its save. Check your browser storage permissions."
     );
 
-    if (!confirmed) return;
-
-    clearTimeout(exploreTimer);
-    clearTimeout(toastTimer);
-    clearTimeout(commandIdleTimer);
-    clearTimeout(recognitionRestartTimer);
-    clearTimeout(unlockRevealTimer);
-    clearTimeout(analistRevealTimer);
-    clearTimeout(resistRevealTimer);
-
-    if ("speechSynthesis" in window) {
-      window.speechSynthesis.cancel();
-    }
-
-    if (recognition) {
-      try {
-        recognition.stop();
-      } catch (error) {}
-    }
-
-    try {
-      // Remove the current and previous known save keys.
-      localStorage.removeItem(SAVE_KEY);
-      localStorage.removeItem(OLD_SAVE_KEY);
-
-      // Also clear older game-save keys, but preserve music
-      // settings and other preferences.
-      const keysToRemove = [];
-
-      for (let i = 0; i < localStorage.length; i++) {
-        const key = localStorage.key(i);
-
-        if (!key) continue;
-
-        const isGameKey =
-          /gem.?miner|crystal.?kingdom/i.test(key);
-
-        const isPreference =
-          /music|volume|voice|sage/i.test(key);
-
-        if (isGameKey && !isPreference) {
-          keysToRemove.push(key);
-        }
-      }
-
-      keysToRemove.forEach((key) => {
-        localStorage.removeItem(key);
-      });
-    } catch (error) {
-      console.error("Could not clear saved progress:", error);
-      toast("Could not reset the save. Check browser storage permissions.");
-      return;
-    }
-
-    // Reload so old in-memory upgrades, timers, and stats
-    // cannot survive the reset.
-    window.location.reload();
+    return;
   }
+
+  window.location.reload();
+}
   // ==========================================
   // CONNECT BUTTONS
   // ==========================================
@@ -5123,11 +5259,20 @@
 
     scheduleExplore();
 
-    log("Crystal Kingdom ready. Your next destination remains a mystery.");
-    save();
+log("Crystal Kingdom ready. Your next destination remains a mystery.");
+save();
 
-    console.info("Mining Crystal Kingdom initialized.");
-        window.gemMinerReady = true;
+if (s.autoPilotUnlocked && !s.raphaelEvolved) {
+  raphaelEvolutionTimer = window.setTimeout(
+    triggerRaphaelEvolution,
+    600
+  );
+}
+
+// Maintenance checker: the game initialized successfully.
+window.gemMinerReady = true;
+
+console.info("Mining Crystal Kingdom initialized.");
   }
 
   if (document.readyState === "loading") {
