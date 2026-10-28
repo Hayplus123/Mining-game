@@ -3053,3 +3053,790 @@ body.analist-paused .analist-overlay * {
     bottom: 14px;
   }
 }
+
+/* ==========================================
+   CRYSTAL KINGDOM — COMPLETE ANIMATION PATCH
+   Append to the END of the existing style.css.
+   Do not delete the original stylesheet.
+   ========================================== */
+
+/* The first living hero in the party is nearest to the enemy on the right. */
+.party {
+  flex-direction: row-reverse !important;
+}
+
+.party .battle-hero {
+  margin-right: -12px !important;
+  margin-left: 0 !important;
+}
+
+.party .battle-hero:first-child {
+  margin-right: 0 !important;
+  margin-left: 0 !important;
+}
+
+.party .battle-hero > img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* ==========================================
+   INDIVIDUAL HERO ATTACK ANIMATIONS
+   ========================================== */
+
+.party .battle-hero.attack-bow {
+  animation: crystalBowAttack 0.48s ease-out both;
+}
+
+.party .battle-hero.attack-sword {
+  animation: crystalSwordAttack 0.40s ease-out both;
+}
+
+.party .battle-hero.attack-cast {
+  animation: crystalCastAttack 0.50s ease-out both;
+}
+
+.party .battle-hero.attack-support {
+  animation: crystalSupportAttack 0.48s ease-out both;
+}
+
+.party .battle-hero.attack-spirit {
+  animation: crystalSpiritAttack 0.56s ease-out both;
+}
+
+.party .battle-hero.attack-miner {
+  animation: crystalMinerAttack 0.48s ease-out both;
+}
+
+.party .battle-hero.attack-stoneguard {
+  animation: crystalStoneguardAttack 0.52s ease-out both;
+}
+
+.party .battle-hero.attack-mystic {
+  animation: crystalMysticAttack 0.55s ease-out both;
+}
+
+/* ==========================================
+   HEALING, REVIVAL, AND DEFENCE
+   ========================================== */
+
+.party .battle-hero.hero-heal-glow {
+  animation: crystalHeroHeal 1s ease-out both;
+  filter:
+    drop-shadow(0 0 10px #a5ffd4)
+    drop-shadow(0 0 22px #62edc6);
+}
+
+.party .battle-hero.hero-revive-glow {
+  animation: crystalHeroRevive 1.45s ease-out both;
+  filter:
+    drop-shadow(0 0 12px #ffef9a)
+    drop-shadow(0 0 26px #e7b9ff);
+}
+
+.party.party-guard-glow {
+  filter: drop-shadow(0 0 12px #8bdfff);
+}
+
+.party.party-barrier-glow {
+  filter:
+    drop-shadow(0 0 12px #70e6f6)
+    drop-shadow(0 0 24px #927dff);
+}
+
+/* The original game.js toggles the hidden property on the Barrier visual. */
+.party-barrier-visual {
+  position: absolute;
+  inset: 8% 5% 7%;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  border: 2px solid #8fefff;
+  border-radius: 45% 45% 34% 34%;
+  background:
+    radial-gradient(
+      ellipse at center,
+      #93eaff1f 0%,
+      #9b8cff0d 58%,
+      transparent 74%
+    );
+  box-shadow:
+    inset 0 0 30px #8fefff25,
+    0 0 24px #8fefff40;
+  pointer-events: none;
+  animation: crystalBarrierBreathe 1.1s ease-in-out infinite alternate;
+}
+
+.party-barrier-visual[hidden] {
+  display: none !important;
+}
+
+.party-barrier-label {
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 6px 11px;
+  border: 1px solid #a2f2ff99;
+  border-radius: 999px;
+  background: #11172be8;
+  color: #c6f8ff;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.13em;
+  white-space: nowrap;
+  text-shadow: 0 0 8px #75dfff;
+}
+
+.party-barrier-visual.barrier-over-anti-magic {
+  border-color: #d1a7ff;
+  box-shadow:
+    inset 0 0 30px #a875ff40,
+    0 0 28px #bb81ff65;
+}
+
+/* ==========================================
+   PROJECTILES: ARROWS, SWORDS, AND MAGIC
+   ========================================== */
+
+.attack-projectile {
+  position: absolute;
+  z-index: 30;
+  display: block;
+  pointer-events: none;
+  will-change: transform, opacity;
+}
+
+.arrow-projectile {
+  width: 28px;
+  height: 3px;
+  border-radius: 999px;
+  background: linear-gradient(
+    90deg,
+    #e6bf75,
+    #fff0bd,
+    #d8e8ff
+  );
+  box-shadow: 0 0 7px #ffda8c;
+  transform: rotate(var(--angle, 0deg));
+  transform-origin: left center;
+  animation: crystalArrowTravel 0.48s ease-in forwards;
+}
+
+.arrow-projectile::after {
+  content: "";
+  position: absolute;
+  right: -4px;
+  top: -4px;
+  width: 0;
+  height: 0;
+  border-top: 5px solid transparent;
+  border-bottom: 5px solid transparent;
+  border-left: 7px solid #fff0bd;
+}
+
+.sword-slash {
+  width: 62px;
+  height: 30px;
+  border-top: 4px solid #e5f8ff;
+  border-radius: 50%;
+  box-shadow: 0 -3px 12px #8be5ff;
+  animation: crystalSwordSlash 0.40s ease-out forwards;
+}
+
+.magic-bolt {
+  width: 18px;
+  height: 18px;
+  border: 2px solid #e3d6ff;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    #ffffff 0%,
+    #c8a6ff 35%,
+    #7954e8 75%
+  );
+  box-shadow:
+    0 0 8px #c8a6ff,
+    0 0 18px #865cff;
+  animation: crystalMagicTravel 0.46s ease-in forwards;
+}
+
+/* ==========================================
+   NEW SKILL EFFECTS
+   ========================================== */
+
+.scene.skill-scene-flash {
+  animation: crystalScenePulse 0.55s ease-out;
+}
+
+.skill-vfx {
+  position: absolute;
+  top: 38%;
+  left: 50%;
+  z-index: 35;
+  display: flex;
+  width: max-content;
+  max-width: 88%;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 18px;
+  border: 1px solid #c9b5ff99;
+  border-radius: 16px;
+  background: #17142bdc;
+  color: #f7f0ff;
+  text-align: center;
+  pointer-events: none;
+  animation: crystalSkillVfx 1.05s ease-out forwards;
+  backdrop-filter: blur(5px);
+}
+
+.skill-vfx-symbol {
+  display: block;
+  font-size: clamp(30px, 5vw, 50px);
+  font-weight: 900;
+  line-height: 1;
+  color: #d8c7ff;
+  text-shadow:
+    0 0 10px #b58aff,
+    0 0 26px #8c69ff;
+}
+
+.skill-vfx > b {
+  font-size: clamp(11px, 2vw, 15px);
+  font-weight: 900;
+  letter-spacing: 0.16em;
+  text-shadow: 0 0 12px #b58aff;
+}
+
+/* Radiant Slash */
+.skill-vfx-slash {
+  border-color: #b5edff;
+}
+
+.skill-vfx-slash .skill-vfx-symbol {
+  color: #e8fbff;
+  text-shadow: 0 0 18px #6be7ff;
+}
+
+/* Arcane Burst */
+.skill-vfx-burst {
+  border-color: #c8a2ff;
+}
+
+.skill-vfx-burst .skill-vfx-symbol {
+  color: #dfcaff;
+  text-shadow: 0 0 20px #a47bff;
+}
+
+/* Guard */
+.skill-vfx-guard {
+  border-color: #90dfff;
+}
+
+.skill-vfx-guard .skill-vfx-symbol {
+  color: #a4eaff;
+  text-shadow: 0 0 20px #55bfff;
+}
+
+/* Healing Wave */
+.skill-vfx-heal {
+  border-color: #a6ffda;
+}
+
+.skill-vfx-heal .skill-vfx-symbol {
+  color: #a4ffd4;
+  text-shadow: 0 0 22px #57ffbf;
+}
+
+/* Meteor Rain */
+.skill-vfx-meteor {
+  border-color: #ffb787;
+}
+
+.skill-vfx-meteor .skill-vfx-symbol {
+  color: #ffd0a4;
+  text-shadow: 0 0 22px #ff753e;
+}
+
+/* Frost Nova */
+.skill-vfx-frost {
+  border-color: #a4f5ff;
+}
+
+.skill-vfx-frost .skill-vfx-symbol {
+  color: #c7f8ff;
+  text-shadow: 0 0 22px #55dfff;
+}
+
+/* Phoenix Blessing */
+.skill-vfx-phoenix {
+  border-color: #ffd58e;
+}
+
+.skill-vfx-phoenix .skill-vfx-symbol {
+  color: #ffe3a6;
+  text-shadow: 0 0 24px #ff934e;
+}
+
+/* Anti-Magic Barrier */
+.skill-vfx-anti-magic {
+  border-color: #d5adff;
+}
+
+.skill-vfx-anti-magic .skill-vfx-symbol {
+  color: #dcbeff;
+  text-shadow: 0 0 22px #a265ff;
+}
+
+/* Barrier */
+.skill-vfx-barrier,
+.skill-vfx-barrier-block {
+  border-color: #87f2ff;
+}
+
+.skill-vfx-barrier .skill-vfx-symbol,
+.skill-vfx-barrier-block .skill-vfx-symbol {
+  color: #a7f8ff;
+  text-shadow: 0 0 22px #49dfff;
+}
+
+/* Critical hits */
+.skill-vfx-critical {
+  border-color: #ffe59b;
+}
+
+.skill-vfx-critical .skill-vfx-symbol {
+  color: #fff0ad;
+  text-shadow: 0 0 24px #ffb743;
+}
+
+/* Cave 8 permanent upgrade */
+.skill-vfx-partyUpgrade {
+  border-color: #e0c4ff;
+}
+
+.skill-vfx-partyUpgrade .skill-vfx-symbol {
+  color: #efdcff;
+  text-shadow: 0 0 24px #b780ff;
+}
+
+/* Crownfall Rupture */
+.skill-vfx-crownfall {
+  border-color: #ff9dbd;
+  box-shadow: 0 0 32px #ec4c8e55;
+}
+
+.skill-vfx-crownfall .skill-vfx-symbol {
+  color: #ffbad3;
+  text-shadow: 0 0 24px #ff438b;
+}
+
+/* Cataclysmic Pulse */
+.skill-vfx-cataclysm {
+  border-color: #ffbd8a;
+  box-shadow: 0 0 32px #ff734455;
+}
+
+.skill-vfx-cataclysm .skill-vfx-symbol {
+  color: #ffd0a9;
+  text-shadow: 0 0 24px #ff653d;
+}
+
+.skill-vfx-barrier-block {
+  background: #112a36ed;
+}
+
+/* ==========================================
+   SCENE FLASH EFFECTS
+   ========================================== */
+
+.scene.skill-scene-crownfall,
+.scene.skill-scene-cataclysm {
+  box-shadow:
+    inset 0 0 70px #ff527044,
+    0 0 35px #ff527044;
+}
+
+.scene.skill-scene-meteor {
+  box-shadow: inset 0 0 55px #ff9b4a30;
+}
+
+.scene.skill-scene-frost {
+  box-shadow: inset 0 0 55px #73e7ff30;
+}
+
+.scene.skill-scene-heal,
+.scene.skill-scene-phoenix {
+  box-shadow: inset 0 0 55px #75ffcf26;
+}
+
+.scene.skill-scene-barrier,
+.scene.skill-scene-barrier-block {
+  box-shadow: inset 0 0 60px #70e6ff33;
+}
+
+/* The existing JavaScript toggles cataclysm-flash during the enemy's attack. */
+.scene.cataclysm-flash {
+  animation: crystalCataclysmFlash 0.95s ease-out;
+}
+
+/* ==========================================
+   GREAT SAGE / RAPHAEL EVOLUTION
+   ========================================== */
+
+.sage-orb.is-raphael,
+#sageOrb.is-raphael {
+  border-color: #c7a2ff;
+  color: #efdbff;
+  box-shadow:
+    0 0 15px #a475ff80,
+    0 0 35px #7d51db55;
+}
+
+.sage-symbol {
+  display: inline-block;
+}
+
+.sage-orb.is-raphael .sage-symbol,
+#sageOrb.is-raphael .sage-symbol {
+  color: #e9d2ff;
+  text-shadow: 0 0 18px #a875ff;
+}
+
+.raphael-evolution-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  background:
+    radial-gradient(ellipse at center, #554087a8, #0c0a1af5 75%);
+  animation: crystalOverlayFade 0.5s ease-out both;
+}
+
+.raphael-evolution-stage {
+  width: min(100%, 520px);
+  padding: clamp(28px, 6vw, 48px);
+  border: 1px solid #bfa5ff88;
+  border-radius: 24px;
+  background: #17142aee;
+  text-align: center;
+  box-shadow: 0 0 70px #966dff30;
+}
+
+.raphael-evolution-caption {
+  color: #c6adff;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.22em;
+}
+
+.raphael-evolution-emblem {
+  display: grid;
+  width: 104px;
+  height: 104px;
+  place-items: center;
+  margin: 28px auto;
+  border: 1px solid #bba0ff;
+  border-radius: 28px;
+  background: radial-gradient(circle, #684ca966, #27203e);
+  color: #e7d6ff;
+  font-size: 54px;
+  text-shadow: 0 0 22px #a875ff;
+  animation: crystalEmblemPulse 1.8s ease-in-out infinite alternate;
+}
+
+.raphael-evolution-stage h1 {
+  margin: 0 0 14px;
+  color: #f3eaff;
+  font-size: clamp(22px, 5vw, 34px);
+  letter-spacing: 0.06em;
+}
+
+.raphael-evolution-stage p {
+  color: #cdc2e7;
+  line-height: 1.7;
+}
+
+.raphael-evolution-stage small {
+  display: block;
+  margin-top: 28px;
+  color: #9a8db6;
+}
+
+.raphael-evolution-overlay.is-evolved .raphael-evolution-emblem {
+  border-color: #ead6ff;
+  background: radial-gradient(circle, #9c71ee88, #33204f);
+  box-shadow: 0 0 42px #b58aff60;
+}
+
+/* ==========================================
+   UNLOCK REVEALS
+   ========================================== */
+
+.unlock-reveal-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 9998;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  background: #0c0a1ce8;
+  backdrop-filter: blur(8px);
+}
+
+.unlock-reveal-overlay[hidden] {
+  display: none !important;
+}
+
+.unlock-reveal-card {
+  width: min(100%, 500px);
+  padding: clamp(24px, 5vw, 42px);
+  border: 1px solid #ac95ff80;
+  border-radius: 24px;
+  background: linear-gradient(145deg, #282144, #17142a);
+  color: #f6f1ff;
+  text-align: center;
+  box-shadow: 0 0 70px #9974ff22;
+  animation: crystalRevealPop 0.42s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.unlock-reveal-kicker {
+  color: #c7b2ff;
+  font-size: 11px;
+  font-weight: 850;
+  letter-spacing: 0.22em;
+}
+
+.unlock-reveal-medallion {
+  display: grid;
+  width: 94px;
+  height: 94px;
+  place-items: center;
+  margin: 24px auto;
+  border: 1px solid #b69aff;
+  border-radius: 50%;
+  background: #35274f;
+  color: #e6d9ff;
+  font-size: 40px;
+  box-shadow: 0 0 30px #a57eff32;
+}
+
+.unlock-reveal-medallion img {
+  width: 76%;
+  height: 76%;
+  object-fit: contain;
+}
+
+.unlock-reveal-category {
+  color: #a8e9f2;
+  font-size: 10px;
+  font-weight: 850;
+  letter-spacing: 0.18em;
+}
+
+.unlock-reveal-card h2 {
+  margin: 10px 0;
+}
+
+.unlock-reveal-description {
+  color: #c7c0dc;
+  line-height: 1.7;
+}
+
+.unlock-reveal-footer {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 16px;
+  margin-top: 28px;
+}
+
+.unlock-reveal-footer small {
+  color: #9188ad;
+}
+
+.unlock-reveal-button {
+  padding: 10px 20px;
+  border: 1px solid #b59aff;
+  border-radius: 12px;
+  background: #574181;
+  color: #fff;
+  font: inherit;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+/* ==========================================
+   KEYFRAMES
+   ========================================== */
+
+@keyframes crystalBowAttack {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  30% { transform: translateX(5px) rotate(-5deg); }
+  60% { transform: translateX(11px) rotate(3deg); }
+}
+
+@keyframes crystalSwordAttack {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  35% { transform: translateX(17px) rotate(-8deg); }
+  65% { transform: translateX(8px) rotate(3deg); }
+}
+
+@keyframes crystalCastAttack {
+  0%, 100% { transform: translateY(0) scale(1); }
+  40% { transform: translateY(-9px) scale(1.06); }
+  65% { transform: translateY(-3px) scale(1.02); }
+}
+
+@keyframes crystalSupportAttack {
+  0%, 100% { transform: translate(0, 0) scale(1); }
+  35% { transform: translate(9px, -5px) scale(1.05); }
+  70% { transform: translate(3px, 0) scale(1.02); }
+}
+
+@keyframes crystalSpiritAttack {
+  0%, 100% { transform: translate(0, 0); }
+  35% { transform: translate(10px, -12px); }
+  70% { transform: translate(5px, -4px); }
+}
+
+@keyframes crystalMinerAttack {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  35% { transform: translateX(12px) rotate(-7deg); }
+  60% { transform: translateX(18px) rotate(7deg); }
+}
+
+@keyframes crystalStoneguardAttack {
+  0%, 100% { transform: translateX(0) scale(1); }
+  40% { transform: translateX(11px) scale(1.08); }
+  65% { transform: translateX(6px) scale(1.03); }
+}
+
+@keyframes crystalMysticAttack {
+  0%, 100% { transform: translateY(0) scale(1); }
+  30% { transform: translateY(-10px) scale(1.09); }
+  60% { transform: translateY(-2px) scale(1.02); }
+}
+
+@keyframes crystalHeroHeal {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.6) drop-shadow(0 0 18px #8fffd4); }
+  100% { filter: brightness(1) drop-shadow(0 0 0 transparent); }
+}
+
+@keyframes crystalHeroRevive {
+  0% { opacity: .25; transform: translateY(10px) scale(.8); }
+  35% { opacity: 1; transform: translateY(-8px) scale(1.13); }
+  70% { transform: translateY(0) scale(1.03); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+@keyframes crystalBarrierBreathe {
+  from { opacity: .72; transform: scale(.99); }
+  to { opacity: 1; transform: scale(1.015); }
+}
+
+@keyframes crystalArrowTravel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) rotate(var(--angle, 0deg));
+  }
+  10% { opacity: 1; }
+  85% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--travel-x), var(--travel-y))
+      rotate(var(--angle, 0deg));
+  }
+}
+
+@keyframes crystalSwordSlash {
+  0% { opacity: 0; transform: rotate(-35deg) scale(.3); }
+  30% { opacity: 1; transform: rotate(15deg) scale(1.1); }
+  100% { opacity: 0; transform: rotate(55deg) scale(1.35); }
+}
+
+@keyframes crystalMagicTravel {
+  0% {
+    opacity: 0;
+    transform: translate(0, 0) scale(.6);
+  }
+  10% { opacity: 1; }
+  100% {
+    opacity: 0;
+    transform: translate(var(--travel-x), var(--travel-y)) scale(.2);
+  }
+}
+
+@keyframes crystalSkillVfx {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 15px) scale(.65);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-50%, 0) scale(1.05);
+  }
+  72% {
+    opacity: 1;
+    transform: translate(-50%, -8px) scale(1);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -28px) scale(.92);
+  }
+}
+
+@keyframes crystalScenePulse {
+  0% { filter: brightness(1); }
+  35% { filter: brightness(1.35) saturate(1.25); }
+  100% { filter: brightness(1); }
+}
+
+@keyframes crystalCataclysmFlash {
+  0%, 100% { filter: brightness(1); }
+  20% { filter: brightness(1.8) saturate(1.4); }
+  45% { filter: brightness(.75) saturate(1.2); }
+  70% { filter: brightness(1.5); }
+}
+
+@keyframes crystalOverlayFade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+@keyframes crystalEmblemPulse {
+  from { transform: scale(.96); }
+  to { transform: scale(1.05); }
+}
+
+@keyframes crystalRevealPop {
+  0% { opacity: 0; transform: translateY(16px) scale(.96); }
+  100% { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+/* Respect reduced-motion preferences while keeping the game readable. */
+@media (prefers-reduced-motion: reduce) {
+  .party .battle-hero.attack-bow,
+  .party .battle-hero.attack-sword,
+  .party .battle-hero.attack-cast,
+  .party .battle-hero.attack-support,
+  .party .battle-hero.attack-spirit,
+  .party .battle-hero.attack-miner,
+  .party .battle-hero.attack-stoneguard,
+  .party .battle-hero.attack-mystic,
+  .party .battle-hero.hero-heal-glow,
+  .party .battle-hero.hero-revive-glow,
+  .party-barrier-visual,
+  .skill-vfx,
+  .attack-projectile,
+  .raphael-evolution-emblem,
+  .unlock-reveal-card {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+  }
+}
