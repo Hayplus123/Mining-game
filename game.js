@@ -5262,17 +5262,10 @@ function resetGame() {
 log("Crystal Kingdom ready. Your next destination remains a mystery.");
 save();
 
-if (s.autoPilotUnlocked && !s.raphaelEvolved) {
-  raphaelEvolutionTimer = window.setTimeout(
-    triggerRaphaelEvolution,
-    600
-  );
-}
-
-// Maintenance checker: the game initialized successfully.
-window.gemMinerReady = true;
-
 console.info("Mining Crystal Kingdom initialized.");
+
+// Tell maintenance.js that startup succeeded.
+window.gemMinerReady = true;
   }
 
   if (document.readyState === "loading") {
