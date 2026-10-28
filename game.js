@@ -2978,6 +2978,20 @@
 
     enemy.hp = Math.max(0, enemy.hp - damage);
 
+    
+    // Trigger the attack animation and display the damage.
+    showDamage(`-${damage}`, "enemy");
+    enemyHitEffect();
+
+    // Finish the enemy when its health reaches zero.
+    if (enemy.hp <= 0) {
+      defeatEnemy();
+      return;
+    }
+
+    renderEnemy();
+    save();
+  }
 
   function showDamage(text, target = "enemy") {
     const parent =
