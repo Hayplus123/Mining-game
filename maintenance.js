@@ -71,4 +71,4 @@
       message: String(event.reason || "Unknown promise error")
     });
   });
-})();
+}));
