@@ -2979,6 +2979,18 @@
     enemy.hp = Math.max(0, enemy.hp - damage);
 
     
+    showDamage(`-${damage}`, "enemy");
+    enemyHitEffect();
+
+    if (enemy.hp <= 0) {
+      defeatEnemy();
+      return;
+    }
+
+    renderEnemy();
+    save();
+  }
+    
     // Trigger the attack animation and display the damage.
     showDamage(`-${damage}`, "enemy");
     enemyHitEffect();
@@ -5115,6 +5127,7 @@
     save();
 
     console.info("Mining Crystal Kingdom initialized.");
+        window.gemMinerReady = true;
   }
 
   if (document.readyState === "loading") {

@@ -1,164 +1,70 @@
-<!doctype html>
-<html lang="en">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <meta name="theme-color" content="#111126">
-  <title>Crystal Kingdom — Maintenance</title>
-
-  <style>
-    * {
-      box-sizing: border-box;
-    }
-
-    body {
-      margin: 0;
-      min-height: 100vh;
-      display: grid;
-      place-items: center;
-      padding: 24px;
-      color: #f3efff;
-      font-family: system-ui, sans-serif;
-      background:
-        radial-gradient(circle at 50% 30%, #302451, transparent 55%),
-        linear-gradient(145deg, #101528, #090914);
-    }
-
-    .maintenance-card {
-      width: min(520px, 100%);
-      padding: 36px 28px;
-      text-align: center;
-      border: 1px solid #a78bfa66;
-      border-radius: 24px;
-      background: #17152dee;
-      box-shadow: 0 20px 70px #0007, 0 0 35px #9875ff18;
-    }
-
-    .crystal {
-      font-size: 56px;
-      margin-bottom: 12px;
-      animation: crystalGlow 2s ease-in-out infinite alternate;
-    }
-
-    .eyebrow {
-      color: #b9a0ff;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .22em;
-    }
-
-    h1 {
-      margin: 14px 0;
-      font-size: clamp(27px, 7vw, 38px);
-    }
-
-    p {
-      color: #c9c5dc;
-      line-height: 1.7;
-    }
-
-    .status {
-      display: inline-block;
-      margin: 8px 0 16px;
-      padding: 7px 12px;
-      border: 1px solid #f0c67466;
-      border-radius: 99px;
-      color: #f4d99b;
-      font-size: 11px;
-      font-weight: 800;
-      letter-spacing: .1em;
-    }
-
-    a {
-      display: inline-block;
-      margin-top: 15px;
-      padding: 12px 20px;
-      border-radius: 12px;
-      color: #151126;
-      background: #c7b3ff;
-      font-weight: 800;
-      text-decoration: none;
-    }
-
-    a:hover {
-      background: #e1d6ff;
-    }
-
-    .small {
-      margin-top: 24px;
-      font-size: 12px;
-      color: #9691ae;
-    }
-
-    @keyframes crystalGlow {
-      from {
-        transform: translateY(0) scale(1);
-        filter: drop-shadow(0 0 5px #a78bfa55);
-      }
-      to {
-        transform: translateY(-5px) scale(1.06);
-        filter: drop-shadow(0 0 18px #a78bfa);
-      }
-    }
-
-    @media (prefers-reduced-motion: reduce) {
-      .crystal {
-        animation: none;
-      }
-    }
-  </style>
-</head>
-
-<body>
-  <main class="maintenance-card">
-    <div class="crystal" aria-hidden="true">💎</div>
-    <div class="eyebrow">CRYSTAL KINGDOM</div>
-
-    <h1>A small cave-in!</h1>
-
-    <div class="status">TEMPORARILY UNAVAILABLE</div>
-
-    <p>
-      Our Great Sage detected a technical problem.
-      The kingdom is temporarily closed while the issue
-      is investigated.
-    </p>
-
-    <p>
-      Your saved progress has not been deliberately erased.
-      Please keep this page open or return later.
-    </p>
-
-    <a href="./index.html">Try the game again</a>
-
-    <p class="small">
-      Thank you for your patience, adventurer.
-    </p>
-  </main>
-  <script>
 (() => {
   "use strict";
 
-  function retryGame() {
-    const url = new URL("./index.html", window.location.href);
+  let redirecting = false;
 
-    // Give the retry a unique URL.
-    url.searchParams.set("maintenanceRetry", Date.now());
+  function goToMaintenance(reason) {
+    if (redirecting) return;
+
+    redirecting = true;
+
+    console.error(
+      "[Crystal Kingdom] Maintenance mode:",
+      reason
+    );
+
+    const url = new URL(
+      "./maintenance.html",
+      window.location.href
+    );
+
+    url.searchParams.set("reason", "game-error");
 
     window.location.replace(url.href);
   }
 
-  // Make the existing retry button use a fresh URL, too.
-  const retryButton = document.querySelector(".maintenance-card a");
+  // Catch errors that come specifically from game.js.
+  window.addEventListener("error", (event) => {
+    const source = String(event.filename || "");
 
-  if (retryButton) {
-    retryButton.href =
-      "./index.html?maintenanceRetry=" + Date.now();
-  }
+    const isGameError =
+      /\/game\.js(?:[?#]|$)/i.test(source);
 
-  // Automatically try again every time this page loads.
-  window.setTimeout(retryGame, 20000);
+    const isGameLoadError =
+      event.target instanceof HTMLScriptElement &&
+      /\/game\.js(?:[?#]|$)/i.test(event.target.src);
+
+    if (isGameError || isGameLoadError) {
+      goToMaintenance({
+        message: event.message || "Game script failed",
+        file: source || event.target?.src || "game.js",
+        line: event.lineno || 0
+      });
+    } else {
+      // Image, music, and unrelated resource errors should not
+      // automatically take the entire game offline.
+      console.warn("[Crystal Kingdom] Resource error:", event);
+    }
+  }, true);
+
+  // Log promise errors without automatically redirecting.
+  // Browser autoplay and voice features can reject promises
+  // without the entire game being broken.
+  window.addEventListener("unhandledrejection", (event) => {
+    console.error(
+      "[Crystal Kingdom] Unhandled promise rejection:",
+      event.reason
+    );
+  });
+
+  // If initialization never succeeds, switch to maintenance mode.
+  window.addEventListener("load", () => {
+    window.setTimeout(() => {
+      if (!window.gemMinerReady) {
+        goToMaintenance(
+          "The game did not finish initializing."
+        );
+      }
+    }, 5000);
+  });
 })();
-</script>
-</body>
-</html>
