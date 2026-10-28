@@ -1,70 +1,177 @@
-(() => {
-  "use strict";
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#17152d">
+  <title>Crystal Kingdom | Maintenance</title>
 
-  let redirecting = false;
-
-  function goToMaintenance(reason) {
-    if (redirecting) return;
-
-    redirecting = true;
-
-    console.error(
-      "[Crystal Kingdom] Maintenance mode:",
-      reason
-    );
-
-    const url = new URL(
-      "./maintenance.html",
-      window.location.href
-    );
-
-    url.searchParams.set("reason", "game-error");
-
-    window.location.replace(url.href);
-  }
-
-  // Catch errors that come specifically from game.js.
-  window.addEventListener("error", (event) => {
-    const source = String(event.filename || "");
-
-    const isGameError =
-      /\/game\.js(?:[?#]|$)/i.test(source);
-
-    const isGameLoadError =
-      event.target instanceof HTMLScriptElement &&
-      /\/game\.js(?:[?#]|$)/i.test(event.target.src);
-
-    if (isGameError || isGameLoadError) {
-      goToMaintenance({
-        message: event.message || "Game script failed",
-        file: source || event.target?.src || "game.js",
-        line: event.lineno || 0
-      });
-    } else {
-      // Image, music, and unrelated resource errors should not
-      // automatically take the entire game offline.
-      console.warn("[Crystal Kingdom] Resource error:", event);
+  <style>
+    * {
+      box-sizing: border-box;
     }
-  }, true);
 
-  // Log promise errors without automatically redirecting.
-  // Browser autoplay and voice features can reject promises
-  // without the entire game being broken.
-  window.addEventListener("unhandledrejection", (event) => {
-    console.error(
-      "[Crystal Kingdom] Unhandled promise rejection:",
-      event.reason
-    );
-  });
+    :root {
+      color-scheme: dark;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI",
+        sans-serif;
+      background: #111020;
+      color: #f6f2ff;
+    }
 
-  // If initialization never succeeds, switch to maintenance mode.
-  window.addEventListener("load", () => {
-    window.setTimeout(() => {
-      if (!window.gemMinerReady) {
-        goToMaintenance(
-          "The game did not finish initializing."
-        );
-      }
-    }, 5000);
-  });
-})();
+    body {
+      min-height: 100vh;
+      margin: 0;
+      padding: 24px;
+      display: grid;
+      place-items: center;
+      background:
+        radial-gradient(ellipse at 50% 0%, #39305d 0%, transparent 58%),
+        #111020;
+    }
+
+    main {
+      width: min(100%, 620px);
+      padding: clamp(28px, 6vw, 52px);
+      border: 1px solid #514775;
+      border-radius: 24px;
+      background: rgba(27, 24, 49, 0.96);
+      box-shadow: 0 24px 80px rgba(0, 0, 0, 0.38);
+      text-align: center;
+    }
+
+    .crystal {
+      display: grid;
+      place-items: center;
+      width: 82px;
+      height: 82px;
+      margin: 0 auto 22px;
+      border: 1px solid #8875d9;
+      border-radius: 24px;
+      background: #30274f;
+      color: #c5b7ff;
+      font-size: 42px;
+      box-shadow: 0 0 35px rgba(153, 120, 255, 0.18);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: #b9a8ff;
+      font-size: 12px;
+      font-weight: 800;
+      letter-spacing: 0.2em;
+    }
+
+    h1 {
+      margin: 0 0 16px;
+      font-size: clamp(28px, 6vw, 42px);
+      line-height: 1.12;
+    }
+
+    .message {
+      margin: 0 auto 26px;
+      max-width: 460px;
+      color: #c7c3dc;
+      font-size: 16px;
+      line-height: 1.7;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: center;
+      gap: 12px;
+    }
+
+    button,
+    .link {
+      min-height: 46px;
+      padding: 12px 20px;
+      border: 1px solid #7966c9;
+      border-radius: 12px;
+      font: inherit;
+      font-weight: 750;
+      text-decoration: none;
+      cursor: pointer;
+    }
+
+    button {
+      background: #9d86ff;
+      color: #171027;
+    }
+
+    button:hover {
+      background: #b6a5ff;
+    }
+
+    .link {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      border-color: #514775;
+      background: transparent;
+      color: #e7e0ff;
+    }
+
+    .link:hover {
+      background: #30294b;
+    }
+
+    .note {
+      margin: 24px 0 0;
+      color: #938daa;
+      font-size: 12px;
+      line-height: 1.6;
+    }
+  </style>
+</head>
+
+<body>
+  <main>
+    <div class="crystal" aria-hidden="true">✦</div>
+
+    <p class="eyebrow">CRYSTAL KINGDOM · SYSTEM NOTICE</p>
+
+    <h1>The portal needs a repair.</h1>
+
+    <p class="message">
+      The game did not start normally. This maintenance page is here so
+      you can retry without being stuck on a broken screen.
+      This page itself does not erase your saved game.
+    </p>
+
+    <div class="actions">
+      <button id="retryButton" type="button">
+        Try again
+      </button>
+
+      <a class="link" href="./index.html">
+        Return to the game
+      </a>
+    </div>
+
+    <p class="note">
+      If the game still does not open after a repair, refresh the page.
+      Your game code and your browser save are separate things.
+    </p>
+  </main>
+
+  <script>
+    (() => {
+      "use strict";
+
+      const retryButton = document.getElementById("retryButton");
+
+      retryButton.addEventListener("click", () => {
+        const destination = new URL("./index.html", window.location.href);
+
+        // Ask the browser to reload the game page.
+        destination.searchParams.set("retry", String(Date.now()));
+
+        window.location.replace(destination.toString());
+      });
+    })();
+  </script>
+</body>
+</html>
