@@ -5098,7 +5098,7 @@
     }
 
     // Start voice recognition where supported. Browsers that
-    // require microphone permission will report the appropriate status.
+    // require microphone permission will report the appropriate status
     if (SpeechRecognitionAPI && recognitionEnabled) {
       startRecognition();
     } else if (!SpeechRecognitionAPI) {
