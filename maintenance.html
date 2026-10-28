@@ -135,5 +135,30 @@
       Thank you for your patience, adventurer.
     </p>
   </main>
+  <script>
+(() => {
+  "use strict";
+
+  function retryGame() {
+    const url = new URL("./index.html", window.location.href);
+
+    // Give the retry a unique URL.
+    url.searchParams.set("maintenanceRetry", Date.now());
+
+    window.location.replace(url.href);
+  }
+
+  // Make the existing retry button use a fresh URL, too.
+  const retryButton = document.querySelector(".maintenance-card a");
+
+  if (retryButton) {
+    retryButton.href =
+      "./index.html?maintenanceRetry=" + Date.now();
+  }
+
+  // Automatically try again every time this page loads.
+  window.setTimeout(retryGame, 20000);
+})();
+</script>
 </body>
 </html>
