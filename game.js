@@ -1818,18 +1818,76 @@
     setTimeout(() => damage.remove(), 1200);
   }
 
+
   function enemyHitEffect() {
-    const stage = $("enemyStage") || $("battleStage");
+    const enemy =
+      document.querySelector(".enemy") ||
+      $("enemyVisual") ||
+      $("enemyStage");
 
-    if (!stage) return;
+    if (!enemy) return;
 
-    stage.classList.remove("enemy-hit");
-    void stage.offsetWidth;
-    stage.classList.add("enemy-hit");
+    enemy.classList.remove("hit");
+
+    // Force a reflow so the animation can play again.
+    void enemy.offsetWidth;
+
+    enemy.classList.add("hit");
 
     setTimeout(() => {
-      stage.classList.remove("enemy-hit");
-    }, 450);
+      enemy.classList.remove("hit");
+    }, 350);
+  }
+
+  
+  function triggerPartyAttackAnimations() {
+    const party =
+      $("battleParty") ||
+      document.querySelector(".party");
+
+    if (!party) return;
+
+    party.classList.remove("attacking");
+
+    void party.offsetWidth;
+
+    party.classList.add("attacking");
+
+    const members = party.querySelectorAll(".battle-hero");
+
+    members.forEach((member) => {
+      const id = member.dataset.heroId;
+      const hero = HEROES[id];
+
+      if (!hero || (s.heroHp[id] || 0) <= 0) return;
+
+      const role = hero.role.toLowerCase();
+
+      const attackClass =
+        /archer|ranger|rogue/.test(role)
+          ? "attack-bow"
+          : /mage|druid|healer|reviver|support/.test(role)
+            ? "attack-cast"
+            : "attack-sword";
+
+      member.classList.remove(
+        "attack-bow",
+        "attack-sword",
+        "attack-cast"
+      );
+
+      void member.offsetWidth;
+
+      member.classList.add(attackClass);
+
+      setTimeout(() => {
+        member.classList.remove(attackClass);
+      }, 400);
+    });
+
+    setTimeout(() => {
+      party.classList.remove("attacking");
+    }, 400);
   }
 
   function playImportantSound() {
@@ -1873,6 +1931,7 @@
     }
   }
 
+
   function refreshSagePanel() {
     updateAutopilotStatusIndicators();
 
@@ -1883,16 +1942,26 @@
     if (panel) {
       panel.classList.toggle("sage-speaking", speechBusy);
       panel.classList.toggle("sage-listening", commandModeActive);
-      panel.classList.toggle("sage-hidden", !sagePanelVisible());
+      panel.classList.toggle(
+        "sage-hidden",
+        !sagePanelVisible()
+      );
     }
 
     if (orb) {
-      orb.classList.toggle("speaking", speechBusy);
-      orb.classList.toggle("listening", commandModeActive);
+      orb.classList.toggle("is-speaking", speechBusy);
+
+      orb.classList.toggle(
+        "is-listening",
+        commandModeActive && !speechBusy
+      );
+
+      orb.classList.toggle("is-muted", !sageEnabled);
     }
 
     if (message && currentPrompt && !speechBusy) {
-      message.textContent = currentPrompt.message || message.textContent;
+      message.textContent =
+        currentPrompt.message || message.textContent;
     }
 
     const commandButton = $("sageCommandButton");
@@ -2056,52 +2125,61 @@
     }
   }
 
+
   function renderParty() {
     const container = $("companions");
 
-    if (!container) return;
+    if (container) {
+      const cardHTML = s.heroes.map((id) => {
+        const hero = HEROES[id];
 
-    container.innerHTML = s.heroes.map((id) => {
-      const hero = HEROES[id];
+        if (!hero) return "";
 
-      if (!hero) return "";
+        const hp = Math.max(
+          0,
+          Math.min(
+            hero.maxHp,
+            Number(s.heroHp[id]) || 0
+          )
+        );
 
-      const hp = Math.max(
-        0,
-        Math.min(hero.maxHp, Number(s.heroHp[id]) || 0)
-      );
+        const percentage = hero.maxHp
+          ? hp / hero.maxHp * 100
+          : 0;
 
-      const percentage = hero.maxHp
-        ? hp / hero.maxHp * 100
-        : 0;
+        const fallen = hp <= 0;
 
-      const fallen = hp <= 0;
-
-      return `
-        <article class="${fallen ? "is-fallen" : ""}">
-          <div class="portrait">
-            <img src="${esc(hero.portrait)}"
-                 alt="${esc(hero.name)}"
-                 loading="lazy">
-          </div>
-
-          <div class="companion-info">
-            <b>${esc(hero.name)}</b>
-            <small>${esc(hero.role)}</small>
-            <small>${fmt(hp)} / ${fmt(hero.maxHp)} HP</small>
-            <div class="minibar">
-              <i style="width:${percentage}%"></i>
+        return `
+          <article class="${fallen ? "is-fallen" : ""}">
+            <div class="portrait">
+              <img src="${esc(hero.portrait)}"
+                   alt="${esc(hero.name)}"
+                   loading="lazy">
             </div>
-            <small>${fallen ? "FALLEN" : "READY FOR BATTLE"}</small>
-          </div>
-        </article>
-      `;
-    }).join("");
+            <div class="companion-info">
+              <b>${esc(hero.name)}</b>
+              <small>${esc(hero.role)}</small>
+              <small>${fmt(hp)} / ${fmt(hero.maxHp)} HP</small>
+              <div class="minibar">
+                <i style="width:${percentage}%"></i>
+              </div>
+              <small>${fallen ? "FALLEN" : "READY FOR BATTLE"}</small>
+            </div>
+          </article>
+        `;
+      }).join("");
+
+      if (container.dataset.renderCache !== cardHTML) {
+        container.innerHTML = cardHTML;
+        container.dataset.renderCache = cardHTML;
+      }
+    }
 
     const power = $("partyPower");
 
     if (power) {
-      power.textContent = `POWER ${fmt(totalPartyDamage())}`;
+      power.textContent =
+        `POWER ${fmt(totalPartyDamage())}`;
     }
 
     const attackLabel = $("partyAttackLabel");
@@ -2114,25 +2192,32 @@
     const fieldParty = $("battleParty");
 
     if (fieldParty) {
-      fieldParty.innerHTML = s.heroes.map((id, index) => {
+      fieldParty.classList.add("party");
+
+      const battleHTML = s.heroes.map((id, index) => {
         const hero = HEROES[id];
 
         if (!hero) return "";
 
         const fallen = (s.heroHp[id] || 0) <= 0;
+        const rank = Math.min(index + 1, 8);
 
         return `
-          <div class="battle-hero ${fallen ? "is-fallen" : ""}"
-               title="${esc(hero.name)}"
-               style="--hero-index:${index}">
+          <div class="battle-hero front-rank-${rank} ${fallen ? "fallen" : ""}"
+               data-hero-id="${esc(id)}"
+               title="${esc(hero.name)}">
             <img src="${esc(hero.portrait)}"
                  alt="${esc(hero.name)}">
           </div>
         `;
       }).join("");
+
+      if (fieldParty.dataset.renderCache !== battleHTML) {
+        fieldParty.innerHTML = battleHTML;
+        fieldParty.dataset.renderCache = battleHTML;
+      }
     }
   }
-
   // ==========================================
   // ENEMY AND GUARDIAN DISPLAY
   // ==========================================
@@ -2858,6 +2943,8 @@
       return;
     }
 
+        triggerPartyAttackAnimations();
+
     let damage = 0;
 
     living.forEach((id) => {
@@ -2891,16 +2978,35 @@
 
     enemy.hp = Math.max(0, enemy.hp - damage);
 
-    showDamage(`-${damage}`, "enemy");
-    enemyHitEffect();
 
-    if (enemy.hp <= 0) {
-      defeatEnemy();
-      return;
-    }
+  function showDamage(text, target = "enemy") {
+    const parent =
+      target === "party"
+        ? document.querySelector(".party") ||
+          $("partyStage") ||
+          $("battleStage")
+        : document.querySelector(".enemy") ||
+          $("enemyStage") ||
+          $("battleStage");
 
-    renderEnemy();
-    save();
+    if (!parent) return;
+
+    const damage = document.createElement("span");
+
+    // The existing stylesheet animates elements with class "damage".
+    damage.className = "damage";
+    damage.textContent = String(text);
+    damage.setAttribute("aria-hidden", "true");
+
+    damage.style.left =
+      `${25 + Math.random() * 40}%`;
+
+    damage.style.top =
+      `${20 + Math.random() * 35}%`;
+
+    parent.appendChild(damage);
+
+    setTimeout(() => damage.remove(), 1000);
   }
 
   function updateCombat(delta) {
@@ -4624,23 +4730,70 @@
   // RESET GAME
   // ==========================================
 
+  
   function resetGame() {
     const confirmed = window.confirm(
-      "Reset Crystal Kingdom? This erases saved progress in this browser."
+      "Reset Crystal Kingdom? All saved game progress will be erased."
     );
 
     if (!confirmed) return;
 
-    try {
-      localStorage.removeItem(SAVE_KEY);
-      localStorage.removeItem(OLD_SAVE_KEY);
-    } catch (error) {
-      console.warn("Could not clear saved progress.", error);
+    clearTimeout(exploreTimer);
+    clearTimeout(toastTimer);
+    clearTimeout(commandIdleTimer);
+    clearTimeout(recognitionRestartTimer);
+    clearTimeout(unlockRevealTimer);
+    clearTimeout(analistRevealTimer);
+    clearTimeout(resistRevealTimer);
+
+    if ("speechSynthesis" in window) {
+      window.speechSynthesis.cancel();
     }
 
+    if (recognition) {
+      try {
+        recognition.stop();
+      } catch (error) {}
+    }
+
+    try {
+      // Remove the current and previous known save keys.
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(OLD_SAVE_KEY);
+
+      // Also clear older game-save keys, but preserve music
+      // settings and other preferences.
+      const keysToRemove = [];
+
+      for (let i = 0; i < localStorage.length; i++) {
+        const key = localStorage.key(i);
+
+        if (!key) continue;
+
+        const isGameKey =
+          /gem.?miner|crystal.?kingdom/i.test(key);
+
+        const isPreference =
+          /music|volume|voice|sage/i.test(key);
+
+        if (isGameKey && !isPreference) {
+          keysToRemove.push(key);
+        }
+      }
+
+      keysToRemove.forEach((key) => {
+        localStorage.removeItem(key);
+      });
+    } catch (error) {
+      console.error("Could not clear saved progress:", error);
+      toast("Could not reset the save. Check browser storage permissions.");
+      return;
+    }
+
+    // Reload so old in-memory upgrades, timers, and stats
+    // cannot survive the reset.
     window.location.reload();
   }
-
   // ==========================================
   // CONNECT BUTTONS
   // ==========================================
@@ -4735,10 +4888,13 @@
         buyRecruit(id);
         break;
 
-      case "resetGame":
+            case "resetGame":
+      case "reset":
+      case "reset-save":
+      case "resetSave":
+      case "resetProgress":
         resetGame();
         break;
-
       default:
         return false;
     }
@@ -4796,7 +4952,11 @@
         sageVoiceToggle: "toggleVoice",
         sageBattleAutoButton: "activateBattleAutopilot",
         sageKingdomAutoButton: "activateKingdomAutopilot",
-        resetButton: "resetGame"
+        resetButton: "resetGame",
+        resetBtn: "resetGame",
+        resetSave: "resetGame",
+        resetSaveBtn: "resetGame",
+        resetProgressBtn: "resetGame"
       };
 
       const mappedAction = idActions[button.id];
