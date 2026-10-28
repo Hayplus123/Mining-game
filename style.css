@@ -2936,3 +2936,120 @@ body.analist-paused .analist-overlay * {
   .cave-atlas-panel { padding: 1rem; }
   .cave-atlas-card-top { align-items: flex-start; }
 }
+
+/* Keep undiscovered rewards mysterious. */
+.cave-atlas-reward.mysterious {
+  border: 1px dashed rgba(167, 138, 255, .25);
+  background: rgba(8, 10, 26, .48);
+}
+
+.cave-atlas-reward.mysterious .cave-atlas-reward-icon {
+  background: rgba(181, 138, 255, .08);
+  color: #aaa2ce;
+}
+
+.cave-atlas-reward.mysterious strong {
+  color: #b9b2d2;
+}
+
+/* Curved protective arc around the party. */
+.party-barrier-visual {
+  position: absolute;
+  z-index: 25;
+  left: 1.5%;
+  bottom: 12px;
+  width: 70%;
+  height: 222px;
+  pointer-events: none;
+  border: 2px solid rgba(136, 232, 255, .95);
+  border-bottom-color: rgba(136, 232, 255, .35);
+  border-radius: 52% 52% 25% 25% / 72% 72% 23% 23%;
+  background: linear-gradient(
+    180deg,
+    rgba(115, 208, 255, .04),
+    rgba(101, 143, 255, .12)
+  );
+  box-shadow:
+    0 0 11px rgba(117, 219, 255, .68),
+    inset 0 0 22px rgba(117, 219, 255, .2);
+  animation: partyBarrierPulse .8s ease-in-out infinite alternate;
+  transform: perspective(150px) rotateX(-4deg);
+}
+
+.party-barrier-visual[hidden] {
+  display: none !important;
+}
+
+.party-barrier-visual::before,
+.party-barrier-visual::after {
+  content: "";
+  position: absolute;
+  inset: 8px 7px 5px;
+  border: 1px solid rgba(213, 250, 255, .62);
+  border-bottom-color: transparent;
+  border-radius: inherit;
+}
+
+.party-barrier-visual::after {
+  inset: 17px 14px 11px;
+  opacity: .52;
+}
+
+.party-barrier-label {
+  position: absolute;
+  top: -13px;
+  left: 50%;
+  transform: translateX(-50%);
+  padding: 4px 8px;
+  border-radius: 99px;
+  background: #101b36;
+  border: 1px solid #8ce7ef;
+  color: #d8fbff;
+  font: 800 9px "DM Sans", sans-serif;
+  letter-spacing: .13em;
+  white-space: nowrap;
+  box-shadow: 0 0 12px #8ce7ef66;
+}
+
+.party-barrier-visual.barrier-over-anti-magic {
+  border-color: #dcbbff;
+  box-shadow:
+    0 0 15px rgba(196, 138, 255, .9),
+    inset 0 0 25px rgba(196, 138, 255, .24);
+  background: linear-gradient(
+    180deg,
+    rgba(191, 134, 255, .08),
+    rgba(112, 72, 186, .16)
+  );
+}
+
+.party-barrier-visual.barrier-over-anti-magic
+.party-barrier-label {
+  border-color: #d7aaff;
+  color: #f0dcff;
+}
+
+@keyframes partyBarrierPulse {
+  from {
+    opacity: .76;
+    filter: brightness(.94);
+  }
+  to {
+    opacity: 1;
+    filter: brightness(1.22);
+  }
+}
+
+.barrier-skill .skillicon {
+  background: rgba(112, 210, 255, .12);
+  color: #bcefff;
+}
+
+@media (max-width: 600px) {
+  .party-barrier-visual {
+    left: 1%;
+    width: 77%;
+    height: 196px;
+    bottom: 14px;
+  }
+}
